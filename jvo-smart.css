@@ -1,0 +1,194 @@
+/* JVO Smart — gedeelde assistent-huisstijl (dove-mark + navy/goud, kalm, WCAG AA).
+   Eén persona, meerdere schermen (bezoeker/crew/admin). Alle animatie achter
+   prefers-reduced-motion. Tokens hergebruikt uit styles.css. */
+.jvs { font-family: var(--body, system-ui, sans-serif); }
+
+/* de duif-mark: overal identiek, alleen de rail-kleur verschilt per ernst */
+.jvs-mark { width: 22px; height: 22px; border-radius: 50%; background: var(--midnight-3, #1A3158);
+  display: inline-flex; align-items: center; justify-content: center; color: var(--gold, #FFB347); flex: none; }
+.jvs-mark.sm { width: 20px; height: 20px; }
+/* De Duif — de echte JVO-duif (viewBox 80×39, ~2:1) staat breder dan hoog; hoogte automatisch zodat hij niet vervormt */
+.jvs-mark svg { width: 15px; height: auto; display: block; }
+.jvs-mark.sm svg { width: 13px; }
+.jvs-eyebrow { font-family: var(--mono, ui-monospace, monospace); font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--gold, #FFB347); }
+
+/* ernst → linker-rail + mark-tint (kleur is nooit het enige signaal: de tekst zegt het ook) */
+.jvs--info { --jvs-rail: var(--gold, #FFB347); }
+.jvs--warn { --jvs-rail: var(--ember, #FF6B1A); }
+.jvs--warn .jvs-mark { color: var(--ember, #FF6B1A); }
+.jvs--clinch, .jvs--celebrate { --jvs-rail: var(--success, #6CE3A0); }
+.jvs--clinch .jvs-mark, .jvs--celebrate .jvs-mark { color: var(--success, #6CE3A0); }
+
+/* ---------- bezoeker: warme helper boven de volg-balk ---------- */
+.jvs-visitor { background: var(--midnight-2, #122544); border: 1px solid var(--line, rgba(232,244,255,.1));
+  border-left: 3px solid var(--jvs-rail, var(--gold)); border-radius: 12px; padding: 13px 15px; margin: 0 0 14px;
+  color: var(--ice, #E8F4FF); }
+.jvs-visitor .jvs-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.jvs-visitor .jvs-lead { margin: 0; font-size: 14.5px; line-height: 1.38; color: var(--ice, #E8F4FF); }
+.jvs-visitor .jvs-row { display: flex; align-items: center; gap: 10px; }
+.jvs-visitor .jvs-vtxt { font-size: 14px; line-height: 1.35; color: var(--ice, #E8F4FF); }
+.jvs-visitor .jvs-vtxt b { color: var(--gold-2, #FFCD7A); font-weight: 700; }
+.jvs-visitor .jvs-vtxt .tn-next-eta { color: var(--gold-2, #FFCD7A); font-weight: 600; }
+
+/* ---------- crew: slanke tip-regel (increment 2) ---------- */
+.jvs-crew { display: flex; align-items: flex-start; gap: 10px; background: var(--midnight-2, #122544);
+  border: 1px solid var(--line, rgba(232,244,255,.1)); border-left: 3px solid var(--jvs-rail, var(--gold));
+  border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; min-height: 44px; color: var(--ice, #E8F4FF); font-size: 14px; }
+.jvs-crew .jvs-mark { margin-top: 1px; }
+.jvs-crew .jvs-tip-txt { line-height: 1.4; }
+.jvs-crew b { color: var(--gold-2, #FFCD7A); font-weight: 700; }
+/* net-crew-09/10: extra vooruitblik-regels onder de hoofdtip (blok in de inline txt) */
+.jvs-crew .wd-tip-sub { display: block; margin-top: 4px; font-size: 13px; color: var(--ice-muted, rgba(232,244,255,.66)); }
+.jvs-crew .wd-tip-sub b { color: var(--gold-2, #FFCD7A); font-weight: 700; }
+
+/* Doel van een JVO Smart-knop: licht even op, zodat je ziet waar je bent geland. */
+.jvs-target { animation: jvs-land 2.4s ease-out; border-radius: 12px; }
+@keyframes jvs-land {
+  0%, 55% { box-shadow: 0 0 0 2px var(--gold, #FFB347), 0 0 22px -4px var(--gold, #FFB347); }
+  100%    { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .jvs-target { animation: none; box-shadow: 0 0 0 2px var(--gold, #FFB347); } }
+
+/* ---------- admin: control-tower-kaart ---------- */
+.jvs-tower { background: var(--midnight-2, #122544); border: 1px solid var(--line-strong, rgba(232,244,255,.2));
+  border-left: 3px solid var(--jvs-rail, var(--gold)); border-radius: 14px; padding: 16px 18px; margin: 0 0 18px; }
+
+/* Compacte melding: standaard ingeklapt tot één regel, uitklapbaar. Zo neemt
+   JVO Smart niet het hele Overzicht meer over (vooral op een telefoon). */
+.jvs-tower { padding: 0; }
+.jvs-tower .jvs-sum { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: none; border: 0; padding: 13px 16px; cursor: pointer; color: inherit; font: inherit; border-radius: 13px; }
+.jvs-tower .jvs-sum:hover { background: rgba(232,244,255,.04); }
+.jvs-tower .jvs-sum:focus-visible { outline: 2px solid var(--gold-2, #FFCD7A); outline-offset: -2px; }
+.jvs-tower .jvs-sum .jvs-mark { flex: none; }
+.jvs-tower .jvs-sum-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.jvs-tower .jvs-sum-nm { font-family: var(--mono, monospace); font-size: 9.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--jvs-rail, var(--gold)); }
+.jvs-tower .jvs-sum-line { font-size: 14px; font-weight: 600; color: var(--ice, #E8F4FF);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jvs-tower .jvs-count { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  background: var(--jvs-rail, var(--gold)); color: var(--midnight, #0A1628);
+  font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.jvs-tower .jvs-chev { width: 18px; height: 18px; flex: none; margin-left: auto; color: var(--ice-faint, rgba(232,244,255,.5)); transition: transform .2s ease; }
+.jvs-tower .jvs-count + .jvs-chev { margin-left: 0; }
+.jvs-tower.jvs-open .jvs-chev { transform: rotate(180deg); }
+.jvs-tower .jvs-body { display: none; padding: 0 16px 16px; }
+.jvs-tower.jvs-open .jvs-body { display: block; }
+@media (prefers-reduced-motion: reduce) { .jvs-tower .jvs-chev { transition: none; } }
+.jvs-tower .jvs-head { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+.jvs-tower .jvs-hero { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; }
+.jvs-tower .jvs-hero-txt h3 { margin: 0 0 4px; font-size: 16px; font-weight: 800; color: var(--ice, #E8F4FF); }
+.jvs-tower .jvs-hero-txt p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ice-muted, rgba(232,244,255,.66)); }
+.jvs-tower .jvs-hero-txt b { color: var(--gold-2, #FFCD7A); }
+.jvs-cta { flex: none; background: var(--gold, #FFB347); color: var(--midnight, #0A1628); border: 0; border-radius: 9px;
+  padding: 10px 16px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.jvs-cta:hover { background: var(--gold-2, #FFCD7A); }
+.jvs-more { margin-top: 12px; }
+.jvs-more > summary { cursor: pointer; font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ice-muted, rgba(232,244,255,.66)); }
+.jvs-list { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.jvs-list li { font-size: 13px; line-height: 1.4; color: var(--ice-muted, rgba(232,244,255,.66)); padding-left: 11px;
+  border-left: 2px solid var(--jvs-li-rail, var(--line, rgba(232,244,255,.12))); }
+.jvs-list li b { color: var(--ice, #E8F4FF); }
+
+/* ---------- admin: JVO Smart spreekt + zijn diensten ---------- */
+.jvs-tower .jvs-greet { margin: 0 0 12px; font-size: 14px; line-height: 1.4; color: var(--ice, #E8F4FF); font-style: italic; }
+.jvs-serve { margin-top: 15px; padding-top: 13px; border-top: 1px solid var(--line, rgba(232,244,255,.1)); display: flex; flex-direction: column; gap: 11px; }
+.jvs-serve-h { font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold, #FFB347); }
+.jvs-serve-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.jvs-serve-txt { flex: 1 1 260px; min-width: 0; font-size: 13.5px; line-height: 1.4; color: var(--ice-muted, rgba(232,244,255,.66)); }
+.jvs-serve-txt b { color: var(--ice, #E8F4FF); font-weight: 700; }
+.jvs-serve-acts { display: flex; gap: 7px; flex-wrap: wrap; flex: none; }
+.jvs-serve-btn { background: transparent; color: var(--ice, #E8F4FF); border: 1px solid var(--gold, #FFB347); border-radius: 8px;
+  padding: 8px 14px; font-family: var(--body, system-ui); font-size: 13px; font-weight: 600; cursor: pointer; min-height: 36px;
+  transition: background .15s ease, transform .1s ease; }
+.jvs-serve-btn:hover { background: rgba(255,179,71,.14); }
+.jvs-serve-btn:active { transform: scale(.97); }
+.jvs-serve-btn:focus-visible { outline: 2px solid var(--gold-2, #FFCD7A); outline-offset: 2px; }
+.jvs-serve-foot { margin: 14px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--ice-faint, rgba(232,244,255,.5)); }
+
+.jvs button:focus-visible, .jvs a:focus-visible { outline: 2px solid var(--gold-2, #FFCD7A); outline-offset: 2px; }
+
+/* ---------- admin: "JVO Smart leert" — learnings-beheer ---------- */
+.sl-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 14px; }
+.sl-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.sl-chip { font-family: var(--mono, ui-monospace, monospace); font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+  padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line, rgba(232,244,255,.14)); background: transparent;
+  color: var(--ice-muted, rgba(232,244,255,.66)); cursor: pointer; min-height: 28px; }
+.sl-chip:hover { color: var(--ice, #E8F4FF); border-color: var(--line-strong, rgba(232,244,255,.28)); }
+.sl-chip.on { background: var(--gold, #FFB347); border-color: var(--gold, #FFB347); color: var(--midnight, #0A1628); font-weight: 700; }
+.sl-chip i { font-style: normal; opacity: .7; margin-left: 4px; }
+#smart-enrich-btn { margin-left: auto; }
+
+.sl-group { margin: 0 0 18px; }
+.sl-group-h { font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gold, #FFB347); margin: 0 0 9px; display: flex; align-items: center; gap: 8px; }
+.sl-group-h .sl-count { color: var(--ice-faint, rgba(232,244,255,.4)); }
+.sl-group.dismissed .sl-group-h { color: var(--ice-faint, rgba(232,244,255,.4)); }
+
+.sl-card { border: 1px solid var(--line, rgba(232,244,255,.12)); border-left: 3px solid var(--sl-rail, var(--line-strong, rgba(232,244,255,.22)));
+  border-radius: 11px; padding: 12px 14px; margin: 0 0 9px; background: var(--midnight-2, #122544); }
+.sl-card.applied { --sl-rail: var(--success, #6CE3A0); }
+.sl-card.dismissed { opacity: .6; }
+.sl-card-top { display: flex; align-items: flex-start; gap: 10px; }
+.sl-card-txt { flex: 1; min-width: 0; }
+.sl-card-title { font-size: 13.5px; line-height: 1.42; color: var(--ice, #E8F4FF); margin: 0; }
+.sl-status { flex: none; display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono, monospace); font-size: 10px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--success, #6CE3A0); white-space: nowrap; padding-top: 2px; }
+.sl-status .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+
+.sl-badges { display: flex; gap: 6px; flex-wrap: wrap; margin: 9px 0 0; }
+.sl-badge { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 6px; background: var(--midnight-3, #1A3158); color: var(--ice-muted, rgba(232,244,255,.66)); }
+.sl-badge.live { color: var(--sb-pop, #2FD4C4); }        /* deterministisch-live = veilig op de dag */
+.sl-badge.advies { color: var(--gold-2, #FFCD7A); }
+.sl-conf { font-variant-numeric: tabular-nums; }
+
+.sl-more { margin: 9px 0 0; }
+.sl-more > summary { cursor: pointer; font-size: 11.5px; color: var(--ice-muted, rgba(232,244,255,.66)); list-style: none; }
+.sl-more > summary::-webkit-details-marker { display: none; }
+.sl-more > summary::before { content: '▸ '; color: var(--ice-faint, rgba(232,244,255,.4)); }
+.sl-more[open] > summary::before { content: '▾ '; }
+.sl-change { font-size: 12.5px; line-height: 1.45; color: var(--ice-muted, rgba(232,244,255,.72)); margin: 7px 0 0; }
+.sl-src { display: inline-block; margin: 8px 0 0; font-size: 11.5px; color: var(--sb-pop, #2FD4C4); word-break: break-all; }
+.sl-src:hover { text-decoration: underline; }
+
+.sl-actions { display: flex; gap: 8px; margin: 11px 0 0; }
+.sl-actions button { font-size: 12px; padding: 7px 13px; border-radius: 8px; cursor: pointer; min-height: 34px; border: 1px solid var(--line-strong, rgba(232,244,255,.22)); background: transparent; color: var(--ice, #E8F4FF); }
+.sl-actions button.apply { border-color: var(--success, #6CE3A0); color: var(--success, #6CE3A0); }
+.sl-actions button.apply:hover { background: rgba(108,227,160,.12); }
+.sl-actions button.dismiss:hover { background: rgba(232,244,255,.06); }
+.sl-actions button.undo:hover { background: rgba(232,244,255,.06); }
+.sl-empty { font-size: 13px; color: var(--ice-faint, rgba(232,244,255,.4)); padding: 8px 0; }
+
+/* ============================================================
+   JVO Smart — premium bewegingslaag (v8.1)
+   Eén bewegingstaal over bezoeker/crew/admin: kalm, doelbewust,
+   met dezelfde expo-out-easing. Alle beweging staat achter
+   prefers-reduced-motion: no-preference; hover/press-transitions
+   zijn subtiel en blijven ook met reduced-motion aan (niet storend).
+   ============================================================ */
+.jvs { --jvs-ease: cubic-bezier(.16, 1, .3, 1); --jvs-ease-in: cubic-bezier(.4, 0, 1, 1); }
+
+/* De duif-mark: subtiele "landing" met een ring in de ernst-kleur. */
+.jvs-mark { position: relative; }
+.jvs-mark::after { content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  border: 1.5px solid var(--jvs-rail, var(--gold, #FFB347)); opacity: 0; pointer-events: none; }
+
+/* De control-tower voelt interactief (heeft een CTA) — diepte op hover, geen transform-conflict. */
+.jvs-tower { transition: box-shadow .28s var(--jvs-ease), border-color .28s ease; }
+.jvs-tower:hover { box-shadow: 0 14px 38px rgba(0,0,0,.4); border-color: var(--jvs-rail, var(--line-strong)); }
+.jvs-cta { transition: background .16s ease, transform .12s var(--jvs-ease), box-shadow .18s ease; }
+.jvs-cta:hover { transform: translateY(-1px); box-shadow: 0 7px 20px rgba(255,179,71,.36); }
+.jvs-cta:active { transform: translateY(0) scale(.97); }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes jvs-rise { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
+  @keyframes jvs-mark-in { 0% { opacity: 0; transform: scale(.5); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes jvs-ring { 0% { opacity: .5; transform: scale(.65); } 70% { opacity: 0; transform: scale(1.85); } 100% { opacity: 0; transform: scale(1.85); } }
+
+  .jvs-visitor, .jvs-crew, .jvs-tower { animation: jvs-rise .46s var(--jvs-ease) both; }
+  .jvs-visitor .jvs-mark, .jvs-crew .jvs-mark, .jvs-tower .jvs-mark { animation: jvs-mark-in .5s var(--jvs-ease) .05s both; }
+  .jvs-visitor .jvs-mark::after, .jvs-crew .jvs-mark::after, .jvs-tower .jvs-mark::after { animation: jvs-ring 1.15s ease-out .12s 1; }
+}

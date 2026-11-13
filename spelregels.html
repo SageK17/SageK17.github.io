@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp')">
+<head>
+  <script src="/voorbeeld.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="/jvo-loader.js"></script>
+  <title>Spelregels — JVO Sportdag</title>
+  <meta name="description" content="De spelregels van de JVO Sportdag (Sportcampus Zuiderpark, Den Haag)." />
+  <link rel="canonical" href="http://localhost:4795/spelregels" />
+  <meta property="og:title" content="Spelregels — JVO Sportdag" />
+  <meta property="og:description" content="De spelregels van de JVO Sportdag." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="http://localhost:4795/spelregels" />
+  <meta property="og:locale" content="nl_NL" />
+  <meta property="og:image" content="http://localhost:4795/og-neutraal.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="http://localhost:4795/og-neutraal.png" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/refined.css" />
+  <meta name="theme-color" content="#06193A" /><script src="/sh-beweging.js" defer></script>
+  
+  <link rel="stylesheet" href="/thema-sporthub.css" />
+</head>
+<body>
+<canvas class="fx-embers" data-fx-embers aria-hidden="true"></canvas>
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand-badge">
+      <span class="badge-circle">JVO</span>
+      <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; Sportdag · Spelregels</span>
+      <span class="brand-text-short"><b>JVO</b> · Spelregels</span>
+    </div>
+    <nav>
+      <a href="/">Aanmelden</a>
+    </nav>
+  </header>
+
+  <section style="padding: 48px 0 24px;">
+    <div class="eyebrow">Sportdag · <span class="js-event-date">Zondag 22 november 2026</span></div>
+    <h1 class="h-display" style="margin-top: 18px;">
+      <span class="gold-text">Spelregels</span><br/>
+      <span class="ice-text">in 't kort<span class="exclaim">.</span></span>
+    </h1>
+    <p class="lead" style="margin-top: 18px;">
+      Lees deze door voor je het veld op gaat. Bij twijfel: vraag de scheidsrechter.
+    </p>
+  </section>
+
+  <details class="help">
+    <summary>Hoe werkt dit?</summary>
+    <div class="help-body">
+      <p>Dit zijn de officiële spelregels voor de JVO Sportdag. Lees ze even door vóór je het veld op gaat — bij twijfel beslist de scheidsrechter.</p>
+      <p class="off"><svg class="off-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> <b>Geen internet?</b> Deze pagina werkt ook offline zodra je hem één keer hebt geopend — handig om er op het veld snel bij te kunnen.</p>
+    </div>
+  </details>
+
+  <!-- Het blok hieronder is de ingebouwde regelset van de eerste installatie. Vult
+       de organisator in de admin eigen spelregels in, dan vervangt de server het
+       hele blok; een installatie zonder ingebouwde regels toont een "volgt nog"-blok. -->
+  
+  <div class="rules-block" data-fx-reveal>
+    <h2 class="rules-h">Volgen binnenkort</h2>
+    <p class="rules-p">De spelregels van de JVO Sportdag worden nog bekendgemaakt. Kom later terug, of vraag het de organisatie.</p>
+  </div>
+
+  <footer class="foot">
+    <span>JVO — Jeugdgroep van Oranje · <a href="https://www.jvonl.nl" target="_blank" rel="noopener">jvonl.nl</a></span>
+    <span>Vragen? mail <a class="js-contact-mail" href="mailto:enschede@jvonl.nl">enschede@jvonl.nl</a></span>
+  </footer>
+</div>
+
+<style>
+  .rules-block { background: var(--midnight-2); border: 1px solid var(--line); border-radius: 12px; padding: 28px 28px; margin-bottom: 18px; }
+  .rules-h { font-family: var(--display); font-size: 28px; font-weight: 900; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+  /* Alinea in een eigen-regels-blok (server rendert <p class="rules-p">). */
+  .rules-p { margin: 0 0 12px; font-size: 15px; line-height: 1.6; color: var(--ice); }
+  .rules-p:last-child { margin-bottom: 0; }
+  .rules-p b, .rules-h b { color: var(--gold-2); font-weight: 600; }
+  .rules-h:last-child { margin-bottom: 0; }
+  .rules-list { list-style: none; padding: 0; margin: 0; }
+  .rules-list li {
+    padding: 12px 0 12px 28px; position: relative;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px; line-height: 1.5; color: var(--ice);
+  }
+  .rules-list li:last-child { border-bottom: none; }
+  .rules-list li::before {
+    content: '→'; position: absolute; left: 0; top: 12px;
+    color: var(--gold-2); font-weight: 700;
+  }
+  .rules-list li b { color: var(--gold-2); font-weight: 600; }
+  .rules-callout {
+    background: rgba(255,179,71,0.08); border: 1px solid rgba(255,179,71,0.3);
+    padding: 18px 22px; border-radius: 10px;
+    margin: 28px 0 0;
+  }
+  .rules-callout-label { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .rules-callout p { margin: 0; font-size: 14px; color: var(--ice); }
+  .rules-callout b { color: var(--gold-2); font-weight: 600; }
+  @media (max-width: 600px) {
+    .rules-block { padding: 22px 18px; }
+    .rules-h { font-size: 24px; }
+    .rules-list li { font-size: 14px; padding: 10px 0 10px 24px; }
+    .rules-p { font-size: 14px; }
+  }
+</style>
+<script src="/offline-ui.js"></script>
+<script src="/register-sw.js"></script>
+<script src="/fx.js"></script>
+<script src="/spelregels.js"></script>
+</body>
+</html>

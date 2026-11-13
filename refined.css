@@ -1,0 +1,51 @@
+/* ================================================================
+   refined.css — shared "calm" overlay for the operational + content
+   pages (check-in, captain self-service, spelregels, privacy).
+   Linked AFTER styles.css so it wins on equal specificity.
+
+   Deliberately NOT linked by index.html: the public registration
+   front-door keeps its bold poster look. This brings the in-app
+   pages in line with the shipped admin/crew/board refinements —
+   solid/tinted gold, clean Geist buttons, soft realistic shadows,
+   no poster gold-dot, no gradient-clipped text.
+   ================================================================ */
+
+/* ---- Cards: drop the hard offset poster shadow + the gold-dot ---- */
+.card { box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .7); }
+.card::before { display: none; }
+.login-card { border-radius: 20px; }
+.login-card.card { box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .75); }
+.login-card.card::before { display: none; }
+
+/* ---- Primary button: clean Geist, solid gold (was mono-uppercase
+       ember→gold gradient with a loud ember glow) ---- */
+.btn {
+  font-family: var(--body); font-size: 15px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; gap: 8px;
+  background: var(--gold); color: var(--midnight);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .28);
+}
+.btn:hover { background: var(--gold-2); transform: translateY(-1px); box-shadow: 0 10px 26px -10px rgba(255, 179, 71, .55); }
+.btn:disabled { opacity: .5; box-shadow: none; transform: none; }
+.btn.ghost { background: transparent; color: var(--ice); border: 1px solid var(--line-strong); box-shadow: none; font-weight: 600; }
+.btn.ghost:hover { background: rgba(232, 244, 255, .05); border-color: var(--ice-faint); }
+
+/* ---- Small button → Geist, gold primary ---- */
+.btn-sm { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; border-radius: 9px; }
+.btn-sm.primary { background: var(--gold); color: var(--midnight); border-color: transparent; font-weight: 700; }
+.btn-sm.primary:hover { background: var(--gold-2); }
+
+/* ---- Topbar nav: calm chips (no ember fill on hover) ---- */
+.topbar nav a { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; border-radius: 9px; }
+.topbar nav a:hover { color: var(--ice); background: rgba(232, 244, 255, .05); border-color: var(--ice-faint); }
+
+/* ---- Hero word-mark: solid gold instead of gradient-clipped text
+       (gradient text stays only on the bold public index) ---- */
+.gold-text {
+  background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: var(--gold-2); color: var(--gold-2); filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn-sm, .topbar nav a { transition: none !important; }
+}

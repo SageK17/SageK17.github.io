@@ -1,0 +1,1140 @@
+/* ================================================================
+   STIJL "SPORTHUB" — alles draait om de ring
+   ----------------------------------------------------------------
+   Wordt door de pagina-vuller (server.js) als LAATSTE stylesheet
+   geladen op de publiekspagina's wanneer de stijl van het evenement
+   'sporthub' is; <html> krijgt dan data-theme="sporthub", data-sport
+   en de variabelen --sport-icoon / --sport-icoon-groot. Elke regel
+   hieronder is daarop gescoped — de stijl 'schemering' (Open Dag)
+   raakt dit bestand nooit.
+
+   Palet (alléén deze kleuren):
+     logo-blauw  #06193A  pagina          blauw-2  #0D2550  verhoogd vlak
+     wit         #FFFFFF / #F6F7FB        kaartjes, tekst op blauw
+     oranje      #FF6B1A  actie, "live", kerngetallen, de punt na een kop
+                          (draagt ALTIJD blauwe tekst: 5,9:1 — wit op oranje
+                          haalt 2,9:1 en komt dus nergens voor)
+     logo-rood   #C4382E  de dunne RING en dunne accentlijnen; op wit ook
+                          kleine labels (5,3:1). Op blauw nooit tekst (3,2:1)
+     lichtrood   #F0685E  dunne lijn op blauw
+     inkt-2      #4A4F72  bijschrift op wit (7,9:1)
+
+   Letters: Unbounded (koppen, getallen, kaarttitels) · Geist (lopende
+   tekst) · Geist Mono (kleine labels, hoofdletters, .16em).
+
+   Opbouw:
+     1. Tokens (blauw vlak = standaard, wit kaartje = omgekeerde set)
+     2. Basis: achtergrond, focus, laadscherm, koppen
+     3. Gedeelde onderdelen (balk, knoppen, kaartje, formulier, uitleg, voet)
+     4. Aanmeldpagina
+     5. Overige publiekspagina's
+     6. Minder beweging
+   (Het live-bord heeft een eigen aanvulling: thema-sporthub-bord.css.)
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   1. TOKENS
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] {
+  --sh-navy: #06193A;
+  --sh-navy-2: #0D2550;
+  --sh-wit: #F6F7FB;
+  --sh-oranje: #FF6B1A;
+  --sh-rood: #C4382E;
+  --sh-rood-l: #F0685E;
+  --sh-inkt-2: #4A4F72;
+  --sh-rond: 'Unbounded', 'Geist', system-ui, sans-serif;
+  --sh-rand: rgba(255, 255, 255, .4);        /* rand van een tegel op blauw */
+  --sh-rand-wit: rgba(6, 25, 58, .5);        /* rand van een veld/knop op wit (≥ 3:1) */
+  --sh-scheur: rgba(6, 25, 58, .3);          /* de stippellijn van een kaartje */
+  --sh-focus: #FFFFFF;
+  --sh-goot: 28px;                           /* zijmarge van de pagina (zie .shell in styles.css) */
+  /* het sport-icoon in de ring, klein: blauwe schijf + dun rood randje (als achtergrond te gebruiken) */
+  --sh-schijf: radial-gradient(circle closest-side, #06193A calc(100% - 2.2px), #C4382E calc(100% - 1.6px), #C4382E calc(100% - .6px), rgba(196, 56, 46, 0) 100%);
+
+  /* Blauw vlak (standaard). De bestaande pagina's zijn op deze namen gebouwd:
+     door ze hier om te zetten kleurt élke pagina mee, ook wat hieronder niet
+     apart is vormgegeven. Vlakken in --ember/--gold dragen daar donkere tekst
+     (--midnight): blauw op oranje = 5,9:1. */
+  --midnight: #06193A;
+  --midnight-2: #0D2550;
+  --midnight-3: #163166;
+  --ember: #FF6B1A;
+  --ember-2: #FF6B1A;
+  --gold: #FF6B1A;
+  --gold-2: #FFFFFF;
+  --jvo-red: #C4382E;
+  --ice: #F6F7FB;
+  --ice-muted: rgba(246, 247, 251, .84);
+  --ice-faint: rgba(246, 247, 251, .74);
+  --line: rgba(246, 247, 251, .18);
+  --line-strong: rgba(246, 247, 251, .4);
+  --danger: #F0685E;
+  --success: #F6F7FB;
+  --sb-pop: #FF6B1A;
+  --sb-pop-2: #FFFFFF;
+  --display: var(--sh-rond);
+  --body: 'Geist', system-ui, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+@media (max-width: 880px) { html[data-theme="sporthub"] { --sh-goot: 18px; } }
+@media (max-width: 600px) { html[data-theme="sporthub"] { --sh-goot: 14px; } }
+
+/* Wit kaartje: dezelfde namen, omgekeerd. Tekst wordt logo-blauw; accenten
+   worden óók blauw, zodat een niet apart vormgegeven "accentvlak met tekst in
+   --midnight" uitkomt op wit-op-blauw (17:1) en nooit op wit-op-oranje. De
+   oranje knoppen hieronder krijgen hun kleur daarom rechtstreeks, niet via
+   deze namen. */
+html[data-theme="sporthub"] :is(
+  .card,
+  .fb-card,
+  .rules-block,
+  .sh-strook,
+  .sh-kaart,
+  #form-card > #reg-open,
+  #form-card > #reg-closed,
+  .toast,
+  .toast-undo
+) {
+  --midnight: #FFFFFF;
+  --midnight-2: #F6F7FB;
+  --midnight-3: #E7E9F2;
+  --ember: #06193A;
+  --ember-2: #06193A;
+  --gold: #06193A;
+  --gold-2: #06193A;
+  --ice: #06193A;
+  --ice-muted: #4A4F72;
+  --ice-faint: #4A4F72;
+  --line: rgba(6, 25, 58, .14);
+  --line-strong: rgba(6, 25, 58, .5);
+  --danger: #C4382E;
+  --success: #06193A;
+  --sh-focus: #06193A;
+  color: #06193A;
+  color-scheme: light;
+}
+
+/* ----------------------------------------------------------------
+   2. BASIS
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] { background: var(--sh-navy); }
+html[data-theme="sporthub"] body { background: var(--sh-navy); color: var(--ice); }
+/* Geen gloed, vonken of stadionlicht in deze stijl (het canvas mag in de DOM blijven). */
+html[data-theme="sporthub"] .fx-embers,
+html[data-theme="sporthub"] .tn-ambient { display: none !important; }
+
+/* Zichtbare focus op élk vlak: wit op blauw, blauw op wit (beide ≥ 12:1). */
+html[data-theme="sporthub"] :is(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--sh-focus);
+  outline-offset: 2px;
+}
+html[data-theme="sporthub"] ::selection { background: var(--sh-oranje); color: var(--sh-navy); }
+
+/* Laadscherm (jvo-loader.js): effen logo-blauw, witte regel. */
+html[data-theme="sporthub"] #jvo-splash { background: var(--sh-navy); }
+html[data-theme="sporthub"] #jvo-splash .tg { color: #fff; }
+
+/* Koppen: rond, breed, massief (geen verloop-tekst), met de oranje punt. */
+html[data-theme="sporthub"] .gold-text,
+html[data-theme="sporthub"] .ice-text {
+  background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: currentColor; color: inherit; filter: none;
+}
+html[data-theme="sporthub"] .exclaim { color: var(--sh-oranje); animation: none; text-shadow: none; display: inline; }
+html[data-theme="sporthub"] h1.h-display {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: none;
+  font-size: clamp(30px, 9.4vw, 44px); line-height: 1.04; letter-spacing: -.02em;
+  color: #fff; overflow-wrap: break-word;
+}
+html[data-theme="sporthub"] .eyebrow {
+  display: block; position: relative; padding-left: 32px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; line-height: 1.6; text-transform: uppercase;
+  color: #fff;
+}
+html[data-theme="sporthub"] .eyebrow::before {
+  content: ''; position: absolute; left: 0; top: .8em; width: 22px; height: 1.5px; margin-top: -1px; background: var(--sh-rood-l);
+}
+html[data-theme="sporthub"] .lead { opacity: 1; font-weight: 400; color: rgba(255, 255, 255, .9); line-height: 1.5; }
+
+/* ----------------------------------------------------------------
+   3. GEDEELDE ONDERDELEN
+   ---------------------------------------------------------------- */
+
+/* --- Bovenbalk ------------------------------------------------- */
+html[data-theme="sporthub"] .topbar { border-bottom: 0; padding-bottom: 12px; flex-wrap: nowrap; gap: 10px; align-items: center; }
+html[data-theme="sporthub"] .brand-badge {
+  color: rgba(255, 255, 255, .84); min-width: 0; flex: 1 1 auto; line-height: 1.5; gap: 10px;
+  font-size: 10.5px; letter-spacing: .16em;
+}
+html[data-theme="sporthub"] .brand-badge b { color: #fff; }
+html[data-theme="sporthub"] .brand-badge > span:not(.badge-circle) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme="sporthub"] .badge-circle { width: 34px; height: 34px; background: url('/jvo-logo.jpg') center/cover, var(--sh-navy); }
+html[data-theme="sporthub"] .topbar nav { width: auto; flex: none; flex-wrap: nowrap; gap: 6px; }
+html[data-theme="sporthub"] .topbar nav a,
+html[data-theme="sporthub"] .topbar nav a:hover {
+  position: relative;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; line-height: 1;
+  background: var(--sh-navy); color: #fff; border: 1.5px solid var(--sh-rand); border-radius: 999px;
+  padding: 0 13px; min-height: 34px; display: inline-flex; align-items: center; margin: 0; white-space: nowrap;
+}
+/* het tikvlak is groter dan het pilletje (44px hoog) */
+html[data-theme="sporthub"] .topbar nav a::before { content: ''; position: absolute; inset: -6px -2px; }
+html[data-theme="sporthub"] .topbar nav a:hover { border-color: #fff; }
+html[data-theme="sporthub"] .topbar nav a.sh-nav-live,
+html[data-theme="sporthub"] .topbar nav a.sh-nav-live:hover { background: #fff; color: var(--sh-navy); border-color: #fff; }
+
+/* --- Knoppen: pillen ------------------------------------------- */
+html[data-theme="sporthub"] .btn,
+html[data-theme="sporthub"] .fb-submit {
+  background: var(--sh-oranje); color: var(--sh-navy);
+  border: 0; border-radius: 999px; box-shadow: none;
+  font-family: var(--body); font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.25;
+  padding: 15px 24px; min-height: 52px; gap: 10px; text-align: center;
+  transition: transform .15s ease-out;
+}
+html[data-theme="sporthub"] .btn::after,
+html[data-theme="sporthub"] .btn:not(.ghost):hover::after { content: none; animation: none; }
+html[data-theme="sporthub"] .btn:hover,
+html[data-theme="sporthub"] .btn:hover:not(:disabled),
+html[data-theme="sporthub"] .btn.full:hover:not(:disabled),
+html[data-theme="sporthub"] .fb-submit:hover { background: var(--sh-oranje); filter: none; box-shadow: none; transform: translateY(-1px); }
+html[data-theme="sporthub"] .btn:active:not(:disabled),
+html[data-theme="sporthub"] .fb-submit:active:not(:disabled) { transform: none; filter: none; }
+html[data-theme="sporthub"] .btn:disabled,
+html[data-theme="sporthub"] .fb-submit:disabled { opacity: .55; transform: none; }
+/* tweede knop: alleen een rand */
+html[data-theme="sporthub"] .btn.ghost,
+html[data-theme="sporthub"] .btn.ghost:hover,
+html[data-theme="sporthub"] .btn.ghost:hover:not(:disabled) {
+  background: transparent; color: var(--ice); border: 1.5px solid var(--line-strong); box-shadow: none; font-weight: 600;
+}
+html[data-theme="sporthub"] .btn.ghost:hover:not(:disabled) { border-color: var(--ice); transform: none; }
+
+html[data-theme="sporthub"] .btn-sm,
+html[data-theme="sporthub"] .btn-sm:hover {
+  font-family: var(--body); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  border-radius: 999px; border: 1.5px solid var(--line-strong); color: var(--ice); background: transparent; min-height: 44px; padding: 8px 18px;
+}
+html[data-theme="sporthub"] .btn-sm:hover { border-color: var(--ice); }
+html[data-theme="sporthub"] .btn-sm.primary,
+html[data-theme="sporthub"] .btn-sm.primary:hover { background: var(--sh-oranje); color: var(--sh-navy); border-color: var(--sh-oranje); box-shadow: none; transform: none; }
+
+/* --- Het icoon in de ring, klein -------------------------------- */
+html[data-theme="sporthub"] .sh-badge {
+  display: flex; align-items: center; justify-content: center; flex: none;
+  width: 48px; height: 48px; border-radius: 50%; background: var(--sh-navy);
+  box-shadow: 0 0 0 1.5px var(--sh-navy), 0 0 0 3px var(--sh-rood);
+}
+html[data-theme="sporthub"] .sh-badge img { width: 72%; height: 72%; object-fit: contain; display: block; }
+
+/* --- Kaart = wit kaartje ---------------------------------------- */
+/* Een losse kaart (teamnaam, teamaantal, teamlogo, offline) krijgt bovenaan een
+   strookje met de scheurlijn, twee happen en het sport-icoon in de ring. De
+   aanmeldkaart heeft daarvoor echte opmaak (zie 4). */
+html[data-theme="sporthub"] .card,
+html[data-theme="sporthub"] .login-card.card {
+  background: #fff; border: 0; border-radius: 18px; box-shadow: none; animation: none;
+}
+html[data-theme="sporthub"] .card:not(#form-card) {
+  --sh-strook-h: 60px; --sh-hap: 9px;
+  padding-top: calc(var(--sh-strook-h) + 24px);
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at 0 var(--sh-strook-h), #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% var(--sh-strook-h), #0000 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at 0 var(--sh-strook-h), #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% var(--sh-strook-h), #0000 98%, #000) right / 51% 100% no-repeat;
+}
+html[data-theme="sporthub"] .card:not(#form-card)::before {
+  content: 'Jeugdgroep van Oranje';
+  content: 'Jeugdgroep van Oranje' / '';
+  display: flex; align-items: center; box-sizing: border-box;
+  position: absolute; left: 0; right: 0; top: 0; width: auto; height: var(--sh-strook-h);
+  padding: 0 84px 0 32px; border-radius: 0; box-shadow: none;
+  border-bottom: 2px dashed var(--sh-scheur);
+  background: var(--sport-icoon) right 33px center / 28px 28px no-repeat,
+              var(--sh-schijf) right 24px center / 46px 46px no-repeat;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4; text-align: left;
+  color: var(--sh-rood);
+}
+html[data-theme="sporthub"] #form-card::before { display: none; }
+html[data-theme="sporthub"] .card-eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .16em; color: var(--sh-rood);
+}
+html[data-theme="sporthub"] .card h2 {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: none; color: var(--sh-navy);
+  font-size: clamp(22px, 6.6vw, 28px); line-height: 1.08; letter-spacing: -.02em; overflow-wrap: anywhere;
+}
+html[data-theme="sporthub"] .card .lead,
+html[data-theme="sporthub"] .card p { color: var(--sh-navy); }
+html[data-theme="sporthub"] .card .lead { font-size: 15px; }
+html[data-theme="sporthub"] .card a:not(.btn) { color: var(--sh-navy); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sh-rood); text-decoration-thickness: 1.5px; }
+html[data-theme="sporthub"] .card .small[style*="--ice-muted"],
+html[data-theme="sporthub"] .card p[style*="--ice-muted"] { color: var(--sh-inkt-2) !important; }
+html[data-theme="sporthub"] .card .card-eyebrow[style*="--danger"] { color: var(--sh-rood) !important; }
+
+/* --- Formulier (op een wit kaartje) ----------------------------- */
+html[data-theme="sporthub"] .field { margin-bottom: 16px; }
+html[data-theme="sporthub"] .field label {
+  color: var(--ice); font-weight: 500; font-size: 10px; letter-spacing: .14em; line-height: 1.5; margin-bottom: 7px;
+}
+html[data-theme="sporthub"] .field :is(input, textarea, select) {
+  background: var(--midnight-2); color: var(--ice);
+  border: 1.5px solid var(--line-strong); border-radius: 12px;
+  padding: 12px 14px; min-height: 50px; font-size: 16px;
+}
+html[data-theme="sporthub"] .field :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); }
+html[data-theme="sporthub"] .field :is(input, textarea, select):hover:not(:focus) { border-color: var(--ice); }
+html[data-theme="sporthub"] .field :is(input, textarea, select):focus { background: var(--midnight); border-color: var(--ice); }
+html[data-theme="sporthub"] .input-with-icon input { padding-right: 46px; }
+html[data-theme="sporthub"] .input-with-icon.is-valid input { border-color: var(--sh-navy); }
+html[data-theme="sporthub"] .input-with-icon.is-invalid input,
+html[data-theme="sporthub"] .field.has-error :is(input, textarea, select) {
+  border-color: var(--sh-rood); border-width: 2px; background: #fff;
+}
+html[data-theme="sporthub"] .field.has-error label { color: var(--sh-rood); font-weight: 700; }
+html[data-theme="sporthub"] .input-with-icon.is-valid .input-validation { background: var(--sh-navy); color: #fff; }
+html[data-theme="sporthub"] .input-with-icon.is-invalid .input-validation,
+html[data-theme="sporthub"] .field.has-error .input-validation { background: var(--sh-rood) !important; color: #fff !important; }
+
+html[data-theme="sporthub"] .checkbox { border-radius: 12px; }
+html[data-theme="sporthub"] .checkbox:hover { background: rgba(6, 25, 58, .04); }
+html[data-theme="sporthub"] .checkbox span { color: var(--ice); font-size: 13.5px; }
+html[data-theme="sporthub"] .checkbox span em { color: var(--ice-faint); font-size: 12px; }
+html[data-theme="sporthub"] .checkbox input[type="checkbox"] {
+  width: 24px; height: 24px; margin-top: 0; border: 2px solid var(--line-strong); border-radius: 7px; background: #fff;
+}
+html[data-theme="sporthub"] .checkbox:hover input[type="checkbox"] { border-color: var(--sh-navy); }
+html[data-theme="sporthub"] .checkbox input[type="checkbox"]:checked { background: var(--sh-navy); border-color: var(--sh-navy); }
+html[data-theme="sporthub"] .checkbox input[type="checkbox"]:checked::after {
+  left: 7px; top: 2px; width: 6px; height: 12px; border-right: 2.5px solid #fff; border-bottom: 2.5px solid #fff;
+}
+
+/* bezoeker / team: twee pillen in een baan */
+html[data-theme="sporthub"] .path-toggle {
+  border: 0; border-radius: 999px; overflow: visible; background: var(--midnight-2); gap: 4px; padding: 4px;
+  box-shadow: inset 0 0 0 1.5px rgba(6, 25, 58, .16);
+}
+html[data-theme="sporthub"] .path-toggle button,
+html[data-theme="sporthub"] .path-toggle button:hover {
+  background: transparent; color: var(--sh-navy); border-radius: 999px;
+  min-height: 44px; padding: 10px 8px; font-family: var(--body); font-weight: 600; font-size: 13.5px; letter-spacing: 0; text-transform: none; line-height: 1.2;
+}
+html[data-theme="sporthub"] .path-toggle button:hover { background: rgba(6, 25, 58, .08); }
+html[data-theme="sporthub"] .path-toggle button.active,
+html[data-theme="sporthub"] .path-toggle button.active:hover { background: var(--sh-navy); color: #fff; }
+
+/* meldingen */
+html[data-theme="sporthub"] .alert { border-radius: 12px; font-weight: 500; }
+html[data-theme="sporthub"] .alert.error { background: transparent; color: #fff; border: 1.5px solid var(--sh-rood-l); }
+html[data-theme="sporthub"] .alert.success { background: transparent; color: #fff; border: 1.5px solid #fff; }
+html[data-theme="sporthub"] :is(.card, #reg-open, #reg-closed, .fb-card) .alert.error { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); font-weight: 600; }
+html[data-theme="sporthub"] :is(.card, #reg-open, #reg-closed, .fb-card) .alert.success { background: var(--sh-wit); color: var(--sh-navy); border-color: var(--sh-navy); }
+
+/* succes-scherm */
+html[data-theme="sporthub"] .checkmark,
+html[data-theme="sporthub"] .success-screen .checkmark { background: var(--sh-oranje); box-shadow: none; }
+html[data-theme="sporthub"] .checkmark svg,
+html[data-theme="sporthub"] .success-screen .checkmark svg { stroke: var(--sh-navy); }
+html[data-theme="sporthub"] .success-screen h2 {
+  background: none; -webkit-text-fill-color: currentColor; color: var(--sh-navy);
+  font-family: var(--sh-rond); font-weight: 900; text-transform: none; font-size: clamp(26px, 8vw, 34px); letter-spacing: -.02em; line-height: 1.08;
+}
+html[data-theme="sporthub"] .success-extra { background: var(--sh-wit); border: 1.5px solid rgba(6, 25, 58, .16); border-radius: 12px; color: var(--sh-navy); font-size: 13px; }
+html[data-theme="sporthub"] .success-extra b { color: var(--sh-navy); }
+/* geen vallende snippers in deze stijl */
+html[data-theme="sporthub"] .success-confetti { display: none; }
+
+/* --- "Hoe werkt dit?" ------------------------------------------ */
+html[data-theme="sporthub"] details.help { background: var(--midnight-2); border: 1.5px solid var(--sh-rand); border-radius: 18px; }
+html[data-theme="sporthub"] details.help > summary,
+html[data-theme="sporthub"] details.help > summary:hover,
+html[data-theme="sporthub"] details.help[open] > summary { color: var(--ice); min-height: 50px; font-size: 10.5px; letter-spacing: .16em; }
+html[data-theme="sporthub"] details.help[open] > summary { border-bottom-color: var(--line); }
+html[data-theme="sporthub"] details.help > summary::before {
+  background: var(--sh-oranje); color: var(--sh-navy); font-family: var(--sh-rond); font-weight: 900; font-size: 12px;
+}
+html[data-theme="sporthub"] details.help > summary::after { border-color: var(--ice); }
+html[data-theme="sporthub"] details.help .help-body { opacity: 1; color: var(--ice); }
+html[data-theme="sporthub"] details.help .help-body strong,
+html[data-theme="sporthub"] details.help .help-body .off b { color: var(--ice); font-weight: 700; }
+html[data-theme="sporthub"] details.help .help-body .off { background: var(--midnight); border-left: 2px solid var(--sh-rood-l); border-radius: 0 12px 12px 0; }
+html[data-theme="sporthub"] details.help .help-body .off svg.off-ic { color: var(--ice); }
+html[data-theme="sporthub"] details.help .help-body a { color: var(--ice); text-underline-offset: 3px; }
+/* de uitleg bínnen een wit kaartje */
+html[data-theme="sporthub"] :is(.card, #reg-open, #reg-closed) details.help { border-color: rgba(6, 25, 58, .18); border-radius: 14px; }
+html[data-theme="sporthub"] :is(.card, #reg-open, #reg-closed) details.help .help-body .off { border-left-color: var(--sh-rood); }
+
+/* --- Voet + meldingen ------------------------------------------ */
+html[data-theme="sporthub"] .foot { color: rgba(255, 255, 255, .84); border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.7; gap: 0 22px; padding: 14px 0 18px; }
+html[data-theme="sporthub"] .foot a { color: #fff; text-decoration: underline; text-underline-offset: 3px; display: inline-block; padding: 13px 0; }
+html[data-theme="sporthub"] .foot a:hover { color: var(--sh-oranje); }
+html[data-theme="sporthub"] .toast {
+  background: #fff; color: var(--sh-navy); border: 0; border-left: 4px solid var(--sh-oranje); border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(3, 10, 26, .5);
+}
+html[data-theme="sporthub"] .toast.toast-success,
+html[data-theme="sporthub"] .toast.toast-info { border-left-color: var(--sh-navy); }
+html[data-theme="sporthub"] .toast.toast-error { border-left-color: var(--sh-rood); }
+html[data-theme="sporthub"] .toast-undo { background: #fff; color: var(--sh-navy); }
+html[data-theme="sporthub"] .push-status.error { background: transparent; color: #fff; border-color: var(--sh-rood-l); }
+
+/* --- Tabellen (waar een pagina er een heeft) --------------------- */
+html[data-theme="sporthub"] th { color: var(--ice-muted); border-bottom-color: var(--line-strong); letter-spacing: .14em; }
+html[data-theme="sporthub"] td { color: var(--ice); border-bottom-color: var(--line); }
+html[data-theme="sporthub"] table td a { color: var(--ice); }
+
+/* ----------------------------------------------------------------
+   4. AANMELDPAGINA
+   Van boven naar beneden: balk · datumregel · de grote ring met het
+   sport-icoon · kop · inleiding · oranje knop · drie feiten · het
+   aanmeldkaartje · toernooi · sponsor · wat er nog meer is · tijden.
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.pg-aanmelden .topbar nav a[href^="/admin"] { display: none; }
+
+html[data-theme="sporthub"] .hero {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "intro" "action" "details";
+  gap: 0; padding: 6px 0 8px;
+}
+/* De intro loopt door tot de schermrand en knipt daar de ring af: zo steekt de
+   ring "buiten beeld" zonder dat de pagina zijwaarts kan schuiven. */
+html[data-theme="sporthub"] .hero-intro {
+  position: relative; min-width: 0;
+  margin: 0 calc(-1 * var(--sh-goot)); padding: 14px var(--sh-goot) 6px;
+  overflow: hidden;
+}
+@supports (overflow: clip) { html[data-theme="sporthub"] .hero-intro { overflow: clip; } }
+html[data-theme="sporthub"] .hero-intro .eyebrow { z-index: 2; padding-left: 0; font-size: 10px; animation: none; max-width: 100%; }
+html[data-theme="sporthub"] .hero-intro .eyebrow::before { display: none; }
+
+/* de ring: groot, dun, half buiten beeld — met het icoon ervoor */
+html[data-theme="sporthub"] .sh-ring {
+  position: relative; height: 166px; pointer-events: none; z-index: 0;
+}
+html[data-theme="sporthub"] .sh-ring::before {
+  content: ''; position: absolute; right: -74px; top: 0; width: 300px; height: 300px; box-sizing: border-box;
+  border-radius: 50%; border: 2px solid var(--sh-rood);
+}
+html[data-theme="sporthub"] .sh-bal {
+  position: absolute; right: -26px; top: 48px; width: 204px; height: 204px; object-fit: contain;
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .35));
+  animation: sh-zweef 7s ease-in-out infinite;
+}
+@keyframes sh-zweef {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-9px) rotate(2.5deg); }
+}
+
+/* de kop: drie korte regels naast het icoon ("Klaar / voor de / start.") */
+html[data-theme="sporthub"] .hero-intro h1.h-display {
+  position: relative; z-index: 2; margin: 0;
+  font-size: clamp(31px, 9.5vw, 42px); line-height: 1.03;
+  max-width: 5.1em;
+  animation: sh-op .7s cubic-bezier(.16, 1, .3, 1) both;
+}
+html[data-theme="sporthub"] .hero-intro h1.h-display br { display: none; }
+@keyframes sh-op { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+html[data-theme="sporthub"] .hero-intro .lead {
+  position: relative; z-index: 2;
+  font-size: 15px; line-height: 1.5; max-width: 46ch; margin-top: 16px; color: rgba(255, 255, 255, .9);
+}
+
+/* oranje knop */
+html[data-theme="sporthub"] .sh-cta-rij { margin: 20px 0 0; position: relative; z-index: 2; }
+/* aanmelden ging dicht tijdens het bezoek: de knop wijst nergens meer heen (app.js verbergt hem ook) */
+html[data-theme="sporthub"] .sh-cta-rij[hidden],
+html[data-theme="sporthub"] body:has(#reg-open[hidden]) .sh-cta-rij { display: none; }
+html[data-theme="sporthub"] .sh-cta,
+html[data-theme="sporthub"] .sh-cta:hover {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--sh-oranje); color: var(--sh-navy); text-decoration: none;
+  border-radius: 999px; padding: 16px 24px; min-height: 56px;
+  font-family: var(--body); font-weight: 600; font-size: 15.5px; line-height: 1.2;
+}
+html[data-theme="sporthub"] .sh-pijl { flex: none; transition: transform .2s ease-out; }
+html[data-theme="sporthub"] .sh-cta:hover .sh-pijl { transform: translateX(4px); }
+
+/* drie feiten */
+html[data-theme="sporthub"] .sh-feiten {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0 0; position: relative; z-index: 2;
+}
+html[data-theme="sporthub"] .sh-feiten > div {
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+  border: 1.5px solid var(--sh-rand); border-radius: 16px; padding: 10px 12px 9px; background: var(--sh-navy-2); min-width: 0;
+}
+html[data-theme="sporthub"] .sh-feiten span {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.35; color: rgba(255, 255, 255, .84);
+}
+html[data-theme="sporthub"] .sh-feiten b {
+  font-family: var(--sh-rond); font-weight: 900; font-size: clamp(16px, 5vw, 20px); line-height: 1.2; letter-spacing: -.01em; color: #fff;
+  overflow-wrap: anywhere;
+}
+
+/* -- het aanmeldkaartje ------------------------------------------ */
+html[data-theme="sporthub"] .hero-action { margin-top: 26px; min-width: 0; }
+html[data-theme="sporthub"] #form-card {
+  background: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; animation: none;
+  scroll-margin-top: 14px;
+}
+/* strook (boven) en formulier (onder) zijn twee witte delen; de happen op de
+   scheurlijn zitten in de hoeken van elk deel, dus de hoogte mag vrij meegroeien */
+html[data-theme="sporthub"] .sh-strook {
+  --sh-hap: 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 88px;
+  background: #fff; color: var(--sh-navy);
+  border-radius: 18px 18px 0 0;
+  border-bottom: 2px dashed var(--sh-scheur);
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+html[data-theme="sporthub"] .sh-strook-l { min-width: 0; padding: 16px 14px 15px 20px; }
+html[data-theme="sporthub"] .sh-strook-k {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; line-height: 1.5; color: var(--sh-rood);
+  overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto;
+}
+html[data-theme="sporthub"] .sh-strook-naam {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: uppercase; font-size: clamp(16px, 4.9vw, 20px); line-height: 1.08; letter-spacing: -.01em;
+  margin-top: 5px; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 12 4 4;
+}
+html[data-theme="sporthub"] .sh-strook-g { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 11px; }
+html[data-theme="sporthub"] .sh-strook-g > div { min-width: 0; }
+html[data-theme="sporthub"] .sh-strook-g span {
+  display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--sh-inkt-2);
+}
+html[data-theme="sporthub"] .sh-strook-g b { display: block; font-family: var(--sh-rond); font-weight: 700; font-size: 12.5px; line-height: 1.25; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] .sh-strook-r {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
+  padding: 14px 8px; border-left: 2px dashed var(--sh-scheur); min-width: 0;
+}
+html[data-theme="sporthub"] .sh-strook-t {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; line-height: 1.35; text-align: center;
+  color: var(--sh-inkt-2); max-width: 100%; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+html[data-theme="sporthub"] #form-card > #reg-open,
+html[data-theme="sporthub"] #form-card > #reg-closed {
+  --sh-hap: 10px;
+  background: #fff; padding: 22px 20px 24px; border-radius: 0 0 18px 18px;
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+html[data-theme="sporthub"] #form-card > [hidden] { display: none !important; }
+
+/* binnen het kaartje */
+html[data-theme="sporthub"] #form-card h2 { margin: 6px 0 18px; }
+html[data-theme="sporthub"] #form-card details.help { margin: 0 0 18px; }
+html[data-theme="sporthub"] #form-card #panel-team > div[style] { border-top: 2px dashed var(--sh-scheur) !important; }
+html[data-theme="sporthub"] #form-card #team-help { color: var(--sh-inkt-2) !important; }
+html[data-theme="sporthub"] .form-price { color: var(--sh-inkt-2); letter-spacing: .16em; font-size: 10.5px; }
+html[data-theme="sporthub"] .reg-closed-msg { color: var(--sh-navy); font-size: 16px; }
+html[data-theme="sporthub"] .reg-closed-sub { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] .reg-closed-sub a { color: var(--sh-navy); text-decoration: underline; text-decoration-color: var(--sh-rood); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+html[data-theme="sporthub"] .reg-closed-actions { gap: 0; margin-top: 4px; }
+html[data-theme="sporthub"] .reg-closed-actions .btn.full { margin-top: 10px !important; }
+html[data-theme="sporthub"] #success-msg { color: var(--sh-inkt-2) !important; }
+
+/* -- onder het kaartje: blokken op blauw ------------------------- */
+html[data-theme="sporthub"] .hero-details { border-top: 0; padding-top: 0; margin-top: 30px; min-width: 0; }
+
+html[data-theme="sporthub"] :is(.tournament-hero, .prize-callout, .meet-callout) {
+  background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); border-radius: 18px;
+  padding: 18px 18px 18px; animation: none; overflow: visible;
+}
+html[data-theme="sporthub"] .tournament-hero { margin-top: 0; }
+html[data-theme="sporthub"] .tournament-hero::before { display: none; }
+html[data-theme="sporthub"] :is(.prize-callout, .meet-callout) { margin-top: 12px; }
+/* het kleine label met de dunne rode lijn ervoor */
+html[data-theme="sporthub"] :is(.tournament-eyebrow, .prize-eyebrow, .meet-eyebrow, .activity-cat-label) {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; line-height: 1.5;
+  color: #fff; margin-bottom: 9px;
+}
+html[data-theme="sporthub"] :is(.prize-eyebrow, .meet-eyebrow, .activity-cat-label)::before,
+html[data-theme="sporthub"] .tournament-pulse {
+  content: ''; flex: none; width: 22px; height: 1.5px; border-radius: 0; background: var(--sh-rood-l);
+  box-shadow: none; animation: none; transform: translateY(-3.5px);
+}
+html[data-theme="sporthub"] .meet-eyebrow:empty { display: none; }
+html[data-theme="sporthub"] .tournament-headline { margin-bottom: 0; }
+html[data-theme="sporthub"] .tournament-headline h2 {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: uppercase; color: #fff;
+  font-size: clamp(19px, 5.8vw, 26px); line-height: 1.08; letter-spacing: -.01em; overflow-wrap: anywhere;
+}
+/* teams en spelers staan al in de drie feiten hierboven; hier blijft alleen de prijs over */
+html[data-theme="sporthub"] .tournament-meta { display: block; border: 0; padding: 0; margin: 14px 0 0; }
+html[data-theme="sporthub"] .tournament-meta:not(:has(#meta-prize-item)) { display: none; }
+html[data-theme="sporthub"] .tournament-meta-item:not(#meta-prize-item) { display: none; }
+html[data-theme="sporthub"] #meta-prize-item { padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); }
+html[data-theme="sporthub"] .tournament-meta-label { color: rgba(255, 255, 255, .84); font-size: 9.5px; letter-spacing: .16em; margin-bottom: 5px; }
+html[data-theme="sporthub"] .tournament-meta-value {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: none; color: var(--sh-oranje);
+  font-size: 18px; line-height: 1.2; overflow-wrap: anywhere;
+}
+html[data-theme="sporthub"] .tournament-cta { color: rgba(255, 255, 255, .88); margin-top: 12px; font-size: 14px; }
+html[data-theme="sporthub"] .tournament-cta b { color: #fff; }
+
+/* het voorproefje van het live bord: een kaartje met strookje */
+html[data-theme="sporthub"] .sh-kaart {
+  --sh-stub: 84px; --sh-hap: 9px;
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--sh-stub);
+  background: #fff; color: var(--sh-navy); border-radius: 16px; text-decoration: none;
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at calc(100% - var(--sh-stub)) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+                radial-gradient(circle var(--sh-hap) at calc(100% - var(--sh-stub)) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at calc(100% - var(--sh-stub)) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+                radial-gradient(circle var(--sh-hap) at calc(100% - var(--sh-stub)) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+}
+html[data-theme="sporthub"] .sh-kaart-l { min-width: 0; padding: 13px 14px 12px 16px; border-right: 2px dashed var(--sh-scheur); }
+html[data-theme="sporthub"] .sh-kaart-r { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px 6px; min-width: 0; }
+html[data-theme="sporthub"] .sh-kaart-r > span:last-child,
+html[data-theme="sporthub"] .sh-kaart-k {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.4; color: var(--sh-inkt-2);
+}
+html[data-theme="sporthub"] .sh-kaart-r > span:last-child { text-align: center; }
+html[data-theme="sporthub"] .sh-kaart-k { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+html[data-theme="sporthub"] .sh-kaart-k em {
+  font-style: normal; background: var(--sh-oranje); color: var(--sh-navy); padding: 2px 8px; border-radius: 999px; font-weight: 600; white-space: nowrap;
+}
+html[data-theme="sporthub"] .sh-kaart-tm {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-top: 6px;
+  font-weight: 600; font-size: 14.5px; line-height: 1.25;
+}
+html[data-theme="sporthub"] .sh-kaart-tm b { font-family: var(--sh-rond); font-weight: 900; font-size: 21px; line-height: 1.15; }
+html[data-theme="sporthub"] .sh-voorproef { margin-top: 16px; }
+/* het kaartje is uitgeknipt (mask), dus de focusrand moet bínnen het kaartje vallen */
+html[data-theme="sporthub"] a.sh-kaart:focus-visible { outline: 3px solid var(--sh-navy); outline-offset: -6px; }
+html[data-theme="sporthub"] a.sh-kaart .sh-kaart-r > span:last-child { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sh-rood); }
+html[data-theme="sporthub"] .sh-voorproef .sh-badge { width: 44px; height: 44px; }
+
+/* sponsor + ontmoeten */
+html[data-theme="sporthub"] .prize-callout p,
+html[data-theme="sporthub"] .meet-callout p { color: rgba(255, 255, 255, .92); font-size: 14px; }
+html[data-theme="sporthub"] .prize-callout p b,
+html[data-theme="sporthub"] .meet-callout p b { color: #fff; }
+html[data-theme="sporthub"] .prize-callout .prize-ask { color: rgba(255, 255, 255, .84); }
+html[data-theme="sporthub"] .prize-callout a,
+html[data-theme="sporthub"] .sponsor-sub a,
+html[data-theme="sporthub"] .prize-callout .prize-ask a { color: #fff; text-underline-offset: 3px; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] .sponsor-sub { color: rgba(255, 255, 255, .84); letter-spacing: .06em; }
+html[data-theme="sporthub"] .sponsor-logo-card { box-shadow: none; border-radius: 14px; }
+html[data-theme="sporthub"] .sponsor-logo-card:hover { transform: none; }
+
+/* wat er nog meer is: tegels */
+html[data-theme="sporthub"] .activity-grid {
+  border: 0; margin-top: 12px; gap: 10px; grid-template-columns: minmax(0, 1fr);
+}
+html[data-theme="sporthub"] .activity-cat,
+html[data-theme="sporthub"] .activity-grid > .activity-cat:nth-child(n) {
+  background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); border-radius: 18px; padding: 14px 16px; min-width: 0;
+}
+html[data-theme="sporthub"] .activity-cat-label { margin-bottom: 6px; }
+html[data-theme="sporthub"] .activity-cat-list { color: rgba(255, 255, 255, .92); font-size: 14px; overflow-wrap: anywhere; }
+
+/* tijden als pillen; de locatie als tegel eronder */
+html[data-theme="sporthub"] .event-meta {
+  display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin-top: 22px;
+}
+html[data-theme="sporthub"] .event-meta .cell {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 42px; min-width: 0;
+  padding: 8px 15px; border: 1.5px solid var(--sh-rand); border-radius: 999px; background: var(--sh-navy-2);
+}
+html[data-theme="sporthub"] .event-meta .cell .value {
+  order: -1; margin: 0; font-family: var(--sh-rond); font-weight: 700; font-size: 13px; line-height: 1.2; text-transform: none; color: var(--sh-oranje); white-space: nowrap;
+}
+html[data-theme="sporthub"] .event-meta .cell .value .accent { color: var(--sh-oranje); }
+html[data-theme="sporthub"] .event-meta .cell .label {
+  font-family: var(--body); font-size: 12.5px; letter-spacing: 0; text-transform: none; color: rgba(255, 255, 255, .92); line-height: 1.2;
+}
+html[data-theme="sporthub"] .event-meta .cell:last-child {
+  display: block; flex: 1 1 100%; border-radius: 18px; padding: 13px 16px 14px;
+}
+html[data-theme="sporthub"] .event-meta .cell:last-child .label {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .84);
+}
+html[data-theme="sporthub"] .event-meta .cell:last-child .value {
+  margin-top: 5px; font-family: var(--body); font-weight: 600; font-size: 15px; line-height: 1.35; color: #fff; white-space: normal; overflow-wrap: anywhere;
+}
+/* het adres hoort bij de locatietegel: zelfde vlak, de tegel loopt eronder door */
+html[data-theme="sporthub"] .meta-address {
+  color: rgba(255, 255, 255, .88); letter-spacing: .1em; font-size: 10.5px; line-height: 1.6;
+  margin-top: 0; padding: 0 16px 4px; background: var(--sh-navy-2);
+  border: 1.5px solid var(--sh-rand); border-top: 0; border-radius: 0 0 18px 18px;
+}
+html[data-theme="sporthub"] .event-meta:has(+ .meta-address) .cell:last-child {
+  border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; padding-bottom: 2px;
+}
+html[data-theme="sporthub"] .meta-address a { display: inline-block; padding: 8px 0 10px; min-height: 44px; box-sizing: border-box; text-underline-offset: 3px; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.pg-aanmelden .foot { margin-top: 30px; }
+
+/* -- telefoon ---------------------------------------------------- */
+@media (max-width: 600px) {
+  html[data-theme="sporthub"] .card { padding: 24px 20px; box-shadow: none; }
+  html[data-theme="sporthub"] .card:not(#form-card) { padding-top: calc(var(--sh-strook-h) + 22px); }
+  html[data-theme="sporthub"] .card:not(#form-card)::before {
+    padding: 0 74px 0 20px;
+    background-position: right 25px center, right 16px center;
+  }
+  html[data-theme="sporthub"] .btn { font-size: 15px; padding: 15px 22px; }
+  html[data-theme="sporthub"] .event-meta .cell { padding: 8px 13px; border: 1.5px solid var(--sh-rand); }
+  html[data-theme="sporthub"] .event-meta .cell:last-child { padding: 13px 16px 14px; border: 1.5px solid var(--sh-rand); }
+  html[data-theme="sporthub"] .event-meta:has(+ .meta-address) .cell:last-child { border-bottom: 0; padding-bottom: 2px; }
+  html[data-theme="sporthub"] .event-meta .cell .label { font-size: 12.5px; letter-spacing: 0; }
+  html[data-theme="sporthub"] .event-meta .cell:last-child .label { font-size: 9.5px; letter-spacing: .16em; }
+  html[data-theme="sporthub"] .event-meta .cell .value { font-size: 13px; margin-top: 0; }
+  html[data-theme="sporthub"] .event-meta .cell:last-child .value { font-size: 15px; margin-top: 5px; }
+  html[data-theme="sporthub"] .hero-intro .eyebrow { letter-spacing: .16em; }
+}
+@media (max-width: 380px) {
+  html[data-theme="sporthub"] .sh-ring { height: 150px; }
+  html[data-theme="sporthub"] .sh-ring::before { width: 264px; height: 264px; right: -70px; }
+  html[data-theme="sporthub"] .sh-bal { width: 178px; height: 178px; right: -27px; top: 43px; }
+  html[data-theme="sporthub"] .sh-strook { grid-template-columns: minmax(0, 1fr) 74px; }
+  html[data-theme="sporthub"] .sh-strook-l { padding-left: 16px; padding-right: 10px; }
+  html[data-theme="sporthub"] #form-card > #reg-open,
+  html[data-theme="sporthub"] #form-card > #reg-closed { padding-left: 16px; padding-right: 16px; }
+  html[data-theme="sporthub"] .sh-feiten > div { padding: 9px 9px 8px; }
+  html[data-theme="sporthub"] .sh-feiten span { font-size: 8.5px; letter-spacing: .1em; }
+  html[data-theme="sporthub"] .sh-kaart { --sh-stub: 72px; }
+  html[data-theme="sporthub"] .path-toggle button,
+  html[data-theme="sporthub"] .path-toggle button:hover { font-size: 12.5px; padding: 10px 4px; }
+  html[data-theme="sporthub"] .card { padding-left: 16px; padding-right: 16px; }
+}
+
+/* -- breder dan een telefoon -------------------------------------- */
+@media (min-width: 601px) {
+  html[data-theme="sporthub"] .topbar { padding-bottom: 16px; }
+  html[data-theme="sporthub"] .brand-badge { font-size: 11px; }
+  html[data-theme="sporthub"] .topbar nav a,
+  html[data-theme="sporthub"] .topbar nav a:hover { font-size: 10.5px; min-height: 38px; padding: 0 16px; }
+  html[data-theme="sporthub"] .hero-intro { padding-top: 24px; }
+  html[data-theme="sporthub"] .hero-intro .eyebrow { font-size: 11px; }
+  html[data-theme="sporthub"] .sh-ring { height: 196px; }
+  html[data-theme="sporthub"] .sh-ring::before { width: 400px; height: 400px; right: -60px; top: -34px; }
+  html[data-theme="sporthub"] .sh-bal { width: 272px; height: 272px; right: 4px; top: 30px; }
+  html[data-theme="sporthub"] .hero-intro h1.h-display { font-size: clamp(48px, 8vw, 64px); max-width: 5.1em; }
+  html[data-theme="sporthub"] .hero-intro .lead { font-size: 17px; margin-top: 20px; max-width: 44ch; }
+  html[data-theme="sporthub"] .sh-cta-rij { margin-top: 26px; }
+  html[data-theme="sporthub"] .sh-cta,
+  html[data-theme="sporthub"] .sh-cta:hover { display: inline-flex; min-width: 300px; }
+  html[data-theme="sporthub"] .sh-feiten { max-width: 520px; gap: 10px; margin-top: 18px; }
+  html[data-theme="sporthub"] .sh-feiten > div { padding: 12px 16px 11px; }
+  html[data-theme="sporthub"] .sh-feiten span { font-size: 9.5px; }
+  html[data-theme="sporthub"] .sh-feiten b { font-size: 22px; }
+  html[data-theme="sporthub"] .hero-action { margin-top: 40px; }
+  html[data-theme="sporthub"] .sh-strook { grid-template-columns: minmax(0, 1fr) 116px; }
+  html[data-theme="sporthub"] .sh-strook-l { padding: 22px 20px 20px 28px; }
+  html[data-theme="sporthub"] .sh-strook-naam { font-size: 22px; }
+  html[data-theme="sporthub"] .sh-strook .sh-badge { width: 56px; height: 56px; }
+  html[data-theme="sporthub"] #form-card > #reg-open,
+  html[data-theme="sporthub"] #form-card > #reg-closed { padding: 28px 28px 30px; }
+  html[data-theme="sporthub"] .hero-details { margin-top: 40px; }
+  html[data-theme="sporthub"] :is(.tournament-hero, .prize-callout, .meet-callout) { padding: 22px 24px; }
+  html[data-theme="sporthub"] .activity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-theme="sporthub"] .activity-grid:has(> .activity-cat:first-child:last-child) { grid-template-columns: minmax(0, 1fr); }
+  html[data-theme="sporthub"] .event-meta .cell { padding: 9px 18px; }
+  html[data-theme="sporthub"] .event-meta .cell .value { font-size: 14px; }
+  html[data-theme="sporthub"] .event-meta .cell .label { font-size: 13.5px; }
+}
+/* -- twee kolommen: tekst links, ring met icoon rechts ------------- */
+@media (min-width: 900px) {
+  html[data-theme="sporthub"] .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "intro intro" "details action";
+    column-gap: 48px;
+  }
+  html[data-theme="sporthub"] .hero-intro {
+    display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); column-gap: 40px;
+    grid-template-areas: ". ring" "eye ring" "kop ring" "lead ring" "cta ring" "feiten ring" ". ring";
+    grid-template-rows: 1fr auto auto auto auto auto 1fr; align-items: start;
+    padding: 44px var(--sh-goot) 20px;
+  }
+  html[data-theme="sporthub"] .hero-intro .eyebrow { grid-area: eye; }
+  html[data-theme="sporthub"] .hero-intro h1.h-display {
+    grid-area: kop; font-size: clamp(54px, 5.6vw, 76px); max-width: none; margin-top: 22px;
+  }
+  html[data-theme="sporthub"] .hero-intro h1.h-display br { display: inline; }
+  html[data-theme="sporthub"] .hero-intro .lead { grid-area: lead; font-size: 18px; margin-top: 24px; }
+  html[data-theme="sporthub"] .sh-cta-rij { grid-area: cta; margin-top: 30px; }
+  html[data-theme="sporthub"] .sh-feiten { grid-area: feiten; margin-top: 22px; }
+  /* de ring staat hier in zijn geheel in de rechterkolom, het icoon in het midden */
+  html[data-theme="sporthub"] .sh-ring {
+    grid-area: ring; height: auto; align-self: center; justify-self: end;
+    width: min(100%, 500px); aspect-ratio: 1;
+  }
+  html[data-theme="sporthub"] .sh-ring::before { inset: 0; width: auto; height: auto; }
+  html[data-theme="sporthub"] .sh-bal { inset: 16%; width: 68%; height: 68%; }
+  html[data-theme="sporthub"] .hero-action { margin-top: 44px; }
+  html[data-theme="sporthub"] .hero-details { margin-top: 44px; }
+}
+
+/* ----------------------------------------------------------------
+   5. OVERIGE PUBLIEKSPAGINA'S
+   (spelregels, privacy, enquête, teamnaam, teamaantal, teamlogo, offline)
+   Blauwe pagina, ronde kop met oranje punt, de ring half buiten beeld
+   rechtsboven met het sport-icoon erin; inhoud op witte kaartjes.
+   ---------------------------------------------------------------- */
+/* de pagina knipt de ring af op de schermrand (geen zijwaarts schuiven) */
+html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell { overflow: hidden; }
+@supports (overflow: clip) { html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell { overflow: visible; overflow-x: clip; } }
+html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none; box-sizing: border-box;
+  right: -48px; top: 54px; width: 200px; height: 200px; border-radius: 50%; border: 2px solid var(--sh-rood);
+}
+html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell::after {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  right: 4px; top: 106px; width: 96px; height: 96px;
+  background: var(--sport-icoon-groot) center / contain no-repeat;
+  filter: drop-shadow(0 12px 16px rgba(0, 0, 0, .35));
+}
+html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell > section:first-of-type,
+html[data-theme="sporthub"] .fb-hero { padding-top: 34px !important; }
+html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell > section > .eyebrow,
+html[data-theme="sporthub"] .fb-hero .eyebrow { max-width: calc(100% - 132px); }
+html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell h1.h-display { font-size: clamp(26px, 8vw, 38px); max-width: calc(100% - 88px); }
+html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell > section > .lead,
+html[data-theme="sporthub"] .fb-hero p { max-width: min(40ch, calc(100% - 112px)); font-size: 15.5px; }
+
+/* spelregels */
+html[data-theme="sporthub"] .rules-block { background: #fff; border: 0; border-radius: 18px; box-shadow: none; padding: 22px 20px; margin-bottom: 12px; }
+html[data-theme="sporthub"] .rules-h {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: uppercase; color: var(--sh-navy);
+  font-size: 17px; line-height: 1.15; letter-spacing: -.01em; margin-bottom: 8px; overflow-wrap: anywhere;
+}
+html[data-theme="sporthub"] .rules-h b,
+html[data-theme="sporthub"] .rules-p b,
+html[data-theme="sporthub"] .rules-list li b { color: var(--sh-navy); font-weight: 700; }
+html[data-theme="sporthub"] .rules-p,
+html[data-theme="sporthub"] .rules-list li { color: var(--sh-navy); overflow-wrap: anywhere; }
+html[data-theme="sporthub"] .rules-list li { border-bottom-color: rgba(6, 25, 58, .14); }
+html[data-theme="sporthub"] .rules-list li::before { color: var(--sh-rood); }
+/* in de ingebouwde regels staan twee woorden met een eigen (gele/lichtrode) kleur — op wit onleesbaar */
+html[data-theme="sporthub"] .rules-block b[style] { color: var(--sh-navy) !important; }
+html[data-theme="sporthub"] .rules-block b[style*="FF8484"] { color: var(--sh-rood) !important; }
+html[data-theme="sporthub"] .rules-callout { background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); border-radius: 18px; }
+html[data-theme="sporthub"] .rules-callout-label { color: #fff; letter-spacing: .16em; }
+html[data-theme="sporthub"] .rules-callout b { color: #fff; }
+
+/* privacy: lange leestekst op effen blauw */
+html[data-theme="sporthub"] .privacy-page { background: var(--sh-navy); }
+html[data-theme="sporthub"] .privacy-page h1 {
+  font-family: var(--sh-rond); font-weight: 900; font-size: clamp(21px, 6.5vw, 44px); letter-spacing: -.02em; line-height: 1.06; color: #fff;
+  overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto;
+}
+html[data-theme="sporthub"] .privacy-page h1::after { content: '.'; color: var(--sh-oranje); }
+html[data-theme="sporthub"] .privacy-page .lead { color: rgba(255, 255, 255, .9); }
+html[data-theme="sporthub"] .privacy-page h2 { font-family: var(--sh-rond); font-weight: 700; font-size: 17px; line-height: 1.25; letter-spacing: -.01em; text-transform: none; color: #fff; }
+html[data-theme="sporthub"] .privacy-page a { color: #fff; text-underline-offset: 3px; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] .privacy-page a:hover { color: var(--sh-oranje); }
+html[data-theme="sporthub"] .privacy-page .meta-block,
+html[data-theme="sporthub"] .privacy-page .placeholder { background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); color: #fff; }
+html[data-theme="sporthub"] .privacy-page .meta-block { border-radius: 18px; }
+html[data-theme="sporthub"] .privacy-page .meta-block strong { color: #fff; letter-spacing: .16em; }
+html[data-theme="sporthub"] .back-link,
+html[data-theme="sporthub"] .back-link:hover {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1.5px solid var(--sh-rand); border-radius: 999px;
+  color: #fff; font-size: 10.5px; font-weight: 600; letter-spacing: .12em;
+}
+html[data-theme="sporthub"] .back-link:hover { border-color: #fff; }
+
+/* enquête */
+html[data-theme="sporthub"] .fb-hero p { color: rgba(255, 255, 255, .9); }
+html[data-theme="sporthub"] .fb-card { background: #fff; border: 0; border-radius: 18px; box-shadow: none; }
+html[data-theme="sporthub"] .fb-card::after { display: none; }
+html[data-theme="sporthub"] .fb-q + .fb-q { border-top: 2px dashed var(--sh-scheur); }
+html[data-theme="sporthub"] .fb-num,
+html[data-theme="sporthub"] .fb-num[style] { background: var(--sh-navy) !important; color: #fff !important; box-shadow: none; border-radius: 50%; font-family: var(--sh-rond); font-weight: 900; font-size: 12px; }
+html[data-theme="sporthub"] .fb-qh h3 { color: var(--sh-navy); }
+html[data-theme="sporthub"] .fb-score button,
+html[data-theme="sporthub"] .fb-chips button,
+html[data-theme="sporthub"] .fb-radio button {
+  background: #fff; color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); min-height: 44px; box-shadow: none;
+}
+html[data-theme="sporthub"] .fb-score button { border-radius: 12px; font-family: var(--sh-rond); font-weight: 900; font-size: 14px; }
+html[data-theme="sporthub"] .fb-chips button,
+html[data-theme="sporthub"] .fb-radio button { border-radius: 999px; }
+html[data-theme="sporthub"] .fb-score button:hover,
+html[data-theme="sporthub"] .fb-chips button:hover,
+html[data-theme="sporthub"] .fb-radio button:hover { border-color: var(--sh-navy); color: var(--sh-navy); }
+html[data-theme="sporthub"] .fb-radio button.on,
+html[data-theme="sporthub"] .fb-chips.top button.on,
+html[data-theme="sporthub"] .fb-chips.beter button.on { background: var(--sh-navy); color: #fff; border-color: var(--sh-navy); box-shadow: none; }
+/* het gekozen cijfer is een kerngetal: oranje met blauwe tekst */
+html[data-theme="sporthub"] .fb-score button.on { background: var(--sh-oranje); color: var(--sh-navy); border-color: var(--sh-oranje); box-shadow: none; }
+html[data-theme="sporthub"] .fb-score-lbl { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] textarea#fb-comment { background: var(--sh-wit); color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); border-radius: 12px; }
+html[data-theme="sporthub"] textarea#fb-comment::placeholder { color: rgba(6, 25, 58, .62); }
+html[data-theme="sporthub"] textarea#fb-comment:focus { border-color: var(--sh-navy); box-shadow: none; background: #fff; outline: 3px solid var(--sh-navy); outline-offset: 2px; }
+html[data-theme="sporthub"] .fb-submit { width: 100%; }
+html[data-theme="sporthub"] .fb-err { color: var(--sh-rood); font-weight: 600; }
+html[data-theme="sporthub"] .fb-done .big { font-family: var(--sh-rond); font-weight: 900; text-transform: none; letter-spacing: -.02em; line-height: 1.08; color: var(--sh-navy); text-shadow: none; }
+html[data-theme="sporthub"] .fb-done p { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] .fb-done p b { color: var(--sh-navy); }
+html[data-theme="sporthub"] .fb-follow a,
+html[data-theme="sporthub"] .fb-follow .wa,
+html[data-theme="sporthub"] .fb-follow .ig { background: var(--sh-navy); color: #fff; border-radius: 999px; min-height: 44px; display: inline-flex; align-items: center; }
+html[data-theme="sporthub"] :is(.fb-score, .fb-chips, .fb-radio) button:focus-visible,
+html[data-theme="sporthub"] .fb-submit:focus-visible { outline: 3px solid var(--sh-navy); outline-offset: 2px; }
+
+/* teamlogo-bouwer */
+html[data-theme="sporthub"] .lg-tabs button { background: #fff; color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); border-radius: 999px; min-height: 44px; }
+html[data-theme="sporthub"] .lg-tabs button.on { background: var(--sh-navy); color: #fff; border-color: var(--sh-navy); }
+html[data-theme="sporthub"] .lg-preview { background: var(--sh-wit); border-color: rgba(6, 25, 58, .16); border-radius: 14px; }
+html[data-theme="sporthub"] .lg-preview .who { font-family: var(--body); letter-spacing: 0; text-transform: none; margin: 0; }
+html[data-theme="sporthub"] .lg-preview .who b { color: var(--sh-navy); overflow-wrap: anywhere; margin-left: 0; font-weight: 700; }
+html[data-theme="sporthub"] .lg-preview .who span,
+html[data-theme="sporthub"] .lg-lbl { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] .lg-opts button { background: #fff; color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); border-radius: 12px; min-height: 44px; }
+html[data-theme="sporthub"] .lg-opts button.on { border-color: var(--sh-navy); box-shadow: 0 0 0 2px var(--sh-navy); }
+html[data-theme="sporthub"] .lg-swatch { border-color: rgba(6, 25, 58, .35); }
+html[data-theme="sporthub"] .lg-status,
+html[data-theme="sporthub"] .lg-status.pending,
+html[data-theme="sporthub"] .lg-status.approved { background: var(--sh-wit); color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); border-radius: 12px; }
+html[data-theme="sporthub"] .lg-status.rejected { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); font-weight: 600; }
+html[data-theme="sporthub"] .lg-photo-drop { border-color: var(--sh-rand-wit); color: var(--sh-inkt-2); border-radius: 14px; }
+html[data-theme="sporthub"] .lg-photo-drop:hover,
+html[data-theme="sporthub"] .lg-photo-drop:focus-visible { border-color: var(--sh-navy); color: var(--sh-navy); }
+
+/* offline-pagina + losse kaartpagina's */
+html[data-theme="sporthub"] .login-card a.btn.full:not([href="/toernooi.html"]),
+html[data-theme="sporthub"] .login-card a.btn.full:not([href="/toernooi.html"]):hover {
+  background: #fff; color: var(--sh-navy); border: 1.5px solid var(--sh-navy); box-shadow: none;
+}
+html[data-theme="sporthub"] .card .btn.ghost { color: var(--sh-navy); }
+html[data-theme="sporthub"] .card .btn-sm,
+html[data-theme="sporthub"] .card .btn-sm:hover { color: var(--sh-navy); }
+
+@media (min-width: 601px) {
+  html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell::before { width: 340px; height: 340px; right: -90px; top: 40px; }
+  html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell::after { width: 156px; height: 156px; right: 2px; top: 132px; }
+  html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell h1.h-display { font-size: clamp(40px, 5.4vw, 56px); max-width: calc(100% - 250px); }
+  html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell > section > .lead,
+  html[data-theme="sporthub"] .fb-hero p { max-width: min(44ch, calc(100% - 260px)); font-size: 17px; }
+  html[data-theme="sporthub"] body:not(.pg-aanmelden) .shell > section > .eyebrow,
+  html[data-theme="sporthub"] .fb-hero .eyebrow { max-width: calc(100% - 270px); font-size: 11px; }
+  html[data-theme="sporthub"] .rules-block { padding: 26px 28px; }
+  html[data-theme="sporthub"] .rules-h { font-size: 19px; }
+}
+/* spelregels op een breed scherm: leesbare regellengte (blokken, callout en de hulpbalk) */
+@media (min-width: 900px) {
+  html[data-theme="sporthub"] .rules-block,
+  html[data-theme="sporthub"] .rules-callout,
+  html[data-theme="sporthub"] .shell:has(.rules-block) > details.help { max-width: 760px; }
+}
+/* breder dan de pagina zelf: de ring staat dan in zijn geheel binnen de marge */
+@media (min-width: 1281px) {
+  html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell::before { right: 28px; }
+  html[data-theme="sporthub"] body:not(.pg-aanmelden):not(.tn) > .shell::after { right: 120px; }
+}
+
+/* ----------------------------------------------------------------
+   6. BEWEGING
+   Eén taal, op elke pagina dezelfde:
+     - dingen komen OMHOOG en komen tot rust (kop per regel, kaartjes
+       schuiven op en kantelen terug naar vlak);
+     - de rode ring TEKENT zichzelf (de boog loopt rond vanaf boven) en
+       draait daarna heel traag, met een balletje aan de binnenkant;
+     - het sport-icoon VALT met gewicht: versnelt naar de landing, veert
+       kort in, komt tot rust, en blijft dan zweven met een schaduw die
+       meekrimpt.
+   Alles staat binnen "geen voorkeur voor minder beweging". De opening
+   loopt pas als sh-beweging.js de klasse .sh-beweeg op <html> zet (ná
+   het laadscherm); zonder dat script staat alles er gewoon, in rust.
+   Alleen transform/opacity (+ de boog van de ring en de lijnen van het
+   veld) bewegen.
+   ---------------------------------------------------------------- */
+/* de boog van de ring; standaard (en zonder ondersteuning) een hele cirkel */
+@property --sh-boog { syntax: '<angle>'; inherits: false; initial-value: 360deg; }
+
+/* sfeer: vage veldlijnen achter de inhoud (sh-beweging.js maakt de laag) */
+html[data-theme="sporthub"] .sh-veld {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+html[data-theme="sporthub"] .sh-veld svg { position: absolute; inset: -3%; width: 106%; height: 106%; display: block; }
+html[data-theme="sporthub"] .sh-veld path {
+  fill: none; stroke: rgba(255, 255, 255, .07); stroke-width: 1.5; vector-effect: non-scaling-stroke;
+}
+
+/* de tab-schakelaar (bezoeker / team): één blauwe pil die naar de gekozen kant schuift */
+@supports selector(:has(a)) {
+  html[data-theme="sporthub"] .path-toggle { position: relative; isolation: isolate; }
+  html[data-theme="sporthub"] .path-toggle::before {
+    content: ''; position: absolute; z-index: 0; left: 4px; top: 4px; bottom: 4px; width: calc((100% - 12px) / 2);
+    border-radius: 999px; background: var(--sh-navy); pointer-events: none;
+  }
+  html[data-theme="sporthub"] .path-toggle:has(> button.active:last-child)::before { transform: translateX(calc(100% + 4px)); }
+  html[data-theme="sporthub"] .path-toggle:not(:has(> button.active))::before { opacity: 0; }
+  html[data-theme="sporthub"] .path-toggle button { z-index: 1; }
+  html[data-theme="sporthub"] .path-toggle button.active,
+  html[data-theme="sporthub"] .path-toggle button.active:hover { background: transparent; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme="sporthub"] {
+    --sh-uit: cubic-bezier(.16, 1, .3, 1);       /* snel weg, zacht tot rust */
+    --sh-in: cubic-bezier(.55, 0, 1, .45);       /* versnellen (vallen) */
+  }
+  @keyframes sh-woord { from { opacity: 0; transform: translateY(.6em); } to { opacity: 1; transform: none; } }
+  @keyframes sh-punt {
+    0% { opacity: 0; transform: scale(0); }
+    55% { opacity: 1; transform: scale(1.5); }
+    78% { transform: scale(.88); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes sh-knop-op { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+  @keyframes sh-ring-teken { from { --sh-boog: 0deg; } to { --sh-boog: 360deg; } }
+  @keyframes sh-ring-draai { to { transform: rotate(360deg); } }
+  @keyframes sh-ring-in { from { opacity: 0; } to { opacity: 1; } }
+  /* vallen: versnellen tot de grond (nooit afremmen ervoor), indeuken, kort terugveren, rust */
+  @keyframes sh-val {
+    0% { opacity: 0; translate: 0 -150%; scale: .97 1.04; animation-timing-function: var(--sh-in); }
+    10% { opacity: 1; }
+    42% { translate: 0 0; scale: 1 1; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+    50% { translate: 0 1.5%; scale: 1.1 .87; animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+    66% { translate: 0 -5%; scale: .97 1.04; animation-timing-function: var(--sh-in); }
+    79% { translate: 0 0; scale: 1.04 .96; animation-timing-function: ease-out; }
+    100% { opacity: 1; translate: 0 0; scale: 1 1; }
+  }
+  @keyframes sh-schaduw-val {
+    0% { opacity: 0; transform: scale(.3); animation-timing-function: var(--sh-in); }
+    42% { opacity: 1; transform: scale(1); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+    50% { transform: scale(1.14, 1.06); animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+    66% { opacity: .78; transform: scale(.9); animation-timing-function: var(--sh-in); }
+    79% { opacity: 1; transform: scale(1.03); animation-timing-function: ease-out; }
+    100% { opacity: 1; transform: none; }
+  }
+  /* zweven (zelfde ritme als sh-zweef): hoe hoger het icoon, hoe kleiner en vager de schaduw */
+  @keyframes sh-schaduw-zweef { 0%, 100% { opacity: 1; transform: none; } 50% { opacity: .62; transform: scale(.84); } }
+  @keyframes sh-zweef-recht { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  /* kaartjes: omhoog schuiven en terugkantelen naar vlak */
+  @keyframes sh-kaart-op {
+    from { opacity: 0; transform: translateY(28px) rotate(var(--sh-kantel, -1.2deg)); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sh-veld-teken { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes sh-veld-drijf { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-1.2%, -1.6%, 0) scale(1.02); } }
+  @keyframes sh-pijl-por { 0%, 100% { transform: translateX(4px); } 50% { transform: translateX(9px); } }
+
+  /* --- de ring (aanmelden + losse pagina's): tekenen, dan traag draaien --- */
+  html[data-theme="sporthub"].sh-beweeg .sh-ring::before,
+  html[data-theme="sporthub"].sh-beweeg body:not(.pg-aanmelden):not(.tn) > .shell::before {
+    -webkit-mask: conic-gradient(#000 var(--sh-boog), #0000 0);
+            mask: conic-gradient(#000 var(--sh-boog), #0000 0);
+    /* het balletje binnen in de ring: zo zie je hem draaien */
+    background: radial-gradient(circle closest-side, var(--sh-rood) calc(100% - 1px), rgba(196, 56, 46, 0)) center top / 8px 8px no-repeat;
+    animation: sh-ring-teken 1.4s cubic-bezier(.65, 0, .35, 1) .1s both, sh-ring-draai 96s linear 1.5s infinite;
+  }
+
+  /* --- het grote icoon: vallen, landen, zweven ---------------- */
+  html[data-theme="sporthub"] .sh-bal { transform-origin: 50% 90%; }
+  html[data-theme="sporthub"].sh-beweeg .sh-bal {
+    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .3));
+    animation: sh-val 1.05s .28s both, sh-zweef 7s ease-in-out 1.33s infinite;
+  }
+  /* de 3D-lus draait/zwaait zelf al: dan alleen nog op en neer */
+  html[data-theme="sporthub"].sh-beweeg .sh-bal.sh-draait { animation: sh-val 1.05s .28s both, sh-zweef-recht 7s ease-in-out 1.33s infinite; }
+  html[data-theme="sporthub"] .sh-bal.sh-draait { animation-name: sh-zweef-recht; }
+  /* de schaduw op de grond onder het icoon */
+  html[data-theme="sporthub"] .sh-ring::after {
+    content: ''; position: absolute; z-index: -1; pointer-events: none;
+    right: 12px; top: 230px; width: 116px; height: 16px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0, 0, 0, .42), rgba(0, 0, 0, 0));
+    animation: sh-schaduw-zweef 7s ease-in-out infinite;
+  }
+  html[data-theme="sporthub"].sh-beweeg .sh-ring::after {
+    animation: sh-schaduw-val 1.05s .28s both, sh-schaduw-zweef 7s ease-in-out 1.33s infinite;
+  }
+
+  /* --- openingsreeks aanmeldpagina ---------------------------- */
+  html[data-theme="sporthub"].sh-beweeg .hero-intro .eyebrow { animation: sh-op .6s var(--sh-uit) both; }
+  html[data-theme="sporthub"].sh-beweeg .hero-intro h1.h-display { animation: none; }
+  html[data-theme="sporthub"].sh-beweeg h1.h-display .sh-w {
+    display: inline-block;
+    animation: sh-woord .8s var(--sh-uit) calc(80ms + var(--sh-r, 0) * 95ms) both;
+  }
+  html[data-theme="sporthub"].sh-beweeg h1.h-display .exclaim {
+    display: inline-block; transform-origin: 50% 80%;
+    animation: sh-punt .55s cubic-bezier(.3, 1.3, .5, 1) calc(330ms + var(--sh-regels, 3) * 95ms) both;
+  }
+  html[data-theme="sporthub"].sh-beweeg .hero-intro .lead { animation: sh-op .7s var(--sh-uit) .42s both; }
+  html[data-theme="sporthub"].sh-beweeg .sh-cta-rij { animation: sh-knop-op .7s var(--sh-uit) .52s both; }
+  html[data-theme="sporthub"].sh-beweeg .sh-feiten > div { animation: sh-knop-op .7s var(--sh-uit) .6s both; }
+  html[data-theme="sporthub"].sh-beweeg .sh-feiten > div:nth-child(2) { animation-delay: .67s; }
+  html[data-theme="sporthub"].sh-beweeg .sh-feiten > div:nth-child(3) { animation-delay: .74s; }
+
+  /* --- kaartjes en blokken: in beeld schuiven ------------------ */
+  /* fx.js verbergt [data-fx-reveal] vooraf; in deze stijl niet — hier begint
+     een blok pas onzichtbaar als zijn animatie ook echt start (.sh-toon) */
+  html[data-theme="sporthub"].fx-on [data-fx-reveal] { opacity: 1; transform: none; transition: none; }
+  html[data-theme="sporthub"].sh-beweeg .sh-toon,
+  html[data-theme="sporthub"].sh-beweeg #form-card.sh-toon {
+    transform-origin: 30% 100%;
+    animation: sh-kaart-op .8s var(--sh-uit) var(--sh-d, 0ms) both;
+  }
+
+  /* --- de oranje knop: pijl port, indrukken voelt ------------- */
+  html[data-theme="sporthub"] .sh-cta { transition: transform .14s ease-out; }
+  html[data-theme="sporthub"] .sh-cta:hover .sh-pijl,
+  html[data-theme="sporthub"] .sh-cta:focus-visible .sh-pijl { animation: sh-pijl-por .9s ease-in-out infinite; }
+  html[data-theme="sporthub"] .sh-cta:active { transform: scale(.97); transition-duration: .06s; }
+  html[data-theme="sporthub"] .btn:active:not(:disabled),
+  html[data-theme="sporthub"] .fb-submit:active:not(:disabled) { transform: scale(.98); transition-duration: .06s; }
+  html[data-theme="sporthub"] a.sh-kaart { transition: transform .18s ease-out; }
+  html[data-theme="sporthub"] a.sh-kaart:hover { transform: translateY(-2px); }
+  html[data-theme="sporthub"] a.sh-kaart:active { transform: scale(.985); }
+
+  /* --- de schakelaar: de pil schuift --------------------------- */
+  html[data-theme="sporthub"] .path-toggle::before { transition: transform .32s var(--sh-uit), opacity .2s; }
+  html[data-theme="sporthub"] .path-toggle button { transition: color .2s; }
+
+  /* --- veldlijnen: traag tekenen, dan langzaam drijven --------- */
+  html[data-theme="sporthub"] .sh-veld svg { animation: sh-veld-drijf 46s ease-in-out 4s infinite alternate; }
+  html[data-theme="sporthub"] .sh-veld path {
+    stroke-dasharray: 1; stroke-dashoffset: 0;
+    animation: sh-veld-teken 3.2s cubic-bezier(.45, 0, .25, 1) calc(.5s + var(--sh-i, 0) * .28s) both;
+  }
+  html[data-theme="sporthub"] .sh-veld.sh-stil svg,
+  html[data-theme="sporthub"] .sh-veld.sh-stil path { animation-play-state: paused; }
+
+  /* --- losse pagina's: dezelfde opening ------------------------ */
+  html[data-theme="sporthub"].sh-beweeg body:not(.pg-aanmelden):not(.tn) > .shell::after {
+    transform-origin: 50% 90%;
+    animation: sh-val 1.05s .3s both, sh-zweef 7s ease-in-out 1.35s infinite;
+  }
+  html[data-theme="sporthub"].sh-beweeg :is(body:not(.pg-aanmelden) .shell > section > .eyebrow, .fb-hero .eyebrow) { animation: sh-op .6s var(--sh-uit) both; }
+  html[data-theme="sporthub"].sh-beweeg :is(body:not(.pg-aanmelden) .shell > section > .lead, .fb-hero p) { animation: sh-op .7s var(--sh-uit) .42s both; }
+  html[data-theme="sporthub"].sh-beweeg .privacy-page .back-link { animation: sh-op .6s var(--sh-uit) both; }
+  html[data-theme="sporthub"].sh-beweeg .privacy-page h1 { animation: sh-op .8s var(--sh-uit) .1s both; }
+  html[data-theme="sporthub"].sh-beweeg .privacy-page h1::after {
+    display: inline-block; transform-origin: 50% 80%;
+    animation: sh-punt .55s cubic-bezier(.3, 1.3, .5, 1) .5s both;
+  }
+  html[data-theme="sporthub"].sh-beweeg .privacy-page > .lead { animation: sh-op .7s var(--sh-uit) .3s both; }
+}
+
+/* telefoonmaten van de grondschaduw (bij het icoon in de ring, zie 4) */
+@media (prefers-reduced-motion: no-preference) and (max-width: 380px) {
+  html[data-theme="sporthub"] .sh-ring::after { right: 7px; top: 201px; width: 100px; height: 14px; }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 601px) {
+  html[data-theme="sporthub"] .sh-ring::after { right: 56px; top: 273px; width: 152px; height: 20px; }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 900px) {
+  html[data-theme="sporthub"] .sh-ring::after { right: auto; left: 32%; top: 76.5%; width: 40%; height: 5%; }
+}
+
+/* ----------------------------------------------------------------
+   7. MINDER BEWEGING
+   ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="sporthub"] .sh-bal,
+  html[data-theme="sporthub"] .hero-intro h1.h-display { animation: none !important; }
+  html[data-theme="sporthub"] .sh-pijl,
+  html[data-theme="sporthub"] .btn,
+  html[data-theme="sporthub"] .fb-submit { transition: none !important; transform: none !important; }
+  html[data-theme="sporthub"] .sh-veld { display: none; }
+}

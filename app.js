@@ -572,8 +572,14 @@
     if (kop) {
       // De kop gaat over alle sporten samen (geen evenement-specifieke tekst).
       kop.textContent = '';
-      kop.append('Eén dag.', document.createElement('br'), 'Alle', document.createElement('br'), 'sporten');
-      kop.appendChild(el('span', 'exclaim', '.'));
+      // Elke regel is een eigen blok: zo blijft de kop op drie regels staan, ook als het
+      // thema <br> verbergt of de bewegingslaag de woorden in losse stukjes knipt.
+      ['Eén dag.', 'Alle', 'sporten'].forEach((regel, i, alle) => {
+        const r = el('span', 'sh-sr-regel', regel);
+        r.style.display = 'block'; r.style.whiteSpace = 'nowrap';   // niet afhankelijk van een (mogelijk oud gecachet) stylesheet
+        if (i === alle.length - 1) r.appendChild(el('span', 'exclaim', '.'));
+        kop.appendChild(r);
+      });
       midden.appendChild(kop);
     }
     ring.appendChild(midden);

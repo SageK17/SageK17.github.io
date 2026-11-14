@@ -175,12 +175,34 @@
   }
 
   // ---------------------------------------------------------------- 3D-lus
-  // Het grote sport-icoon krijgt de draaiende lus (/sport/<naam>-draai.webp)
-  // zodra die echt geladen is; ontbreekt hij (nog), dan blijft het stilstaande
-  // icoon gewoon staan. Niet bij databesparing.
+  // Het grote sport-icoon gaat bewegen zodra dat kan; lukt het niet, dan blijft
+  // het stilstaande icoon gewoon staan. Niet bij databesparing.
+  // - Ballen (voetbal, basketbal, volleybal): een realtime bol uit sh-bal3d.js
+  //   die om zijn as draait. Het plaatje gaat in een doos die de plek en de
+  //   val-/zweefbeweging van .sh-bal overneemt; in die doos liggen de
+  //   slagschaduw (los plaatje, géén filter op een bewegende laag), het
+  //   plaatje en — zodra het eerste beeld getekend is — het canvas.
+  // - De andere sporten: de wiegende lus /sport/<naam>-draai.webp.
+  var BAL = /^(voetbal|basketbal|volleybal)$/;
   function draaiLus(img) {
     var sport = html.getAttribute('data-sport');
     if (!img || !sport || !/^[a-z0-9-]+$/.test(sport)) return;
+    if (BAL.test(sport)) {
+      var b3 = window.shBal3d;
+      if (!b3 || !b3.kan() || !img.parentNode) return;
+      var doos = document.createElement('span');
+      doos.className = 'sh-bal sh-bal-doos sh-draait';
+      var schaduw = new Image();
+      schaduw.alt = ''; schaduw.decoding = 'async'; schaduw.className = 'sh-bal-schaduw';
+      schaduw.src = '/sport/bal/schaduw-groot.webp';
+      img.parentNode.insertBefore(doos, img);
+      doos.appendChild(schaduw);
+      doos.appendChild(img);
+      img.classList.remove('sh-bal');
+      img.classList.add('sh-bal-beeld');
+      b3.maak(img, sport, { groot: true });
+      return;
+    }
     var c = navigator.connection;
     if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) return;
     var lus = new Image();

@@ -1,6 +1,11 @@
 // Papieren back-up — fetches the live tournament data and renders a clean,
 // print-optimized programma + standen + knock-out schema. Kept as an external
 // file because the site's CSP blocks inline scripts.
+//
+// Sport-hub: /print?competition=<id> prints ONE sport (schema op tijd met
+// invulvakjes — per set bij een sets-sport —, standen per poule en de knock-out)
+// uit GET /api/tournament?competition=<id>. Zonder parameter blijft dit het blad
+// van het hoofdtoernooi; staat dat uit, dan opent de eerste actieve sport.
 (() => {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const ALL_POULES = ['A','B','C','D'];
@@ -95,12 +100,106 @@
       <div class="note">De live-app is altijd leidend. Gebruik dit blad alleen als de wifi op locatie uitvalt: noteer de uitslagen met de hand en voer ze later in de app in.</div>`;
   }
 
+  // ── Eén sport uit de sport-hub (andere vorm dan het hoofdtoernooi) ──────────
+  const hm = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : 9999; };
+  function compResult(m, sets, bestOf, ko, tiebreak) {
+    const done = m.status === 'done' && m.score_a != null && m.score_b != null;
+    if (sets) {
+      if (done) return `<b>${esc(m.score_a)} – ${esc(m.score_b)}</b>${Array.isArray(m.sets) && m.sets.length ? ` <span class="setjes">(${esc(m.sets.map(x => `${x[0]}–${x[1]}`).join(' · '))})</span>` : ''}`;
+      let h = '';
+      for (let i = 1; i <= bestOf; i++) h += `<span class="vak"><i>Set ${i}</i>__ – __</span>`;
+      return h + `<span class="vak tot"><i>Sets</i>__ – __</span>`;
+    }
+    if (done) return `<b>${esc(m.score_a)} – ${esc(m.score_b)}</b>${(m.pens_a != null && m.pens_b != null) ? ` <span class="setjes">(${esc(tiebreak)} ${esc(m.pens_a)}–${esc(m.pens_b)})</span>` : ''}`;
+    return `<span class="vak">____ – ____</span>${ko ? `<span class="vak"><i>${esc(tiebreak)}</i>__ – __</span>` : ''}`;
+  }
+  function renderComp(d) {
+    const page = document.getElementById('page');
+    const c = d.competition || {};
+    const evName = page.dataset.eventName || '';
+    const title = [evName, c.name].filter(Boolean).join(' — ');
+    document.title = `${c.name || 'Schema'} — papieren back-up`;
+    if (!d.configured) {
+      page.innerHTML = `<h1>${esc(title)}</h1><div class="empty">Voor ${esc(c.name || 'deze sport')} is nog geen schema gemaakt.<br/>Maak het eerst in de admin en kom dan hier terug.</div>`;
+      return;
+    }
+    const sc = d.schedule || {};
+    const noun = sc.place_noun || 'Veld';
+    const sets = c.result_model === 'sets';
+    const bestOf = [1, 3, 5, 7].includes(c.best_of) ? c.best_of : 3;
+    const tiebreak = (d.vocab && d.vocab.tiebreak) || 'Beslissing';
+    const nm = (v) => (v && typeof v === 'object' ? { text: v.name || v.placeholder || '—', ph: !v.name } : { text: v || '—', ph: !v });
+    const all = [];
+    const pouleKeys = Object.keys(d.poules || {}).sort();
+    for (const p of pouleKeys) for (const m of (d.poules[p].matches || [])) all.push({ ...m, ko: false, round_label: pouleKeys.length > 1 ? `Poule ${p}` : 'Poule' });
+    for (const k of (d.knockout || [])) all.push({ ...k, ko: true, round_label: k.where || k.label });
+    all.sort((x, y) => hm(x.time) - hm(y.time) || (x.field || 99) - (y.field || 99) || (x.slot ?? 999) - (y.slot ?? 999));
+    const rows = all.map(m => {
+      const a = nm(m.a), b = nm(m.b);
+      return `<tr>
+        <td class="t">${esc(m.time || '—')}</td>
+        <td class="c">${m.field ? esc(m.field) : '—'}</td>
+        <td><span class="${a.ph ? 'ph' : ''}">${esc(a.text)}</span> <span class="ph">–</span> <span class="${b.ph ? 'ph' : ''}">${esc(b.text)}</span><div class="rl">${esc(m.round_label)}</div></td>
+        <td class="uit">${compResult(m, sets, bestOf, m.ko, tiebreak)}</td>
+      </tr>`;
+    }).join('');
+    const stand = pouleKeys.map(p => {
+      const st = (d.poules[p].standings || []).map(s => `<tr>
+          <td class="c">${esc(s.pos)}</td><td>${esc(s.name)}</td><td class="c">${esc(s.gp)}</td>
+          <td class="c">${sets ? `${esc(s.w)}-${esc(s.l)}` : `${esc(s.w)}-${esc(s.d)}-${esc(s.l)}`}</td>
+          <td class="c">${s.gd > 0 ? '+' : ''}${esc(s.gd)}</td><td class="c"><b>${esc(s.pts)}</b></td></tr>`).join('');
+      return `<div class="poule"><h3>${pouleKeys.length > 1 ? `Poule ${esc(p)}` : 'Stand'}</h3>
+        <table><thead><tr><th class="c">#</th><th>Naam</th><th class="c">G</th><th class="c">${sets ? 'W-V' : 'W-G-V'}</th><th class="c">${sets ? 'Sets ±' : 'Saldo'}</th><th class="c">Ptn</th></tr></thead>
+        <tbody>${st || '<tr><td colspan="6" class="empty">Nog niemand.</td></tr>'}</tbody></table></div>`;
+    }).join('');
+    const stamp = new Date().toLocaleString('nl-NL');
+    const info = [sc.start_time ? `start ${sc.start_time}` : '', sc.fields ? `${sc.fields}× ${String(noun).toLowerCase()}` : '',
+      sc.match_min ? `${sc.match_min}+${sc.break_min || 0} min` : '', sets ? `best of ${bestOf}` : '', d.format_label || ''].filter(Boolean).join(' · ');
+    page.innerHTML = `
+      <h1>${esc(title)}</h1>
+      <div class="sub">${esc(info)}</div>
+      <div class="gen">Papieren back-up · gemaakt ${esc(stamp)} · tijden volgens het schema</div>
+      <h2>Wedstrijdschema</h2>
+      <table class="schema">
+        <thead><tr><th>Tijd</th><th class="c">${esc(noun)}</th><th>Wedstrijd</th><th>Uitslag${sets ? ' (per set)' : ''}</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4" class="empty">Nog geen wedstrijden.</td></tr>'}</tbody>
+      </table>
+      <h2>Standen</h2>
+      ${stand}
+      <div class="note">De live-app is altijd leidend. Gebruik dit blad alleen als het netwerk uitvalt: schrijf de uitslagen op${sets ? ' (per set)' : ''} en voer ze later in via de bediening.${all.some(m => m.ko) ? ' Namen in schuinschrift worden pas bekend als de ronde ervoor klaar is.' : ''}</div>`;
+  }
+
+  // Welke sport: ?competition=<id>; anders het hoofdtoernooi, of — als dat uit staat —
+  // de eerste actieve sport.
+  const DEFAULT_COMP = 1;
+  let cid = null;
+  try { const q = new URLSearchParams(location.search).get('competition'); if (q && /^\d+$/.test(q)) cid = Number(q); } catch {}
+  let comps = null;
+  async function loadComps() {
+    try {
+      const r = await fetch('/api/competitions');
+      const j = r.ok ? await r.json() : null;
+      comps = j && Array.isArray(j.competitions) ? j.competitions : null;
+    } catch { comps = null; }
+    if (!comps) return;
+    if (cid == null && comps.length && !comps.some(c => c.id === DEFAULT_COMP)) cid = comps[0].id;
+    const nav = document.getElementById('sporten');
+    if (!nav || comps.length < 2) return;
+    const cur = cid == null ? DEFAULT_COMP : cid;
+    nav.innerHTML = comps.map(c => `<a href="${c.id === DEFAULT_COMP ? '/print' : `/print?competition=${esc(c.id)}`}"${c.id === cur ? ' aria-current="page"' : ''}>${esc(c.name)}</a>`).join('');
+    nav.hidden = false;
+  }
+
   async function load() {
     try {
-      const res = await fetch('/api/tournament', { cache: 'no-store' });
+      const res = await fetch(cid == null ? '/api/tournament' : `/api/tournament?competition=${encodeURIComponent(cid)}`, { cache: 'no-store' });
       const json = await res.json();
       if (json && json.offline) { return; }   // keep whatever is shown
-      render(json);
+      if (!res.ok) {
+        document.getElementById('page').innerHTML = `<div class="empty">${esc(json && json.error ? json.error : 'Deze sport bestaat niet (meer).')}</div>`;
+        return;
+      }
+      if (json && json.competition && cid != null && cid !== DEFAULT_COMP) renderComp(json); else render(json);
     } catch (e) {
       const page = document.getElementById('page');
       if (page.querySelector('.empty')) page.innerHTML = `<div class="empty">Kon het schema niet laden — controleer de verbinding en ververs.</div>`;
@@ -109,5 +208,5 @@
 
   document.getElementById('print-btn').addEventListener('click', () => window.print());
   document.getElementById('refresh-btn').addEventListener('click', load);
-  load();
+  loadComps().then(load);
 })();

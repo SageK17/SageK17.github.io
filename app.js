@@ -490,11 +490,18 @@
   // een gecentreerde rode ring met álle sporticonen erop en de datum + kop erin,
   // daaronder "Kies je sport" als tegels, de oranje knop met je sport erin en het
   // kaartje (de strook boven het formulier) met je sport. De ring draait heel
-  // langzaam; de iconen blijven rechtop en de ballen rollen om hun as (CSS + loops).
+  // langzaam; de iconen blijven rechtop en de ballen rollen om hun as (CSS + sh-bal3d.js).
   const RING_ICONEN = ['voetbal', 'volleybal', 'basketbal', 'tafeltennis', 'badminton', 'hockey', 'padel', 'hardlopen'];
-  const zachtAan = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  // Bij "databesparing" geen draai-loops (elk ±1,3 MB); de stilstaande iconen blijven.
-  const spaarData = !!(navigator.connection && navigator.connection.saveData);
+  const RING_BALLEN = /^(voetbal|volleybal|basketbal)$/;
+  // Ballen rollen rustig om hun eigen as (van links naar rechts): een realtime bol uit
+  // sh-bal3d.js, die zelf beslist of het mag (niet bij "minder beweging", databesparing
+  // of zonder WebGL — dan blijft het stilstaande plaatje staan). Dat script laadt met
+  // `defer`; is het er nog niet, dan wachten we op het laden van de pagina.
+  function balDraait(img, naam) {
+    const go = () => { if (window.shBal3d) window.shBal3d.maak(img, naam); };
+    if (window.shBal3d || document.readyState === 'complete') go();
+    else window.addEventListener('load', go, { once: true });
+  }
   let heroTegels = null;
   function ringOfSports() {
     const oud = document.querySelector('.hero-intro .sh-ring');
@@ -509,16 +516,26 @@
       const plek = el('span', 'sh-sr-plek');
       plek.style.left = `${50 + 38.5 * Math.cos(rad)}%`;
       plek.style.top = `${50 + 38.5 * Math.sin(rad)}%`;
+      // de draaier draait precies even hard terug als de baan: het icoon blijft rechtop
+      const draaier = el('span', 'sh-sr-draaier');
       const img = el('img');
-      img.src = `/sport/${naam}.webp`; img.alt = ''; img.decoding = 'async';
-      plek.appendChild(img);
-      // Ballen rollen rustig om hun eigen as (van links naar rechts): de draai-loop
-      // uit de icoonstudio, alleen als die laadt en niet bij "minder beweging".
-      if (zachtAan && !spaarData && /^(voetbal|volleybal|basketbal)$/.test(naam)) {
-        const loop = new Image();
-        loop.onload = () => { img.src = loop.src; };
-        loop.src = `/sport/${naam}-draai-klein.webp`;
+      img.alt = ''; img.decoding = 'async';
+      if (RING_BALLEN.test(naam)) {
+        // Bal: het stilstaande beeld is de beginstand van de draaiende bol (zelfde bake),
+        // zodat de wissel plaatje → canvas niet verspringt; de slagschaduw is een los
+        // plaatje eronder (geen filter op een laag die elk beeld verandert).
+        draaier.classList.add('sh-sr-bal');
+        const schaduw = el('img', 'sh-sr-schaduw');
+        schaduw.alt = ''; schaduw.decoding = 'async'; schaduw.src = '/sport/bal/schaduw-ring.webp';
+        draaier.appendChild(schaduw);
+        img.src = `/sport/bal/${naam}-stil.webp`;
+        draaier.appendChild(img);
+        balDraait(img, naam);
+      } else {
+        img.src = `/sport/${naam}.webp`;
+        draaier.appendChild(img);
       }
+      plek.appendChild(draaier);
       baan.appendChild(plek);
     });
     ring.appendChild(baan);

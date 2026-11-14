@@ -422,6 +422,13 @@ html[data-theme="sporthub"] .sh-bal {
   filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .35));
   animation: sh-zweef 7s ease-in-out infinite;
 }
+/* De draaiende bal (voetbal, basketbal, volleybal; sh-bal3d.js + sh-beweging.js): het plaatje zit dan
+   in een doos die de plek en de beweging van .sh-bal draagt, met het canvas eroverheen. Op die doos
+   géén drop-shadow-filter (het canvas verandert elk beeld, de vervaging zou telkens opnieuw berekend
+   worden); dezelfde slagschaduw ligt als los, stilstaand plaatje onder de bal (2,2× het vak). */
+html[data-theme="sporthub"] .sh-ring .sh-bal.sh-bal-doos { display: block; filter: none; }
+html[data-theme="sporthub"] .sh-bal-doos > img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; object-fit: contain; }
+html[data-theme="sporthub"] .sh-bal-doos > img.sh-bal-schaduw { left: -60%; top: -60%; width: 220%; height: 220%; pointer-events: none; }
 @keyframes sh-zweef {
   0%, 100% { transform: translateY(0) rotate(0); }
   50% { transform: translateY(-9px) rotate(2.5deg); }

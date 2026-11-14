@@ -25,11 +25,13 @@
    Opbouw:
      1. Tokens (blauw vlak = standaard, wit kaartje = omgekeerde set)
      2. Basis: achtergrond, focus, laadscherm, koppen
-     3. Gedeelde onderdelen (balk, knoppen, kaartje, formulier, uitleg, voet)
+     3. Gedeelde onderdelen (balk, knoppen, kaartje, formulier, uitleg, voet,
+        offline-balk + melding, JVO Smart-basis)
      4. Aanmeldpagina
      5. Overige publiekspagina's
      6. Minder beweging
-   (Het live-bord heeft een eigen aanvulling: thema-sporthub-bord.css.)
+   (Het live-bord heeft een eigen aanvulling: thema-sporthub-bord.css; de
+   werkschermen — crew, check-in, omroep — thema-sporthub-beheer.css.)
    ================================================================ */
 
 /* ----------------------------------------------------------------
@@ -259,9 +261,19 @@ html[data-theme="sporthub"] .card:not(#form-card)::before {
   color: var(--sh-rood);
 }
 html[data-theme="sporthub"] #form-card::before { display: none; }
+/* Het kleine label. Op een WIT vlak rood (5,3:1); op blauw wit met het rood-lichte
+   streepje ervoor — rood draagt op blauw geen kleine tekst (3,2:1). */
 html[data-theme="sporthub"] .card-eyebrow {
-  font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .16em; color: var(--sh-rood);
+  position: relative; padding-left: 32px;
+  font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .16em; color: #fff;
 }
+html[data-theme="sporthub"] .card-eyebrow::before {
+  content: ''; position: absolute; left: 0; top: .8em; width: 22px; height: 1.5px; margin-top: -1px; background: var(--sh-rood-l);
+}
+html[data-theme="sporthub"] :is(.card, .fb-card, .rules-block, .sh-strook, .sh-kaart, #reg-open, #reg-closed) .card-eyebrow {
+  padding-left: 0; color: var(--sh-rood);
+}
+html[data-theme="sporthub"] :is(.card, .fb-card, .rules-block, .sh-strook, .sh-kaart, #reg-open, #reg-closed) .card-eyebrow::before { content: none; }
 html[data-theme="sporthub"] .card h2 {
   font-family: var(--sh-rond); font-weight: 900; text-transform: none; color: var(--sh-navy);
   font-size: clamp(22px, 6.6vw, 28px); line-height: 1.08; letter-spacing: -.02em; overflow-wrap: anywhere;
@@ -284,7 +296,9 @@ html[data-theme="sporthub"] .field :is(input, textarea, select) {
   border: 1.5px solid var(--line-strong); border-radius: 12px;
   padding: 12px 14px; min-height: 50px; font-size: 16px;
 }
-html[data-theme="sporthub"] .field :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); }
+/* voorbeeldtekst: op een veld op blauw licht, op een wit kaartje donker (beide ≥ 4,5:1) */
+html[data-theme="sporthub"] .field :is(input, textarea)::placeholder { color: rgba(246, 247, 251, .7); }
+html[data-theme="sporthub"] :is(.card, .fb-card, .rules-block, #reg-open, #reg-closed) .field :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); }
 html[data-theme="sporthub"] .field :is(input, textarea, select):hover:not(:focus) { border-color: var(--ice); }
 html[data-theme="sporthub"] .field :is(input, textarea, select):focus { background: var(--midnight); border-color: var(--ice); }
 html[data-theme="sporthub"] .input-with-icon input { padding-right: 46px; }
@@ -379,6 +393,33 @@ html[data-theme="sporthub"] .toast.toast-info { border-left-color: var(--sh-navy
 html[data-theme="sporthub"] .toast.toast-error { border-left-color: var(--sh-rood); }
 html[data-theme="sporthub"] .toast-undo { background: #fff; color: var(--sh-navy); }
 html[data-theme="sporthub"] .push-status.error { background: transparent; color: #fff; border-color: var(--sh-rood-l); }
+
+/* --- Offline-balk + melding (offline-ui.js) ----------------------- */
+/* offline-ui.js zet zijn eigen <style> later in de <head>; de id-selectors hier
+   winnen op specificiteit. Geldt op élke pagina met dit thema (bord, crew,
+   check-in, omroep, admin). Offline = oranje met blauwe tekst + stip; wachtrij
+   (wel verbinding) = wit met blauwe tekst. */
+html[data-theme="sporthub"] #jvo-net-bar { box-shadow: 0 -6px 24px rgba(2, 9, 24, .4); font-family: var(--body, 'Geist', system-ui, sans-serif); }
+html[data-theme="sporthub"] #jvo-net-bar.off { background: var(--sh-oranje); color: var(--sh-navy); }
+html[data-theme="sporthub"] #jvo-net-bar.sync { background: #fff; color: var(--sh-navy); }
+html[data-theme="sporthub"] #jvo-net-toast { background: #fff; border: 0; border-radius: 16px; color: var(--sh-navy); box-shadow: 0 16px 40px rgba(2, 9, 24, .55); }
+html[data-theme="sporthub"] #jvo-net-toast .jt-ic,
+html[data-theme="sporthub"] #jvo-net-toast.warn .jt-ic { background: rgba(6, 25, 58, .09); }
+html[data-theme="sporthub"] #jvo-net-toast .jt-ic svg { stroke: var(--sh-navy); }
+html[data-theme="sporthub"] #jvo-net-toast .jt-pb,
+html[data-theme="sporthub"] #jvo-net-toast.warn .jt-pb { background: var(--sh-oranje); }
+
+/* --- JVO Smart (basis) -------------------------------------------- */
+/* De duif in het ring-embleem, geen kleurrail en geen goud. Het bord en de
+   werkschermen vullen dit per scherm aan. :where() houdt de specificiteit laag,
+   zodat die aanvullingen altijd winnen. */
+html[data-theme="sporthub"] :where(.jvs) { --jvs-rail: var(--sh-rood-l); }
+html[data-theme="sporthub"] :where(.jvs-mark) {
+  background: var(--sh-navy); color: #fff; box-shadow: 0 0 0 1.5px var(--sh-navy), 0 0 0 3px var(--sh-rood); margin: 3px;
+}
+html[data-theme="sporthub"] :where(.jvs-eyebrow) { color: #fff; }
+html[data-theme="sporthub"] :where(.jvs-visitor, .jvs-crew) { background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); border-radius: 18px; color: #fff; }
+html[data-theme="sporthub"] :where(.jvs-visitor, .jvs-crew) :where(b) { color: #fff; font-weight: 700; }
 
 /* --- Tabellen (waar een pagina er een heeft) --------------------- */
 html[data-theme="sporthub"] th { color: var(--ice-muted); border-bottom-color: var(--line-strong); letter-spacing: .14em; }
@@ -1132,6 +1173,27 @@ html[data-theme="sporthub"] .sh-veld path {
 }
 @media (prefers-reduced-motion: no-preference) and (min-width: 900px) {
   html[data-theme="sporthub"] .sh-ring::after { right: auto; left: 32%; top: 76.5%; width: 40%; height: 5%; }
+}
+
+/* ----------------------------------------------------------------
+   6b. LEGE STAAT (<jvo-empty>, JVO Motion)
+   Het onderdeel tekent zichzelf in shadow DOM; de variabelen hieronder
+   erven daar naar binnen. Zonder deze regels (thema schemering) vallen
+   ze terug op de oude waarden in jvo-motion.js.
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] jvo-empty {
+  --jvo-empty-kop: 'Unbounded', 'Geist', system-ui, sans-serif;
+  --jvo-empty-kop-gewicht: 900;
+  --jvo-empty-kop-maat: 19px;
+  --jvo-empty-kop-regel: 1.2;
+  --jvo-empty-kop-spatie: -.02em;
+  --jvo-empty-tt: none;
+  --jvo-empty-tekst: #fff;
+  --jvo-empty-hint: rgba(255, 255, 255, .84);
+  --jvo-empty-hint-gewicht: 400;
+  --jvo-empty-schijf: #0D2550;
+  --jvo-empty-schijf-rand: 1.5px solid rgba(255, 255, 255, .4);
+  --jvo-empty-duif: #fff;
 }
 
 /* ----------------------------------------------------------------

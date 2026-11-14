@@ -495,10 +495,13 @@
       css(r,
         ':host{display:block}'+
         '.e{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:40px 24px}'+
-        '.mk{width:78px;height:78px;border-radius:50%;background:'+C.midnight3+';display:flex;align-items:center;justify-content:center;color:'+col+';animation:eb 3.6s ease-in-out infinite}'+
+        // Themabewust: elke kleur/letter is een CSS-variabele met de Schemering-waarde
+        // als terugval. Zonder thema-regels (Schemering) blijft alles exact zoals het was;
+        // een thema zet de --jvo-empty-* variabelen op het <jvo-empty>-element zelf.
+        '.mk{width:78px;height:78px;border-radius:50%;background:var(--jvo-empty-schijf,'+C.midnight3+');border:var(--jvo-empty-schijf-rand,0);box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:var(--jvo-empty-duif,'+col+');animation:eb 3.6s ease-in-out infinite}'+
         '.mk svg{width:48px;height:auto;transform-origin:50% 62%}'+
-        '.tt{font-family:'+C.display+';font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:.01em;color:'+C.ice+'}'+
-        '.ht{font-family:'+C.body+';font-size:14px;line-height:1.5;color:rgba(232,244,255,.6);max-width:34ch;font-weight:300}'+
+        '.tt{font-family:var(--jvo-empty-kop,'+C.display+');font-weight:var(--jvo-empty-kop-gewicht,800);font-size:var(--jvo-empty-kop-maat,24px);line-height:var(--jvo-empty-kop-regel,inherit);text-transform:var(--jvo-empty-tt,uppercase);letter-spacing:var(--jvo-empty-kop-spatie,.01em);color:var(--jvo-empty-tekst,'+C.ice+')}'+
+        '.ht{font-family:'+C.body+';font-size:14px;line-height:1.5;color:var(--jvo-empty-hint,rgba(232,244,255,.6));max-width:34ch;font-weight:var(--jvo-empty-hint-gewicht,300)}'+
         '@keyframes eb{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6%) scale(1.02)}}'+
         RM
       );

@@ -38,6 +38,7 @@
     .pill { margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
       padding: 6px 11px; border-radius: 999px; font-weight: 600; background: #fff; color: var(--navy); text-decoration: none; white-space: nowrap; }
     .pill.live { background: var(--oranje); color: var(--navy); }
+    .pill[hidden] { display: none; }
     h1 { position: relative; font-family: var(--rond); font-weight: 900; font-size: clamp(34px, 10vw, 44px); line-height: 1; letter-spacing: -.02em; margin-top: 34px; z-index: 2; }
     h1 em, h2 em { font-style: normal; color: var(--oranje); }
     .sub { font-size: 10px; color: rgba(255,255,255,.85); margin-top: 12px; }
@@ -67,14 +68,15 @@
     .k em { font-style: normal; background: var(--oranje); color: var(--navy); padding: 2px 7px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
     .k em.klaar { background: var(--navy); color: #fff; }
     .tm { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-top: 6px; font-weight: 600; font-size: 15px; }
-    .tm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* lange namen: twee regels, breken op woordgrens of met een afbreekstreepje (lang=nl) */
+    .tm span { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; line-height: 1.22; }
     .tm b { font-family: var(--rond); font-weight: 900; font-size: 22px; line-height: 1.15; }
     .tm.win span { text-decoration: underline; text-decoration-color: var(--oranje); text-decoration-thickness: 2px; text-underline-offset: 3px; }
     .sets { margin-top: 7px; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--inkt-2); }
     .sr { display: grid; grid-template-columns: 54px 28px 1fr auto; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid rgba(255,255,255,.22); font-size: 14px; font-weight: 500; }
     .sr b { font-family: var(--rond); font-weight: 700; font-size: 13px; }
     .sr img { width: 26px; height: 26px; object-fit: contain; }
-    .sr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sr span { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; line-height: 1.25; }
     .sr i { font-style: normal; font-size: 9px; color: rgba(255,255,255,.85); }
     .leeg { border: 1.5px dashed var(--rand); border-radius: 16px; padding: 18px; font-size: 14px; color: rgba(255,255,255,.88); line-height: 1.5; }
     .stand { background: #fff; color: var(--navy); border-radius: 18px; padding: 12px 16px 8px; }
@@ -87,13 +89,13 @@
     .srow span { font-family: var(--mono); font-size: 11px; color: var(--inkt-2); font-weight: 500; }
     .srow .n { text-align: right; }
     .srow b { font-family: var(--rond); font-weight: 900; font-size: 15px; text-align: right; }
-    .srow em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .srow em { font-style: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; line-height: 1.22; }
     .podium { display: grid; gap: 8px; }
     .plek { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px; background: var(--navy-2); border: 1.5px solid var(--rand); border-radius: 16px; padding: 10px 14px; }
     .plek b { font-family: var(--rond); font-weight: 900; font-size: 20px; color: var(--oranje); }
     .plek.p1 { background: #fff; color: var(--navy); border-color: #fff; box-shadow: 0 0 0 3px var(--oranje); }
     .plek.p1 b { color: var(--navy); }
-    .plek span { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .plek span { font-weight: 600; font-size: 15px; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; line-height: 1.22; }
     .meer { display: inline-flex; margin-top: 16px; font-size: 14px; font-weight: 600; text-underline-offset: 3px; }
     .voet { margin-top: 36px; font-size: 12px; color: rgba(255,255,255,.75); }
     /* jouw team: een rustig merkje (blauw op oranje = 5,9:1; nooit wit op oranje) */

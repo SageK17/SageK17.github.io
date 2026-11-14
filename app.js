@@ -251,6 +251,8 @@
         data.competition_id = chosenSport.id;
       }
       data.team_name = form.team_name.value.trim();
+      // 1 tegen 1: het veld is je eigen naam, dus niet de teamnaam-melding van de server.
+      if (chosenSport && chosenSport.solo && !data.team_name) { showError('Vul je naam in zoals die op het bord komt.', 'team_name'); return; }
       data.expected_players = parseInt(form.expected_players.value, 10);
       // Mirror teamaantal.js — the form is novalidate, so range-check on the client.
       if (!data.expected_players || data.expected_players < minPlayers || data.expected_players > maxPlayers) {
@@ -317,7 +319,9 @@
       // A small celebratory burst — the only confetti left outside your followed
       // team, and toned down. (Goals/wins now fire only for the team you follow.)
       window.JVOFX?.confetti({ y: 0.4, count: 50, power: 12 });
-      const msg = (path === 'team')
+      const msg = (path === 'team' && chosenSport && chosenSport.solo)
+        ? `Je aanmelding voor ${String(chosenSport.name).toLowerCase()} is ontvangen. Je krijgt apart bericht zodra die is beoordeeld.`
+        : (path === 'team')
         ? `Je aanmelding én teamaanvraag voor "${data.team_name}" zijn ontvangen. Je krijgt apart bericht zodra het team is beoordeeld.`
         : `Je aanmelding${eventWithArticle ? ' voor ' + eventWithArticle : ''} is ontvangen. Check je inbox voor een bevestiging.`;
       setText($('success-msg'), msg);
@@ -436,6 +440,24 @@
   const teamLabel = document.querySelector('label[for="team_name"]');
   const defaultTeamLabel = teamLabel ? teamLabel.textContent : '';
   const defaultTeamPh = teamNameInput ? teamNameInput.placeholder : '';
+  // 1 tegen 1: ook het kopje en de uitleg praten dan over "je", niet over een team.
+  const teamHelp = $('team-help'), teamEyebrow = $('team-eyebrow');
+  const defaultTeamHelp = teamHelp ? teamHelp.textContent : '';
+  const defaultTeamEyebrow = teamEyebrow ? teamEyebrow.textContent : '';
+  // Bij 1 tegen 1 vullen we "naam op het bord" voor met je eigen naam — alleen in een
+  // leeg veld, en alleen zolang je het zelf niet hebt aangepast.
+  let autoName = null;
+  function soloNaam() {
+    if (!teamNameInput || !form || !form.full_name) return;
+    const solo = !!(chosenSport && chosenSport.solo);
+    const mag = teamNameInput.value === '' || (autoName != null && teamNameInput.value === autoName);
+    if (!mag) { autoName = null; return; }
+    if (!solo) { if (autoName != null) teamNameInput.value = ''; autoName = null; return; }
+    autoName = form.full_name.value.trim().slice(0, 60);
+    teamNameInput.value = autoName;
+    if (autoName) teamNameInput.closest('.field')?.classList.remove('has-error');
+  }
+  if (form && form.full_name) form.full_name.addEventListener('input', () => { if (chosenSport && chosenSport.solo) soloNaam(); });
   const isIcon = (u) => /^\/sport\/[a-z]+(-klein)?\.webp$/.test(String(u || ''));
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = String(text); return n; };
   const formatLine = (c) => [c.team_label, c.max_teams ? `${c.max_teams} ${c.unit}` : ''].filter(Boolean).join(' · ');
@@ -480,6 +502,9 @@
     if (playersField) playersField.hidden = c.max_players === 1;
     if (teamLabel) teamLabel.textContent = c.solo ? 'Jouw naam op het bord' : (c.team_size === 2 ? 'Naam van jullie duo' : defaultTeamLabel);
     if (teamNameInput) teamNameInput.placeholder = c.solo ? 'Bijv. Noor' : defaultTeamPh;
+    if (teamEyebrow) teamEyebrow.textContent = c.solo ? 'Jouw deelname' : defaultTeamEyebrow;
+    if (teamHelp) teamHelp.textContent = c.solo ? 'JVO bekijkt elke aanmelding. Bij goedkeuring krijg je per e-mail je eigen QR-code voor de check-in op locatie.' : defaultTeamHelp;
+    soloNaam();
     kiezer?.closest('.field')?.classList.remove('has-error');
     SUBMIT_LABEL = `Meld je aan voor ${String(c.name).toLowerCase()} →`;
     if (submitBtn && !submitBtn.disabled) submitBtn.textContent = SUBMIT_LABEL;

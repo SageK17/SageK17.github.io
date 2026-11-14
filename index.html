@@ -9,7 +9,7 @@
   <title>JVO Sportdag — Aanmelden</title>
   <meta property="og:title" content="JVO Sportdag — Aanmelden" />
   <meta property="og:description" content="Zondag 22 november 2026 · Sportcampus Zuiderpark, Den Haag · Gratis. Meld je team aan voor het toernooi of kom kijken." />
-  <meta property="og:image" content="http://localhost:4795/og-neutraal.png" />
+  <meta property="og:image" content="http://localhost:4795/og/sporthub-liggend.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="JVO Sportdag, zondag 22 november 2026, Sportcampus Zuiderpark, Den Haag." />
@@ -20,7 +20,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="JVO Sportdag — Aanmelden" />
   <meta name="twitter:description" content="Zondag 22 november 2026 · Sportcampus Zuiderpark, Den Haag · Sportdag · Gratis" />
-  <meta name="twitter:image" content="http://localhost:4795/og-neutraal.png" />
+  <meta name="twitter:image" content="http://localhost:4795/og/sporthub-liggend.jpg" />
   <link rel="icon" type="image/png" href="/icons/favicon.png" />
   <link rel="apple-touch-icon" href="/icons/jvo-192.png" />
   <meta name="theme-color" content="#06193A" /><script src="/sh-bal3d.js" defer></script><script src="/sh-beweging.js" defer></script>
@@ -96,6 +96,8 @@
     html[data-theme="sporthub"] .sh-sr-midden { position: absolute; inset: 24%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; z-index: 2; }
     html[data-theme="sporthub"] .hero-intro .sh-sr-midden .eyebrow { font-size: 9px; line-height: 1.6; letter-spacing: .14em; margin: 0; text-wrap: balance; }
     html[data-theme="sporthub"] .hero-intro .sh-sr-midden h1.h-display { font-size: clamp(25px, 7vw, 32px) !important; line-height: 1.04; max-width: none; margin: 0; padding: 0; text-align: center; text-wrap: balance; }
+    /* de kop in de ring staat altijd op drie regels (het thema verbergt <br> elders op telefoon) */
+    html[data-theme="sporthub"] .hero-intro .sh-sr-midden h1.h-display br { display: inline; }
     html[data-theme="sporthub"] .hero-intro.sh-multi .lead { text-align: center; margin-left: auto; margin-right: auto; margin-top: 6px; }
     html[data-theme="sporthub"] .hero-intro.sh-multi .sh-feiten { display: none; }
     /* "Kies je sport" in de hero: blauwe tegels, de gekozen wit met een oranje ring */
@@ -181,7 +183,7 @@
         <span class="brand-text-short"><b>JVO</b> · <span data-ev="shortName">Sportdag</span></span>
       </div>
       <nav>
-        <a class="sh-nav-live" href="/toernooi">Live bord</a>
+        <a class="sh-nav-live" href="/sporten">Live bord</a>
         
       </nav>
     </header>
@@ -241,7 +243,7 @@
           
           
           <!-- Stijl "sporthub": voorproefje van het live bord als kaartje (tikbaar; de inhoud is sier). -->
-          <a class="sh-kaart sh-voorproef" href="/toernooi" aria-label="Bekijk het live bord">
+          <a class="sh-kaart sh-voorproef" href="/sporten" aria-label="Bekijk het live bord">
             <span class="sh-kaart-l" aria-hidden="true">
               <span class="sh-kaart-k"><em>Live</em> Zo volg je de stand</span>
               <span class="sh-kaart-tm"><span>Jouw team</span><b>0</b></span>
@@ -353,7 +355,7 @@
 
             <div id="panel-team" role="tabpanel" aria-labelledby="tab-team" style="display:none;">
               <div style="border-top: 1px dashed var(--line-strong); margin: 24px 0 18px; padding-top: 18px;">
-                <div class="card-eyebrow" style="margin-bottom:6px;">Jouw team</div>
+                <div class="card-eyebrow" id="team-eyebrow" style="margin-bottom:6px;">Jouw team</div>
               </div>
               <!-- Sport-hub: sportkeuze — alleen zichtbaar bij meer dan één sport (app.js vult hem
                    uit /api/competitions). De gekozen tegel komt op het kaartje eronder. -->
@@ -439,7 +441,7 @@
               <a class="js-contact-mail" href="mailto:enschede@jvonl.nl">enschede@jvonl.nl</a> als je iets wil weten.
             </p>
             <div class="reg-closed-actions">
-              <a class="btn full" href="/toernooi">Bekijk het live-bord →</a>
+              <a class="btn full" href="/sporten">Bekijk het live-bord →</a>
               <a class="btn ghost full" href="/spelregels">Spelregels</a>
             </div>
           </div>

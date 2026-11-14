@@ -1059,17 +1059,7 @@ html[data-theme="sporthub"] :where(body.tn details.help .help-body .off b) { col
 html[data-theme="sporthub"] :where(body.tn details.help .help-body .off svg.off-ic) { color: var(--b-oranje); }
 html[data-theme="sporthub"] :where(body.tn details.help .help-body a) { color: #fff; }
 
-/* offline-balk + toast (offline-ui.js zet zijn eigen <style> later in de <head>;
-   de id-selectors hier winnen op specificiteit) */
-html[data-theme="sporthub"] body.tn #jvo-net-bar { box-shadow: 0 -6px 24px rgba(2, 9, 24, .4); font-family: var(--body, 'Geist', system-ui, sans-serif); }
-html[data-theme="sporthub"] body.tn #jvo-net-bar.off { background: var(--b-oranje); color: var(--b-navy); }
-html[data-theme="sporthub"] body.tn #jvo-net-bar.sync { background: #fff; color: var(--b-navy); }
-html[data-theme="sporthub"] body.tn #jvo-net-toast { background: #fff; border: 0; border-radius: 16px; color: var(--b-navy); box-shadow: 0 16px 40px rgba(2, 9, 24, .55); }
-html[data-theme="sporthub"] body.tn #jvo-net-toast .jt-ic,
-html[data-theme="sporthub"] body.tn #jvo-net-toast.warn .jt-ic { background: rgba(6, 25, 58, .09); }
-html[data-theme="sporthub"] body.tn #jvo-net-toast .jt-ic svg { stroke: var(--b-navy); }
-html[data-theme="sporthub"] body.tn #jvo-net-toast .jt-pb,
-html[data-theme="sporthub"] body.tn #jvo-net-toast.warn .jt-pb { background: var(--b-oranje); }
+/* offline-balk + toast: staan in thema-sporthub.css (sectie 3) en gelden op elke pagina. */
 
 /* ── 6. BEWEGING ──────────────────────────────────────────────────────────────
    Dezelfde taal als de aanmeldpagina (zie thema-sporthub.css, sectie 6): de ring
@@ -1155,4 +1145,11 @@ html[data-theme="sporthub"] body.tn #jvo-net-toast.warn .jt-pb { background: var
   html[data-theme="sporthub"] body.tn .tn-up.soon::after { animation: sh-adem 2.6s ease-in-out infinite; }
   html[data-theme="sporthub"] body.tn.screen .tn-up.soon::before,
   html[data-theme="sporthub"] body.tn.screen .tn-up.soon::after { animation-duration: 4s; }
+}
+
+/* lange teamnamen: eerst op een woordgrens, dan met een afbreekstreepje (lang=nl);
+   pas als dat niet kan mag de bestaande noodbreuk (overflow-wrap) midden in een woord */
+html[data-theme="sporthub"] body.tn :is(.tn-goal-team, .tn-sb-nm, .tn-prehero-team, .tn-up-vs, .tn-up-vs span, .tn-next-vs, .tn-gname, .tn-name b,
+  .tn-mynext-row b, .tn-hero-name, .tn-myopp, .tn-champ-name, .tn-profile-name, .tn-bracket-cols .tn-tie .tr > span:not(.gs)) {
+  -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4;
 }

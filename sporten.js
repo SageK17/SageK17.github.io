@@ -115,8 +115,10 @@
   }
 
   function leeg(text) { return `<p class="leeg">${esc(text)}</p>`; }
-  function pauze(text) {
-    return `<div class="pauze" role="status"><b>Pauze</b>${esc(text)} Wat al bezig is wordt uitgespeeld; de rest begint later. De tijden hieronder schuiven mee zodra er weer gespeeld wordt.</div>`;
+  // De reden die de organisatie bij de pauze typte staat vooraan (vrije tekst → esc()).
+  const zin = (t) => { const x = String(t || '').trim(); return x && !/[.!?…]$/.test(x) ? `${x}.` : x; };
+  function pauze(text, reden) {
+    return `<div class="pauze" role="status"><b>Pauze</b>${reden ? `${esc(zin(reden))} ` : ''}${esc(text)} Wat al bezig is wordt uitgespeeld; de rest begint later. De tijden hieronder schuiven mee zodra er weer gespeeld wordt.</div>`;
   }
 
   function renderTabs() {
@@ -148,15 +150,23 @@
     renderTabs();
     const live = tab === 'alles' ? data.now : data.now.filter(c => String(c.comp_id) === tab);
     const sportsLive = new Set(data.now.map(c => c.comp_id)).size;
-    $('sub').textContent = `${data.now.length} ${data.now.length === 1 ? 'wedstrijd' : 'wedstrijden'} · ${sportsLive} ${sportsLive === 1 ? 'sport' : 'sporten'}`;
+    // Niets live: geen "0 wedstrijden · 0 sporten", maar wat er wél te zien is.
+    const klaar = data.competitions.some(c => Array.isArray(c.final_standing) && c.final_standing.length);
+    $('sub').textContent = data.now.length
+      ? `${data.now.length} ${data.now.length === 1 ? 'wedstrijd' : 'wedstrijden'} · ${sportsLive} ${sportsLive === 1 ? 'sport' : 'sporten'}`
+      : (data.next[0] ? (data.next[0].expected ? `Straks · ${data.next[0].expected}` : 'Straks') : (klaar ? 'Uitslagen' : 'Nog geen wedstrijden'));
     const pill = $('pill');
-    if (data.now.length) { pill.textContent = '● Live'; pill.classList.add('live'); pill.removeAttribute('href'); }
-    else { pill.textContent = 'Aanmelden'; pill.classList.remove('live'); pill.setAttribute('href', '/'); }
+    // "Aanmelden" hoort alleen bij een dag zonder schema; tussen de rondes door en na
+    // afloop staat er geen knop naar het aanmeldformulier.
+    if (data.now.length) { pill.textContent = '● Live'; pill.classList.add('live'); pill.removeAttribute('href'); pill.hidden = false; }
+    else { pill.textContent = 'Aanmelden'; pill.classList.remove('live'); pill.setAttribute('href', '/'); pill.hidden = klaar || data.competitions.some(c => c.configured); }
 
     let html = '';
     if (tab === 'alles') {
       const stil = data.competitions.filter(c => c.paused);
-      if (stil.length) html += pauze(stil.length === 1 ? `${stil[0].name} ligt even stil.` : `Even pauze bij ${stil.map(c => c.name).join(', ')}.`);
+      // De reden is er één voor het hele evenement: één keer tonen.
+      if (stil.length) html += pauze(stil.length === 1 ? `${stil[0].name} ligt even stil.` : `Even pauze bij ${stil.map(c => c.name).join(', ')}.`,
+        (stil.find(c => c.pause_message) || {}).pause_message || '');
       html += live.length ? `<div class="list" style="margin-top:22px">${live.map(kaart).join('')}</div>`
         : `<div style="margin-top:22px">${leeg(data.next.length ? 'Er wordt nu even niets gespeeld. Hieronder zie je wat er straks komt.' : 'Er wordt nu niets gespeeld.')}</div>`;
       html += straks(data.next.slice(0, 8));
@@ -167,14 +177,14 @@
     } else {
       const comp = compOf(Number(tab));
       if (!comp) return;
-      if (comp.paused) html += pauze(`${comp.name} ligt even stil.`);
+      if (comp.paused) html += pauze(`${comp.name} ligt even stil.`, comp.pause_message || '');
       html += live.length ? `<div class="list" style="margin-top:22px">${live.map(kaart).join('')}</div>`
         : `<div style="margin-top:22px">${leeg(comp.configured ? `Bij ${comp.name} wordt nu niets gespeeld.` : `Het schema van ${comp.name} komt hier zodra het klaar is.`)}</div>`;
       html += straks(data.next.filter(c => c.comp_id === comp.id).slice(0, 6));
       html += eindstand(comp);
       html += standen(comp);
       html += knockout(comp);
-      if (comp.is_default) html += `<a class="meer" href="/toernooi">Het volledige bord van ${esc(comp.name)} →</a>`;
+      if (comp.is_default) html += `<a class="meer" href="/toernooi.html">Het volledige bord van ${esc(comp.name)} →</a>`;
     }
     $('paneel').innerHTML = html;
     $('voet').textContent = stale ? 'Geen verbinding — dit is de laatst bekende stand.'
@@ -261,13 +271,16 @@
     try { const s = await currentSub(); if (!s) return true; return (await post('/api/team-follow/unsubscribe', { endpoint: s.endpoint, team_id: id })).ok; }
     catch { return false; }
   }
-  async function addFollow(id) {
+  // opts.subscribe === false (een link, geen tik): staan meldingen al aan, dan komt het
+  // team erbij met `wacht` en gaat er NIETS naar de server tot de tik op de knop.
+  async function addFollow(id, opts) {
     if (myIds().has(id)) return;
     const t = allTeams().find(x => x.id === id);
     if (!t) return;
-    mine.push({ id: t.id, name: t.name, comp: t.comp });
+    const wacht = pushOn() && !!opts && opts.subscribe === false;
+    mine.push(wacht ? { id: t.id, name: t.name, comp: t.comp, wacht: true } : { id: t.id, name: t.name, comp: t.comp });
     saveMine();
-    if (pushOn() && !(await subscribeTeam(t.id))) volgMsg(`Meldingen voor ${t.name} aanzetten lukte net niet. Zet meldingen even uit en weer aan.`);
+    if (pushOn() && !wacht && !(await subscribeTeam(t.id))) volgMsg(`Meldingen voor ${t.name} aanzetten lukte net niet. Zet meldingen even uit en weer aan.`);
     render();
   }
   async function removeFollow(id) {
@@ -291,6 +304,8 @@
       for (const t of mine) if (ok && !(await subscribeTeam(t.id, sub))) ok = false;
       if (!ok) { volgMsg('Meldingen aanzetten lukte net niet — het is even druk. Probeer het over een minuutje opnieuw.'); return; }
       ls.set(PUSH_KEY, '1');
+      for (const t of mine) delete t.wacht;
+      saveMine();
       volgMsg('Meldingen staan aan.');
     } catch { volgMsg('Meldingen aanzetten lukte niet. Probeer het opnieuw.'); }
     finally { btn.disabled = false; renderVolg(); }
@@ -302,6 +317,8 @@
     btn.disabled = false;
     if (!ok) { volgMsg('Uitzetten lukte net niet — probeer het zo nog een keer.'); return; }
     ls.del(PUSH_KEY);
+    for (const t of mine) delete t.wacht;
+    saveMine();
     volgMsg('Meldingen staan uit. Je team blijft hier wel gemarkeerd.');
     renderVolg();
   }
@@ -319,11 +336,13 @@
     // De server kan meldingen voor dit bord uitzetten (push: false in /api/hub).
     const pushOk = data.push !== false;
     const on = pushOn() && pushOk;
+    // Teams die via een link zijn klaargezet terwijl meldingen al aan stonden.
+    const wacht = on && mine.some(t => t.wacht);
     const sig = JSON.stringify([teams.map(t => [t.id, t.name, t.comp_name]), mine, on, pushOk, data.multi]);
     if (sig === volgSig) return;      // niets veranderd → de open keuzelijst met rust laten
     volgSig = sig;
     const st = $('volg-st');
-    st.textContent = mine.length ? `${mine.length === 1 ? mine[0].name : `${mine.length} teams`}${on ? ' · meldingen aan' : ''}` : '';
+    st.textContent = mine.length ? `${mine.length === 1 ? mine[0].name : `${mine.length} teams`}${on ? (wacht ? ' · meldingen deels aan' : ' · meldingen aan') : ''}` : '';
     st.classList.toggle('aan', on);
     const compName = (id) => { const c = compOf(id); return c ? c.name : ''; };
     $('volg-lijst').innerHTML = mine.map(t => `<span class="volg-chip"><span>${esc(t.name)}</span>${data.multi && compName(t.comp) ? `<small>${esc(compName(t.comp))}</small>` : ''}
@@ -341,9 +360,10 @@
     }).join('');
     $('volg-uitleg').textContent = !mine.length ? 'Kies je team: het wordt hier gemarkeerd, zodat je in één oogopslag ziet wanneer en waar je speelt.'
       : (!pushOk ? 'Je team is hier gemarkeerd.'
-        : (on ? 'Meldingen staan aan op dit toestel. Uitzetten kan altijd met de knop hieronder.'
+        : (wacht ? 'Tik op ‘Zet meldingen aan’ om ook voor de nieuwe teams een seintje te krijgen. Voor de andere teams staan meldingen al aan.'
+          : on ? 'Meldingen staan aan op dit toestel. Uitzetten kan altijd met de knop hieronder.'
           : 'Wil je ook een seintje op je telefoon als je team speelt? Zet meldingen aan. Dat gebeurt alleen als jij op de knop tikt en je browser toestemming geeft; uitzetten kan altijd.'));
-    $('volg-aan').hidden = !(mine.length && pushOk && !on);
+    $('volg-aan').hidden = !(mine.length && pushOk && (!on || wacht));
     $('volg-uit').hidden = !(mine.length && on);
   }
   $('volg-kies').addEventListener('change', (e) => { const id = parseInt(e.target.value, 10); e.target.value = ''; if (Number.isInteger(id)) addFollow(id); });
@@ -364,7 +384,7 @@
     const teams = allTeams();
     if (ids.length && !teams.length) return;   // schema nog niet geladen → volgende keer
     inviteDone = true;
-    for (const id of ids) await addFollow(id);
+    for (const id of ids) await addFollow(id, { subscribe: false });
     // Eerste gevolgde team bepaalt het tabblad als de link er geen noemde.
     if (!tabFromUrl() && ids.length) { const t = teams.find(x => x.id === ids[0]); if (t && data.multi) { tab = String(t.comp); } }
     // Adresbalk opruimen. Een persoonlijke sleutel achter de # (uit een captain-mail)
@@ -379,6 +399,7 @@
       box.open = true; box.classList.add('wijs');
       setTimeout(() => box.classList.remove('wijs'), 6000);
       if (wants && data.push !== false && !pushOn()) volgMsg(mine.length ? 'Tik op ‘Zet meldingen aan’ om een seintje te krijgen.' : 'Kies eerst je team. Daarna kun je meldingen aanzetten.');
+      else if (data.push !== false && pushOn() && mine.some(t => t.wacht)) volgMsg('Tik op ‘Zet meldingen aan’ om ook voor de nieuwe teams een seintje te krijgen.');
     }
   }
 
@@ -414,20 +435,35 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && (pendingWhileHidden || Date.now() - lastLoad > 20000)) { pendingWhileHidden = false; signal(); }
   });
-  let sseOk = false;
-  (function connect(lite) {
+  let sseOk = false, retryMs = 5000, retryTimer = null, retryWaiting = false;
+  function connect(lite) {
     if (typeof EventSource === 'undefined') return;
     let es, opened = false;
     try { es = new EventSource(lite ? '/api/tournament/stream?lite=1' : '/api/tournament/stream'); } catch { return; }
-    es.addEventListener('open', () => { opened = true; sseOk = true; });
+    es.addEventListener('open', () => { opened = true; sseOk = true; retryMs = 5000; });
     es.addEventListener('update', signal);
     es.addEventListener('error', () => {
       sseOk = false;
-      // De lichte stream bestaat (nog) niet op deze server (de browser geeft het dan
-      // op: CLOSED; bij een haperende verbinding blijft hij zelf opnieuw proberen).
-      if (lite && !opened && es.readyState === 2) connect(false);
+      // Bij een haperende verbinding probeert de browser zelf opnieuw (CONNECTING).
+      if (es.readyState !== 2) return;
+      // De lichte stream bestaat (nog) niet op deze server → de gewone proberen.
+      if (lite && !opened) { connect(false); return; }
+      // CLOSED: de browser geeft het op na een antwoord dat geen stream is (502/503 van
+      // de proxy tijdens een herstart, of de server zit vol). Zelf opnieuw verbinden,
+      // steeds rustiger (5 s → 60 s, plus spreiding); intussen ververst het vangnet.
+      try { es.close(); } catch {}
+      if (retryTimer || retryWaiting) return;
+      if (document.hidden) { retryWaiting = true; return; }
+      const wait = retryMs + Math.random() * 5000;
+      retryMs = Math.min(60000, retryMs * 2);
+      retryTimer = setTimeout(() => { retryTimer = null; connect(true); }, wait);
     });
-  })(true);
+  }
+  connect(true);
+  // Viel de stream weg terwijl de pagina op de achtergrond stond: opnieuw verbinden bij terugkomst.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && retryWaiting && !retryTimer) { retryWaiting = false; connect(true); }
+  });
   // Vangnet: zonder stream elke 20 s, mét stream alleen als het een minuut stil was.
   setInterval(() => { if (!document.hidden && (!sseOk || Date.now() - lastLoad > 60000)) load(); }, 20000);
   window.addEventListener('online', signal);

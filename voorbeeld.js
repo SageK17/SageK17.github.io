@@ -16,5 +16,6 @@
   NepBron.prototype.removeEventListener = function () {};
   NepBron.prototype.close = function () {};
   window.EventSource = NepBron;
-  try { if (navigator.serviceWorker) navigator.serviceWorker.register = function () { return new Promise(function () {}); }; } catch (e) {}
+  try { if (navigator.serviceWorker) { navigator.serviceWorker.register = function () { return new Promise(function () {}); };
+    navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); } } catch (e) {}
 })();

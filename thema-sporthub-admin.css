@@ -1,0 +1,888 @@
+/* ================================================================
+   STIJL "SPORTHUB" — de ADMIN (public/admin.html, body.adm)
+   ----------------------------------------------------------------
+   Wordt door de pagina-vuller (server.js, THEME_EXTRA) als laatste
+   stylesheet geladen op /admin wanneer de stijl van het evenement
+   'sporthub' is. ELKE regel staat onder
+     html[data-theme="sporthub"] body.adm
+   De stijl 'schemering' (Open Dag) laadt dit bestand niet.
+
+   Het is een WERKSCHERM: dezelfde taal als de publiekspagina's
+   (logo-blauw, wit, oranje, dunne rode lijn, Unbounded + Geist +
+   Geist Mono), maar compacter. Unbounded alleen voor koppen en
+   kerngetallen, en kleiner dan op de voorkant.
+
+   Afspraken
+   - Pagina logo-blauw; panelen (sectie, vouw) blauw-2 met dunne rand.
+   - Wat veel tekst of rijen draagt staat op een WIT kaartje:
+     teamkaartjes, tabellen, modals, meldingen.
+   - Knoppen: oranje pil met blauwe tekst = dé hoofdactie van een
+     paneel; al het andere is een randpil; gevaarlijk = wit met rode
+     rand en rode tekst (rood staat nooit als kleine tekst op blauw).
+   - Status is nooit alleen kleur (zie 3. Status).
+   - Telefoon: alles waar je op tikt is minstens 44px hoog.
+
+   Opbouw
+     1. Tokens (ook voor nieuwe admin-onderdelen te gebruiken)
+     2. Basis: schil, balk, tabs, koppen, panelen, vouwen
+     3. Status: pillen, labels, stippen
+     4. Knoppen
+     5. Formulieren
+     6. Overzicht (tegels, aandacht, JVO Smart, evenement, mails…)
+     7. Teams (uitleg, filters, teamkaartjes)
+     8. Toernooi (regie, opzet, tijden, sporten, logo's, meldingen)
+     9. Programma, Aanmeldingen, Logboek (tabellen)
+    10. Modals en meldingen
+    11. Telefoon
+    12. Minder beweging
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   1. TOKENS
+   Te gebruiken door elk admin-onderdeel (ook nieuwe, bv. rg-…):
+     var(--adm-vlak)      paneel op de pagina (blauw-2)
+     var(--adm-vlak-in)   vlak bínnen een paneel (logo-blauw)
+     var(--adm-rand)      dunne rand van een paneel/tegel
+     var(--adm-rand-2)    duidelijke rand (knop, veld: ≥ 3:1)
+     var(--adm-tekst)     tekst · var(--adm-tekst-2) bijschrift
+     var(--adm-actie)     oranje vlak · var(--adm-op-actie) tekst erop
+     var(--adm-fout)      rode LIJN/rand op dit vlak (op wit ook tekst)
+     var(--adm-r)         hoek paneel · --adm-r-in tegel · --adm-r-veld veld
+     var(--adm-knop)      hoogte kleine knop · --adm-knop-g grote knop
+   Op een wit kaartje (.modal, .tm-card, tabelkaart of zelf de klasse
+   .adm-wit zetten) draaien dezelfde namen om: tekst wordt blauw.
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm {
+  --adm-vlak: #0D2550;
+  --adm-vlak-in: #06193A;
+  --adm-rand: rgba(246, 247, 251, .2);
+  --adm-rand-2: rgba(246, 247, 251, .46);
+  --adm-tekst: #F6F7FB;
+  --adm-tekst-2: rgba(246, 247, 251, .82);
+  --adm-actie: #FF6B1A;
+  --adm-op-actie: #06193A;
+  --adm-fout: #F0685E;
+  --adm-tint: rgba(246, 247, 251, .07);
+  --adm-r: 18px;
+  --adm-r-in: 12px;
+  --adm-r-veld: 10px;
+  --adm-knop: 38px;
+  --adm-knop-g: 46px;
+  --adm-kop: 'Unbounded', 'Geist', system-ui, sans-serif;
+  --adm-label: 'Geist Mono', ui-monospace, monospace;
+}
+/* het witte kaartje: zelfde namen, omgekeerd (ook de thema-namen, zodat
+   bestaande onderdelen erin vanzelf goed kleuren) */
+html[data-theme="sporthub"] body.adm :is(.modal, .tm-card, .adm-wit, .login-card, .tc-fmt.sel, .section div[style*="overflow-x"]) {
+  --adm-vlak: #FFFFFF;
+  --adm-vlak-in: #F6F7FB;
+  --adm-rand: rgba(6, 25, 58, .14);
+  --adm-rand-2: rgba(6, 25, 58, .5);
+  --adm-tekst: #06193A;
+  --adm-tekst-2: #4A4F72;
+  --adm-fout: #C4382E;
+  --adm-tint: rgba(6, 25, 58, .05);
+  --midnight: #FFFFFF;
+  --midnight-2: #F6F7FB;
+  --midnight-3: #E7E9F2;
+  --ember: #06193A;
+  --ember-2: #06193A;
+  --gold: #06193A;
+  --gold-2: #06193A;
+  --ice: #06193A;
+  --ice-muted: #4A4F72;
+  --ice-faint: #4A4F72;
+  --line: rgba(6, 25, 58, .14);
+  --line-strong: rgba(6, 25, 58, .5);
+  --danger: #C4382E;
+  --success: #06193A;
+  --sh-focus: #06193A;
+  color: #06193A;
+  color-scheme: light;
+}
+
+/* ----------------------------------------------------------------
+   2. BASIS
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm .admin-shell { padding-top: 16px; }
+
+/* --- balk: merk links, snelkoppelingen als pillen ---------------- */
+html[data-theme="sporthub"] body.adm .topbar { flex-wrap: wrap; row-gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--adm-rand); }
+html[data-theme="sporthub"] body.adm .topbar .brand-badge { flex: 1 1 220px; }
+html[data-theme="sporthub"] body.adm .topbar nav { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+html[data-theme="sporthub"] body.adm .topbar nav a.nav-link-icon { gap: 6px; }
+html[data-theme="sporthub"] body.adm .topbar nav a.nav-link-icon svg { flex: none; }
+
+/* --- "Ingelogd als" --------------------------------------------- */
+html[data-theme="sporthub"] body.adm .who { margin: 14px 0 2px; gap: 10px; font-size: 13px; color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .who b { color: #fff; font-weight: 700; margin-left: 4px; }
+html[data-theme="sporthub"] body.adm .live-status {
+  font-family: var(--adm-label); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #fff;
+  border: 1.5px solid var(--adm-rand-2); border-radius: 999px; padding: 0 11px; min-height: 28px; gap: 7px; background: transparent;
+}
+html[data-theme="sporthub"] body.adm .live-dot { background: var(--adm-actie); box-shadow: none; animation: adm-puls 2s ease-out infinite; }
+html[data-theme="sporthub"] body.adm .live-status.stale .live-dot, html[data-theme="sporthub"] body.adm .live-status.off .live-dot { background: transparent; box-shadow: inset 0 0 0 1.5px #fff; animation: none; }
+@keyframes adm-puls { 0% { box-shadow: 0 0 0 0 rgba(255, 107, 26, .55); } 70% { box-shadow: 0 0 0 7px rgba(255, 107, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 107, 26, 0); } }
+
+/* --- tabs: randpillen, de actieve is wit (zoals de sportkeuze) --- */
+html[data-theme="sporthub"] body.adm .tabs { gap: 8px; margin: 18px 0 22px; border-bottom: 0; }
+html[data-theme="sporthub"] body.adm .tab-btn,
+html[data-theme="sporthub"] body.adm .tab-btn:hover {
+  font-family: var(--body); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.2;
+  background: transparent; color: #fff; border: 1.5px solid var(--adm-rand-2); border-radius: 999px;
+  padding: 0 18px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 0;
+}
+html[data-theme="sporthub"] body.adm .tab-btn:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.adm .tab-btn.active,
+html[data-theme="sporthub"] body.adm .tab-btn.active:hover { background: #fff; color: #06193A; border-color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .tab-btn .badge,
+html[data-theme="sporthub"] body.adm .tab-btn.active .badge {
+  background: var(--adm-actie); color: #06193A; font-family: var(--body); font-size: 11px; font-weight: 700; line-height: 18px;
+  min-width: 18px; height: 18px; padding: 0 5px; margin: 0; border-radius: 999px; vertical-align: 0;
+}
+
+/* --- koppen ------------------------------------------------------ */
+html[data-theme="sporthub"] body.adm :is(.section, .how-card, .modal, .attention) h3 {
+  font-family: var(--adm-kop); font-weight: 800; text-transform: none; letter-spacing: -.015em; line-height: 1.15;
+  font-size: 17px; color: var(--adm-tekst); overflow-wrap: anywhere;
+}
+html[data-theme="sporthub"] body.adm h4 { font-family: var(--adm-kop); font-weight: 700; text-transform: none; letter-spacing: -.01em; }
+/* het kleine label boven een kop: mono, met het rode streepje. Rood als
+   TEKST alleen op wit (5,3:1); op blauw is het label wit. */
+html[data-theme="sporthub"] body.adm .card-eyebrow {
+  position: relative; display: block; padding-left: 30px; margin-bottom: 6px;
+  font-family: var(--adm-label); font-size: 10px; font-weight: 600; letter-spacing: .16em; line-height: 1.6; text-transform: uppercase;
+  color: #fff;
+}
+html[data-theme="sporthub"] body.adm .card-eyebrow::before { content: ''; position: absolute; left: 0; top: .8em; margin-top: -1px; width: 22px; height: 1.5px; background: #F0685E; }
+html[data-theme="sporthub"] body.adm :is(.modal, .login-card, .adm-wit) .card-eyebrow { color: #C4382E; padding-left: 0; }
+html[data-theme="sporthub"] body.adm :is(.modal, .login-card, .adm-wit) .card-eyebrow::before { content: none; }
+html[data-theme="sporthub"] body.adm :is(.tc-sub-label, .tcz-sub-label) {
+  font-family: var(--adm-label); font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--adm-tekst); margin: 6px 0 10px; position: relative; padding-left: 30px;
+}
+html[data-theme="sporthub"] body.adm :is(.tc-sub-label, .tcz-sub-label)::before { content: ''; position: absolute; left: 0; top: .75em; margin-top: -1px; width: 22px; height: 1.5px; background: #F0685E; }
+html[data-theme="sporthub"] body.adm :is(.modal, .adm-wit) :is(.tc-sub-label, .tcz-sub-label)::before { background: #C4382E; }
+html[data-theme="sporthub"] body.adm fieldset.evc-group { margin-bottom: 26px; }
+html[data-theme="sporthub"] body.adm .evc-group > legend { margin-bottom: 12px; }
+html[data-theme="sporthub"] body.adm .small.muted, html[data-theme="sporthub"] body.adm .muted { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm code, html[data-theme="sporthub"] body.adm .mono-inline {
+  font-family: var(--adm-label); font-size: .88em; background: var(--adm-tint); color: var(--adm-tekst);
+  border: 1px solid var(--adm-rand); border-radius: 6px; padding: 1px 6px;
+}
+
+/* --- panelen en vouwen ------------------------------------------- */
+html[data-theme="sporthub"] body.adm .section {
+  background: var(--adm-vlak); border: 1px solid var(--adm-rand); border-radius: var(--adm-r); padding: 20px 22px; margin-bottom: 14px;
+}
+html[data-theme="sporthub"] body.adm .section .section-sub { font-size: 13.5px; line-height: 1.55; color: var(--adm-tekst-2); margin-bottom: 16px; max-width: 78ch; }
+html[data-theme="sporthub"] body.adm .section .section-sub b { color: var(--adm-tekst); font-weight: 600; }
+html[data-theme="sporthub"] body.adm .section-head { margin-bottom: 12px; }
+html[data-theme="sporthub"] body.adm details.section.fold { padding: 0; margin-bottom: 10px; }
+html[data-theme="sporthub"] body.adm details.fold > summary { padding: 0 20px; min-height: 56px; gap: 12px; border-radius: var(--adm-r); }
+html[data-theme="sporthub"] body.adm details.fold[open] > summary { padding-bottom: 0; min-height: 56px; }
+html[data-theme="sporthub"] body.adm details.fold > summary h3 { font-size: 15px; font-weight: 700; }
+html[data-theme="sporthub"] body.adm details.fold > summary .fold-chev { width: 18px; height: 18px; color: #fff; }
+html[data-theme="sporthub"] body.adm details.fold > summary:hover { background: var(--adm-tint); }
+html[data-theme="sporthub"] body.adm details.fold[open] > summary:hover { background: transparent; }
+html[data-theme="sporthub"] body.adm details.fold > summary:focus-visible { outline: 3px solid #fff; outline-offset: -3px; border-radius: var(--adm-r); }
+html[data-theme="sporthub"] body.adm details.fold > .fold-body { padding: 2px 20px 20px; }
+html[data-theme="sporthub"] body.adm .tc-empty-cta, html[data-theme="sporthub"] body.adm .tcz-empty, html[data-theme="sporthub"] body.adm .empty-state { color: var(--adm-tekst-2); font-size: 14px; }
+
+/* "Hoe werkt dit?" volgt het thema; hier alleen de maat van een werkscherm */
+html[data-theme="sporthub"] body.adm details.help { border-width: 1px; border-color: var(--adm-rand); border-radius: var(--adm-r); margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .foot { border-top-color: var(--adm-rand); }
+
+/* ----------------------------------------------------------------
+   3. STATUS — nooit alleen kleur
+     moet nu iets mee / live      oranje vlak, blauwe tekst
+     in orde / klaar              wit vlak, blauwe tekst
+     aanwezig (ingecheckt)        randpil met een vinkje
+     wacht (wachtlijst, gepland)  streepjesrand
+     fout / afgewezen             rode rand (op wit ook rode tekst)
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm .pill {
+  font-family: var(--adm-label); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.4;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; margin: 0; border-radius: 999px;
+  border: 1.5px solid var(--adm-rand-2); background: transparent; color: var(--adm-tekst); white-space: nowrap;
+}
+html[data-theme="sporthub"] body.adm .pill.approved { background: #fff; border-color: #fff; color: #06193A; }
+html[data-theme="sporthub"] body.adm .pill.pending { background: var(--adm-actie); border-color: var(--adm-actie); color: #06193A; }
+html[data-theme="sporthub"] body.adm .pill.waitlist { background: transparent; border-style: dashed; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .pill.rejected { background: transparent; border-color: var(--adm-fout); color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .pill.checked-in { background: transparent; border-color: var(--adm-rand-2); color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .pill.checked-in::before { content: ''; width: 9px; height: 5px; margin-top: -3px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); flex: none; }
+html[data-theme="sporthub"] body.adm :is(.pill.renamed, .pill.waiting-rename, .pill.waiting-count),
+html[data-theme="sporthub"] body.adm :is(.pill.renamed, .pill.waiting-rename, .pill.waiting-count):hover { background: var(--adm-tint); border-color: var(--adm-rand-2); border-style: dotted; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm :is(.pill.renamed, .pill.waiting-rename, .pill.waiting-count):hover { border-style: solid; }
+/* dezelfde pillen op een wit kaartje */
+html[data-theme="sporthub"] body.adm :is(.modal, .tm-card, .adm-wit, .section div[style*="overflow-x"]) .pill.approved { background: #06193A; border-color: #06193A; color: #fff; }
+html[data-theme="sporthub"] body.adm :is(.modal, .tm-card, .adm-wit, .section div[style*="overflow-x"]) .pill.rejected { color: #C4382E; background: #fff; }
+
+/* de grote staat-pil rechtsboven een paneel */
+html[data-theme="sporthub"] body.adm .tc-statebadge { font-family: var(--adm-label); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; padding: 0 14px; min-height: 32px; }
+html[data-theme="sporthub"] body.adm .tc-statebadge.on { background: var(--adm-actie); color: #06193A; border: 1.5px solid var(--adm-actie); }
+html[data-theme="sporthub"] body.adm .tc-statebadge.off { background: transparent; color: var(--adm-tekst); border: 1.5px solid var(--adm-rand-2); }
+html[data-theme="sporthub"] body.adm .tc-statebadge.off .d { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
+html[data-theme="sporthub"] body.adm .tc-statebadge.on .d { animation: adm-puls-in 1.8s ease-out infinite; }
+@keyframes adm-puls-in { 0% { box-shadow: 0 0 0 0 rgba(6, 25, 58, .5); } 70% { box-shadow: 0 0 0 6px rgba(6, 25, 58, 0); } 100% { box-shadow: 0 0 0 0 rgba(6, 25, 58, 0); } }
+
+/* haalbaarheid van de dag */
+html[data-theme="sporthub"] body.adm .feas-pill { font-family: var(--adm-label); font-size: 10.5px; padding: 3px 10px; border: 1.5px solid transparent; }
+html[data-theme="sporthub"] body.adm .feas-pill.feas-ok { background: #fff; color: #06193A; border-color: #fff; }
+html[data-theme="sporthub"] body.adm .feas-pill.feas-warn { background: var(--adm-actie); color: #06193A; border-color: var(--adm-actie); }
+html[data-theme="sporthub"] body.adm .feas-pill.feas-crit { background: #fff; color: #C4382E; border-color: #C4382E; }
+
+/* kleine labels */
+html[data-theme="sporthub"] body.adm .evc-badge {
+  font-family: var(--adm-label); font-size: 10px; letter-spacing: .08em; padding: 3px 10px;
+  background: transparent; color: #fff; border: 1.5px solid #F0685E;
+}
+html[data-theme="sporthub"] body.adm #hub-badge.evc-badge { border-color: var(--adm-rand-2); }
+html[data-theme="sporthub"] body.adm .tc-poule-chip { font-family: var(--adm-label); background: transparent; color: var(--adm-tekst); border: 1px solid var(--adm-rand-2); border-radius: 999px; padding: 2px 8px; }
+html[data-theme="sporthub"] body.adm .reminder-badge { font-family: var(--adm-label); font-size: 10px; font-weight: 700; letter-spacing: .08em; background: transparent; color: var(--adm-tekst); border: 1.5px solid var(--adm-rand-2); padding: 3px 10px; }
+html[data-theme="sporthub"] body.adm .reminder-badge.due { background: var(--adm-actie); border-color: var(--adm-actie); color: #06193A; }
+html[data-theme="sporthub"] body.adm .reminder-badge.done { background: #fff; border-color: #fff; color: #06193A; }
+html[data-theme="sporthub"] body.adm .push-status { font-family: var(--adm-label); font-size: 11px; letter-spacing: .06em; background: var(--adm-vlak-in); color: var(--adm-tekst-2); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-veld); padding: 9px 12px; }
+html[data-theme="sporthub"] body.adm .push-status.active { background: var(--adm-vlak-in); color: #fff; border-color: #fff; }
+html[data-theme="sporthub"] body.adm .push-status.warn { background: var(--adm-vlak-in); color: #fff; border-color: var(--adm-actie); }
+html[data-theme="sporthub"] body.adm .push-status.error { background: var(--adm-vlak-in); color: #fff; border-color: #F0685E; }
+
+/* ----------------------------------------------------------------
+   4. KNOPPEN
+   ---------------------------------------------------------------- */
+/* grote knop (inloggen, verstuur in een modal) */
+html[data-theme="sporthub"] body.adm .btn { min-height: var(--adm-knop-g); padding: 11px 22px; font-size: 14.5px; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .login-card .btn { min-height: 52px; font-size: 15px; }
+
+/* kleine knop: randpil. Het tikvlak is altijd 44px (::after), ook als de pil lager is. */
+html[data-theme="sporthub"] body.adm .btn-sm,
+html[data-theme="sporthub"] body.adm .btn-sm:hover {
+  position: relative;
+  font-family: var(--body); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.2;
+  min-height: var(--adm-knop); padding: 0 15px; gap: 7px; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center; text-align: center; text-decoration: none;
+  background: transparent; color: var(--adm-tekst); border: 1.5px solid var(--adm-rand-2); border-radius: 999px; box-shadow: none; transform: none;
+}
+html[data-theme="sporthub"] body.adm .btn-sm::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+html[data-theme="sporthub"] body.adm .btn-sm:hover { border-color: var(--adm-tekst); background: var(--adm-tint); }
+html[data-theme="sporthub"] body.adm .btn-sm:disabled, html[data-theme="sporthub"] body.adm .btn-sm.muted-btn { opacity: .5; cursor: not-allowed; background: transparent; border-color: var(--adm-rand-2); color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .btn-sm.primary,
+html[data-theme="sporthub"] body.adm .btn-sm.primary:hover { background: #FF6B1A; color: #06193A; border-color: #FF6B1A; font-weight: 700; box-shadow: none; }
+html[data-theme="sporthub"] body.adm .btn-sm.primary:hover:not(:disabled) { transform: translateY(-1px); }
+/* gevaarlijk: wit met rode rand, op elk vlak (rood op wit = 5,3:1) */
+html[data-theme="sporthub"] body.adm .btn-sm.danger,
+html[data-theme="sporthub"] body.adm .btn-sm.danger:hover,
+html[data-theme="sporthub"] body.adm .btn-sm.danger:hover:not(:disabled) {
+  font-family: var(--body); font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none;
+  background: #fff; color: #C4382E; border: 1.5px solid #C4382E; border-radius: 999px; padding: 0 15px;
+}
+html[data-theme="sporthub"] body.adm .btn-sm.danger:hover:not(:disabled) { box-shadow: 0 0 0 2px #C4382E; }
+html[data-theme="sporthub"] body.adm .btn-sm.danger[style] { background: #fff !important; color: #C4382E !important; border-color: #C4382E !important; font-weight: 700 !important; }
+html[data-theme="sporthub"] body.adm .btn-sm.qr, html[data-theme="sporthub"] body.adm .btn-sm.qr:hover { background: transparent; color: var(--adm-tekst); border-color: var(--adm-rand-2); font-weight: 600; }
+html[data-theme="sporthub"] body.adm .btn-sm.qr:hover { border-color: var(--adm-tekst); background: var(--adm-tint); }
+/* twee gelijke "verstuur nu"-knoppen naast elkaar zijn geen hoofdactie: wit, niet oranje */
+html[data-theme="sporthub"] body.adm :is(.reminder-wave, .hub-list, .pt-cat) .btn-sm.primary,
+html[data-theme="sporthub"] body.adm :is(.reminder-wave, .hub-list, .pt-cat) .btn-sm.primary:hover { background: #fff; color: #06193A; border-color: #fff; }
+
+/* snelkoppelingen en exportknoppen: zelfde twee vormen */
+html[data-theme="sporthub"] body.adm :is(.tc-link, .csv-btn, .refresh-btn),
+html[data-theme="sporthub"] body.adm :is(.tc-link, .csv-btn, .refresh-btn):hover {
+  font-family: var(--body); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.2;
+  min-height: var(--adm-knop); padding: 0 15px; gap: 7px; display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--adm-tekst); border: 1.5px solid var(--adm-rand-2); border-radius: 999px; box-shadow: none; transform: none;
+}
+html[data-theme="sporthub"] body.adm :is(.tc-link, .csv-btn, .refresh-btn):hover { border-color: var(--adm-tekst); background: var(--adm-tint); }
+html[data-theme="sporthub"] body.adm .tc-link.primary, html[data-theme="sporthub"] body.adm .tc-link.primary:hover,
+html[data-theme="sporthub"] body.adm .csv-btn:not(.ghost-csv), html[data-theme="sporthub"] body.adm .csv-btn:not(.ghost-csv):hover { background: #FF6B1A; color: #06193A; border-color: #FF6B1A; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .refresh-btn, html[data-theme="sporthub"] body.adm .refresh-btn:hover { min-height: 32px; padding: 0 12px; font-size: 12.5px; }
+html[data-theme="sporthub"] body.adm .tc-links { gap: 8px; border-top-color: var(--adm-rand); }
+
+/* hulpknop. admin.js zet hem in dit thema vast in de regel "Ingelogd als …"
+   (.adm-help-vast): hij zweeft dus niet meer en ligt nergens over knoppen heen.
+   De eerste twee regels zijn de terugval voor als dat (nog) niet gebeurd is. */
+html[data-theme="sporthub"] body.adm #admin-help-fab { background: #0D2550 !important; color: #fff !important; border: 1.5px solid rgba(246, 247, 251, .46) !important; box-shadow: 0 10px 24px rgba(3, 10, 26, .5) !important; font-family: var(--adm-kop) !important; font-weight: 800 !important; }
+html[data-theme="sporthub"] body.adm #admin-help-fab:hover { background: #0D2550 !important; border-color: #fff !important; }
+html[data-theme="sporthub"] body.adm #admin-help-fab.adm-help-vast {
+  position: relative; flex: none; margin-left: auto; width: 38px; height: 38px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; cursor: pointer;
+  background: transparent !important; box-shadow: none !important;
+}
+/* telefoon: "Vernieuw" wordt een rond icoonknopje, zodat de regel met de hulpknop op één rij past */
+@media (max-width: 480px) {
+  html[data-theme="sporthub"] body.adm .who:has(> .adm-help-vast) .refresh-btn,
+  html[data-theme="sporthub"] body.adm .who:has(> .adm-help-vast) .refresh-btn:hover { font-size: 0; gap: 0; padding: 0; width: 38px; }
+}
+html[data-theme="sporthub"] body.adm #admin-help-fab.adm-help-vast::after { content: ''; position: absolute; inset: -3px; }
+html[data-theme="sporthub"] body.adm #admin-help-fab.adm-help-vast:hover { background: var(--adm-tint) !important; }
+
+/* pauze / hervat: verschillen in vorm, niet alleen in kleur.
+   Pauzeren = witte pil (bewuste keuze); hervatten = oranje pil (dan dé actie). */
+html[data-theme="sporthub"] body.adm #tourn-pause {
+  background: #fff !important; color: #06193A !important; border: 1.5px solid #fff !important; border-radius: 999px !important;
+  font-family: var(--body) !important; font-size: 14.5px !important; font-weight: 700 !important; min-height: 48px; padding: 0 20px !important;
+}
+html[data-theme="sporthub"] body.adm #tourn-pause:hover { background: #F6F7FB !important; }
+@media (min-width: 601px) { html[data-theme="sporthub"] body.adm #tourn-pause { width: auto !important; min-width: 280px; } }
+html[data-theme="sporthub"] body.adm #tourn-pause.is-paused { background: #FF6B1A !important; color: #06193A !important; border-color: #FF6B1A !important; }
+
+/* ----------------------------------------------------------------
+   5. FORMULIEREN
+   Velden in een paneel: logo-blauw vlak met duidelijke rand; op een
+   wit kaartje: lichtgrijs vlak. 16px tekst (geen inzoomen op iOS).
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm :is(.evc-f, .sched-grid, .hub-form, .hub-c-act, .tcz-acts, .field) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+html[data-theme="sporthub"] body.adm #tourn-pause-msg,
+html[data-theme="sporthub"] body.adm #sched-ko-buffer,
+html[data-theme="sporthub"] body.adm .section :is(select, input[type="text"], input[type="time"], input[type="number"], textarea)[style] {
+  background-color: var(--adm-vlak-in) !important; color: var(--adm-tekst) !important;
+  border: 1.5px solid var(--adm-rand-2) !important; border-radius: var(--adm-r-veld) !important;
+  font-family: var(--body) !important; font-size: 16px; line-height: 1.3; min-height: 44px; padding: 9px 12px; box-shadow: none;
+}
+html[data-theme="sporthub"] body.adm :is(.evc-f, .sched-grid, .hub-form, .hub-c-act, .tcz-acts, .field) :is(input, select, textarea):hover:not(:focus) { border-color: var(--adm-tekst) !important; }
+html[data-theme="sporthub"] body.adm :is(.evc-f, .sched-grid, .hub-form, .hub-c-act, .tcz-acts, .field) :is(input, select, textarea):focus,
+html[data-theme="sporthub"] body.adm #tourn-pause-msg:focus { border-color: var(--adm-tekst) !important; background-color: var(--adm-vlak-in) !important; }
+html[data-theme="sporthub"] body.adm :is(.evc-f, .field, .hub-form) :is(input, textarea)::placeholder,
+html[data-theme="sporthub"] body.adm #tourn-pause-msg::placeholder { color: var(--adm-tekst-2); opacity: .8; }
+html[data-theme="sporthub"] body.adm .login-card .field :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); opacity: 1; }
+html[data-theme="sporthub"] body.adm :is(.evc-f, .sched-grid, .hub-form, .hub-c-act) select,
+html[data-theme="sporthub"] body.adm #sched-ko-buffer {
+  appearance: none; -webkit-appearance: none; padding-right: 34px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F6F7FB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important; background-position: right 11px center !important; background-size: 14px !important;
+}
+html[data-theme="sporthub"] body.adm #sched-ko-buffer { min-width: 190px; padding: 9px 36px 9px 12px !important; }
+html[data-theme="sporthub"] body.adm .hub-c-act select { font-size: 13px; min-height: var(--adm-knop); padding: 0 34px 0 14px; border-radius: 999px !important; }
+html[data-theme="sporthub"] body.adm .evc-f textarea { min-height: 84px; line-height: 1.5; }
+html[data-theme="sporthub"] body.adm :is(.evc-f > label, .sched-grid label, .hub-form label, .field label) {
+  font-family: var(--adm-label); font-size: 10.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; line-height: 1.5; color: var(--adm-tekst);
+}
+html[data-theme="sporthub"] body.adm .hub-form label.chk { font-family: var(--body); font-size: 13.5px; letter-spacing: 0; text-transform: none; }
+html[data-theme="sporthub"] body.adm .evc-hint, html[data-theme="sporthub"] body.adm .evc-quiet { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .evc-hint b, html[data-theme="sporthub"] body.adm .evc-quiet b { color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .field { margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .admin-search { margin: 4px 0 14px; }
+html[data-theme="sporthub"] body.adm .admin-search input { border-radius: 999px !important; padding-left: 18px; }
+/* losse vinkjes: wit vakje met blauw vinkje op blauw, blauw vakje op wit */
+html[data-theme="sporthub"] body.adm input[type="radio"] { accent-color: #fff; width: 18px; height: 18px; flex: none; }
+html[data-theme="sporthub"] body.adm :is(.modal, .tm-card, .adm-wit, .login-card) input[type="radio"] { accent-color: #06193A; }
+html[data-theme="sporthub"] body.adm input[type="checkbox"]:not(.toggle-row input):not(.checkbox input):not(:is(label, span, div)[class*="rg-"] > input):not([class*="rg-"]) {
+  appearance: none; -webkit-appearance: none; flex: none; width: 20px; height: 20px; margin: 0 2px 0 0; vertical-align: -4px; cursor: pointer;
+  border: 1.5px solid var(--adm-rand-2); border-radius: 6px; background: var(--adm-vlak-in) center / 14px 14px no-repeat;
+}
+html[data-theme="sporthub"] body.adm input[type="checkbox"]:not(.toggle-row input):not(.checkbox input):not(:is(label, span, div)[class*="rg-"] > input):not([class*="rg-"]):checked {
+  background-color: #fff; border-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2306193A' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 12.5 10 17.5 19 7'/%3E%3C/svg%3E");
+}
+html[data-theme="sporthub"] body.adm :is(.modal, .tm-card, .adm-wit, .section div[style*="overflow-x"]) input[type="checkbox"]:not(.toggle-row input):not(.checkbox input):not(:is(label, span, div)[class*="rg-"] > input):not([class*="rg-"]):checked {
+  background-color: #06193A; border-color: #06193A;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 12.5 10 17.5 19 7'/%3E%3C/svg%3E");
+}
+html[data-theme="sporthub"] body.adm input[type="checkbox"]:disabled { opacity: .5; cursor: not-allowed; }
+html[data-theme="sporthub"] body.adm .toggle-row { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-in); min-height: 44px; }
+html[data-theme="sporthub"] body.adm .toggle-row:hover { background: var(--adm-vlak-in); border-color: var(--adm-rand-2); }
+html[data-theme="sporthub"] body.adm .toggle-row input[type="checkbox"] { width: 20px; height: 20px; border: 1.5px solid var(--adm-rand-2); border-radius: 6px; margin-top: 1px; }
+html[data-theme="sporthub"] body.adm .toggle-row input[type="checkbox"]:checked { background: #fff; border-color: #fff; }
+html[data-theme="sporthub"] body.adm .toggle-row input[type="checkbox"]:checked::after { left: 6px; top: 2px; border-color: #06193A; border-width: 0 2.5px 2.5px 0; border-style: solid; }
+html[data-theme="sporthub"] body.adm .toggle-row b { font-size: 13.5px; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .toggle-row small { color: var(--adm-tekst-2); }
+/* foutmelding onder een formulier */
+html[data-theme="sporthub"] body.adm :is(.evc-error, .alert.error) { background: transparent; color: #fff; border: 1.5px solid #F0685E; border-radius: var(--adm-r-veld); font-weight: 500; }
+html[data-theme="sporthub"] body.adm :is(.modal, .login-card, .adm-wit) :is(.evc-error, .alert.error) { background: #fff; color: #C4382E; border: 2px solid #C4382E; font-weight: 600; }
+html[data-theme="sporthub"] body.adm .hub-msg { color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .hub-msg.err { color: #fff; border: 1.5px solid #F0685E; border-radius: var(--adm-r-veld); padding: 9px 12px; }
+html[data-theme="sporthub"] body.adm .evr-count.over { color: #fff; font-weight: 700; text-decoration: underline; text-decoration-color: #F0685E; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* ----------------------------------------------------------------
+   6. OVERZICHT
+   ---------------------------------------------------------------- */
+/* --- kerncijfers: mono-label + Unbounded-getal ------------------- */
+html[data-theme="sporthub"] body.adm .stats { gap: 10px; margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .stat { background: var(--adm-vlak); border: 1px solid var(--adm-rand); border-radius: 16px; padding: 14px 16px 15px; }
+html[data-theme="sporthub"] body.adm .stat .label { font-family: var(--adm-label); font-size: 10px; letter-spacing: .14em; line-height: 1.5; color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .stat .value { font-family: var(--adm-kop); font-weight: 900; font-size: 32px; line-height: 1; letter-spacing: -.03em; margin-top: 8px; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html[data-theme="sporthub"] body.adm .stat .value .frac { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--adm-tekst-2); opacity: 1; margin-left: 3px; }
+html[data-theme="sporthub"] body.adm .stat .sub { font-family: var(--adm-label); font-size: 10.5px; letter-spacing: .02em; line-height: 1.45; color: var(--adm-tekst-2); margin-top: 8px; }
+html[data-theme="sporthub"] body.adm .stat-clickable:hover { border-color: #fff; transform: none; box-shadow: none; }
+html[data-theme="sporthub"] body.adm #ov-pending-card .value { color: #FF6B1A; }
+html[data-theme="sporthub"] body.adm .stat-clickable .sub { color: #fff; }
+
+/* --- "teams wachten": paneel met oranje rand, één oranje knop ---- */
+html[data-theme="sporthub"] body.adm .attention {
+  background: var(--adm-vlak); color: #fff; border: 1.5px solid #FF6B1A; border-radius: var(--adm-r); box-shadow: none;
+  padding: 14px 18px; gap: 14px; margin-bottom: 14px; align-items: center;
+}
+html[data-theme="sporthub"] body.adm .attention .attention-icon { width: 36px; height: 36px; background: #FF6B1A; color: #06193A; font-family: var(--adm-kop); font-size: 18px; font-weight: 900; }
+html[data-theme="sporthub"] body.adm .attention h3 { font-size: 15px; color: #fff; margin-bottom: 3px; }
+html[data-theme="sporthub"] body.adm .attention p { color: var(--adm-tekst-2); font-size: 13px; }
+html[data-theme="sporthub"] body.adm .attention button,
+html[data-theme="sporthub"] body.adm .attention button:hover {
+  font-family: var(--body); font-size: 13.5px; font-weight: 700; letter-spacing: 0; text-transform: none;
+  background: #FF6B1A; color: #06193A; border: 0; border-radius: 999px; min-height: 44px; padding: 0 20px; box-shadow: none;
+}
+
+/* --- JVO Smart (toren) ------------------------------------------ */
+html[data-theme="sporthub"] body.adm .jvs-tower { background: var(--adm-vlak); border: 1px solid var(--adm-rand); border-left-width: 1px; border-radius: var(--adm-r); margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-sum { min-height: 56px; border-radius: var(--adm-r); }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-sum:hover { background: var(--adm-tint); }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-sum:focus-visible, html[data-theme="sporthub"] body.adm .jvs button:focus-visible, html[data-theme="sporthub"] body.adm .jvs a:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-sum:focus-visible { outline-offset: -3px; }
+html[data-theme="sporthub"] body.adm .jvs-mark { background: #06193A; box-shadow: 0 0 0 1.5px #F0685E; }
+html[data-theme="sporthub"] body.adm .jvs-eyebrow, html[data-theme="sporthub"] body.adm .jvs-tower .jvs-sum-nm { font-family: var(--adm-label); color: var(--adm-tekst-2); letter-spacing: .16em; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-sum-line { color: #fff; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-count { background: #FF6B1A; color: #06193A; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-chev { color: #fff; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-count { margin-left: auto; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-hero-txt h3 { font-family: var(--adm-kop); font-size: 15px; font-weight: 800; color: #fff; }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-hero-txt p, html[data-theme="sporthub"] body.adm .jvs-serve-txt, html[data-theme="sporthub"] body.adm .jvs-list li { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .jvs-tower .jvs-hero-txt b, html[data-theme="sporthub"] body.adm .jvs-list li b, html[data-theme="sporthub"] body.adm .jvs-serve-txt b { color: #fff; }
+html[data-theme="sporthub"] body.adm .jvs-cta, html[data-theme="sporthub"] body.adm .jvs-cta:hover { background: #FF6B1A; color: #06193A; border-radius: 999px; min-height: 40px; padding: 0 18px; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .jvs-serve { border-top-color: var(--adm-rand); }
+html[data-theme="sporthub"] body.adm .jvs-serve-h { font-family: var(--adm-label); color: #fff; }
+html[data-theme="sporthub"] body.adm .jvs-serve-btn, html[data-theme="sporthub"] body.adm .jvs-serve-btn:hover { background: transparent; color: #fff; border: 1.5px solid var(--adm-rand-2); border-radius: 999px; min-height: 36px; padding: 0 14px; font-weight: 600; }
+html[data-theme="sporthub"] body.adm .jvs-serve-btn:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.adm .jvs-list li { border-left: 0; padding-left: 16px; position: relative; }
+html[data-theme="sporthub"] body.adm .jvs-list li::before { content: ''; position: absolute; left: 0; top: .62em; width: 8px; height: 1.5px; background: #F0685E; }
+html[data-theme="sporthub"] body.adm .jvs-more > summary { font-family: var(--adm-label); color: #fff; min-height: 32px; display: inline-flex; align-items: center; }
+html[data-theme="sporthub"] body.adm .jvs-serve-foot { color: var(--adm-tekst-2); }
+/* JVO Smart leert */
+html[data-theme="sporthub"] body.adm .sl-chip, html[data-theme="sporthub"] body.adm .sl-chip:hover { font-family: var(--adm-label); background: transparent; color: #fff; border: 1.5px solid var(--adm-rand-2); border-radius: 999px; min-height: 34px; padding: 0 12px; }
+html[data-theme="sporthub"] body.adm .sl-chip:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.adm .sl-chip.on, html[data-theme="sporthub"] body.adm .sl-chip.on:hover { background: #fff; border-color: #fff; color: #06193A; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .sl-chip i { opacity: 1; }
+html[data-theme="sporthub"] body.adm .sl-group-h { font-family: var(--adm-label); color: #fff; }
+html[data-theme="sporthub"] body.adm .sl-group-h .sl-count, html[data-theme="sporthub"] body.adm .sl-group.dismissed .sl-group-h { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .sl-card { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-left-width: 1px; border-radius: var(--adm-r-in); }
+html[data-theme="sporthub"] body.adm .sl-card.applied { border-color: #fff; }
+html[data-theme="sporthub"] body.adm .sl-card-title { color: #fff; }
+html[data-theme="sporthub"] body.adm .sl-status, html[data-theme="sporthub"] body.adm .sl-badge { font-family: var(--adm-label); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .sl-badge.live, html[data-theme="sporthub"] body.adm .sl-badge.advies { color: #fff; }
+html[data-theme="sporthub"] body.adm .sl-change, html[data-theme="sporthub"] body.adm .sl-more > summary, html[data-theme="sporthub"] body.adm .sl-empty { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .sl-src { color: #fff; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #F0685E; }
+html[data-theme="sporthub"] body.adm .sl-actions button { font-family: var(--body); font-weight: 600; background: transparent; color: #fff; border: 1.5px solid var(--adm-rand-2); border-radius: 999px; min-height: 36px; padding: 0 14px; }
+html[data-theme="sporthub"] body.adm .sl-actions button:hover { background: var(--adm-tint); border-color: #fff; }
+html[data-theme="sporthub"] body.adm .sl-actions button.apply { background: #fff; color: #06193A; border-color: #fff; font-weight: 700; }
+
+/* --- live-blok en regie-tegels ---------------------------------- */
+html[data-theme="sporthub"] body.adm .tc-head { margin-bottom: 14px; align-items: center; }
+html[data-theme="sporthub"] body.adm .tc-stats { gap: 8px; margin-bottom: 14px; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+html[data-theme="sporthub"] body.adm .tc-tile { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-in); padding: 12px 13px; }
+html[data-theme="sporthub"] body.adm .tc-tile .v { font-family: var(--adm-kop); font-weight: 900; font-size: 22px; letter-spacing: -.03em; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html[data-theme="sporthub"] body.adm .tc-tile .v.gold { color: #fff; }
+html[data-theme="sporthub"] body.adm .tc-tile .v.live { color: #FF6B1A; }
+html[data-theme="sporthub"] body.adm .tc-tile .k { font-family: var(--adm-label); font-size: 9.5px; letter-spacing: .12em; color: var(--adm-tekst-2); margin-top: 7px; }
+html[data-theme="sporthub"] body.adm .tc-bar-row .lbl { font-family: var(--adm-label); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .tc-bar-row .lbl b { color: #fff; font-family: var(--body); font-weight: 700; }
+html[data-theme="sporthub"] body.adm .tc-bar { height: 8px; border-radius: 999px; background: rgba(246, 247, 251, .16); }
+html[data-theme="sporthub"] body.adm .tc-bar i { border-radius: 999px; background: #FF6B1A; }
+html[data-theme="sporthub"] body.adm .tc-bar.green i { background: #fff; }
+/* waarschuwingsbalken die admin.html met een eigen kleur opent */
+html[data-theme="sporthub"] body.adm :is(#tc-pull-banner, #tc-smart-banner, #sched-ends, #tc-wait-warn) {
+  background: var(--adm-vlak-in) !important; border: 1.5px solid #FF6B1A !important; border-radius: var(--adm-r-in) !important; color: #fff !important;
+}
+html[data-theme="sporthub"] body.adm #tc-pull-banner { border-color: var(--adm-rand-2) !important; }
+
+/* --- evenement / spelregels ------------------------------------- */
+html[data-theme="sporthub"] body.adm .evc-checklist { gap: 6px; }
+html[data-theme="sporthub"] body.adm .evc-check { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-veld); color: #fff; }
+html[data-theme="sporthub"] body.adm .evc-check-tag { font-family: var(--adm-label); color: #fff !important; }
+html[data-theme="sporthub"] body.adm .evc-check.lv-fout { border: 1.5px solid #F0685E; }
+html[data-theme="sporthub"] body.adm .evc-check.lv-fout .evc-check-tag .d { background: #F0685E; }
+html[data-theme="sporthub"] body.adm .evc-check.lv-let-op .evc-check-tag .d { background: #FF6B1A; }
+html[data-theme="sporthub"] body.adm .evc-check.lv-ok .evc-check-tag .d { background: transparent; box-shadow: inset 0 0 0 1.5px #fff; }
+html[data-theme="sporthub"] body.adm .evc-foot { border-top-color: var(--adm-rand); }
+html[data-theme="sporthub"] body.adm .evc-savebar .btn-sm.primary { padding: 0 20px; min-height: 44px; }
+html[data-theme="sporthub"] body.adm .evr-preview { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-in); }
+html[data-theme="sporthub"] body.adm .evr-preview .rules-block {
+  --ice: #F6F7FB; --ice-muted: rgba(246, 247, 251, .82); --line: rgba(246, 247, 251, .2); --gold-2: #fff;
+  background: transparent; color: #F6F7FB; border: 0; border-radius: 0; padding: 0; box-shadow: none; -webkit-mask: none; mask: none;
+}
+html[data-theme="sporthub"] body.adm .evr-preview .rules-block::before, html[data-theme="sporthub"] body.adm .evr-preview .rules-block::after { content: none; }
+html[data-theme="sporthub"] body.adm .evr-preview .rules-block + .rules-block { border-top: 1px solid var(--adm-rand); padding-top: 14px; }
+html[data-theme="sporthub"] body.adm .evr-preview .rules-h { font-family: var(--adm-kop); font-weight: 800; font-size: 14px; text-transform: none; letter-spacing: -.01em; color: #fff; }
+html[data-theme="sporthub"] body.adm .evr-preview :is(.rules-p, .rules-list, .rules-list li) { color: #F6F7FB; }
+
+/* --- recente activiteit, herinneringen, notificaties ------------ */
+html[data-theme="sporthub"] body.adm .recent-row { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-veld); }
+html[data-theme="sporthub"] body.adm .recent-row .time { font-family: var(--adm-label); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .recent-row .who { color: #fff; font-weight: 700; margin: 0; }
+html[data-theme="sporthub"] body.adm .recent-row .action { font-family: var(--adm-label); color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .reminders-grid { gap: 10px; }
+html[data-theme="sporthub"] body.adm .reminder-wave, html[data-theme="sporthub"] body.adm .notif-channel { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-in); padding: 16px; }
+html[data-theme="sporthub"] body.adm .reminder-wave-head h4, html[data-theme="sporthub"] body.adm .notif-channel-head h4 { font-family: var(--adm-kop); font-size: 13.5px; font-weight: 700; text-transform: none; letter-spacing: -.01em; color: #fff; }
+html[data-theme="sporthub"] body.adm .reminder-meta, html[data-theme="sporthub"] body.adm .notif-channel-head small { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .reminder-meta b { color: #fff; }
+html[data-theme="sporthub"] body.adm .notif-channel-head { border-bottom-color: var(--adm-rand); }
+
+/* --- schone start: rode RAND rondom, geen zijstreep ------------- */
+html[data-theme="sporthub"] body.adm .danger-zone { background: var(--adm-vlak); border: 1.5px solid #F0685E; }
+html[data-theme="sporthub"] body.adm .danger-collapse summary,
+html[data-theme="sporthub"] body.adm .danger-collapse summary:hover {
+  font-family: var(--adm-label); font-size: 10.5px; letter-spacing: .12em; color: #fff;
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0;
+  text-decoration: underline; text-decoration-color: #F0685E; text-decoration-thickness: 1.5px; text-underline-offset: 4px;
+}
+html[data-theme="sporthub"] body.adm .danger-body { border-top-color: var(--adm-rand); }
+html[data-theme="sporthub"] body.adm .danger-warn { background: var(--adm-vlak-in); border: 1.5px solid #F0685E; border-radius: var(--adm-r-veld); color: #fff; }
+html[data-theme="sporthub"] body.adm .ss-list { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-veld); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .ss-list b { color: #fff; }
+
+/* ----------------------------------------------------------------
+   7. TEAMS
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm .how-card { background: var(--adm-vlak); border: 1px solid var(--adm-rand); border-radius: var(--adm-r); padding: 20px 22px; margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .how-card h3 { color: #fff; margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .steps { gap: 10px; }
+html[data-theme="sporthub"] body.adm .steps li { grid-template-columns: 26px 1fr; gap: 12px; }
+html[data-theme="sporthub"] body.adm .step-num { width: 24px; height: 24px; background: #FF6B1A; color: #06193A; font-family: var(--adm-kop); font-size: 11px; font-weight: 800; }
+html[data-theme="sporthub"] body.adm .step-text { font-size: 13.5px; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .step-text b, html[data-theme="sporthub"] body.adm .how-note b { color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .step-text span[style*="--success"] { font-weight: 700; }
+html[data-theme="sporthub"] body.adm .how-note { border-top-color: var(--adm-rand); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .freeze-banner { background: var(--adm-vlak); border: 1px solid var(--adm-rand-2); border-radius: var(--adm-r); padding: 14px 18px; margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .freeze-banner .freeze-icon { color: #fff; display: flex; }
+html[data-theme="sporthub"] body.adm .freeze-banner .freeze-text b { color: #fff; }
+html[data-theme="sporthub"] body.adm .freeze-banner .freeze-text span { color: var(--adm-tekst-2); }
+
+/* filterpillen (teams), subtabs (aanmeldingen), logboekfilter: één vorm */
+html[data-theme="sporthub"] body.adm .filters, html[data-theme="sporthub"] body.adm .audit-filters { gap: 6px; margin-bottom: 16px; }
+html[data-theme="sporthub"] body.adm :is(.filter-pill, .audit-filter-pill, .subtab),
+html[data-theme="sporthub"] body.adm :is(.filter-pill, .audit-filter-pill, .subtab):hover {
+  font-family: var(--body); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.2;
+  display: inline-flex; align-items: center; gap: 7px; min-height: var(--adm-knop); padding: 0 14px; margin: 0;
+  background: transparent; color: #fff; border: 1.5px solid var(--adm-rand-2); border-radius: 999px;
+}
+html[data-theme="sporthub"] body.adm :is(.filter-pill, .audit-filter-pill, .subtab):hover { border-color: #fff; }
+html[data-theme="sporthub"] body.adm :is(.filter-pill, .audit-filter-pill, .subtab).active,
+html[data-theme="sporthub"] body.adm :is(.filter-pill, .audit-filter-pill, .subtab).active:hover { background: #fff; color: #06193A; border-color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.adm :is(.filter-pill .count, .subtab-count) { background: rgba(246, 247, 251, .16); color: #fff; font-family: var(--body); font-size: 11px; font-weight: 700; padding: 1px 7px; margin: 0; border-radius: 999px; }
+html[data-theme="sporthub"] body.adm :is(.filter-pill.active .count, .subtab.active .subtab-count) { background: #06193A; color: #fff; }
+html[data-theme="sporthub"] body.adm .signups-subtabs { gap: 6px; border-bottom: 0; margin: 4px 0 14px; flex-wrap: wrap; }
+
+/* --- teamkaartje: wit, de status staat in een woord én een stip --- */
+html[data-theme="sporthub"] body.adm .tm-cards { gap: 10px; }
+html[data-theme="sporthub"] body.adm .tm-card {
+  background: #fff; border: 2px solid #fff; border-radius: 16px; padding: 14px 16px 15px; box-shadow: none;
+}
+html[data-theme="sporthub"] body.adm .tm-card:hover { border-color: #06193A; transform: none; box-shadow: none; }
+html[data-theme="sporthub"] body.adm .tm-card.s-approved, html[data-theme="sporthub"] body.adm .tm-card.s-waitlist, html[data-theme="sporthub"] body.adm .tm-card.s-rejected { border-color: #fff; }
+html[data-theme="sporthub"] body.adm .tm-card.s-pending, html[data-theme="sporthub"] body.adm .tm-card.s-pending:hover { border-color: #FF6B1A; box-shadow: 0 0 0 1px #FF6B1A; }
+html[data-theme="sporthub"] body.adm .tm-card.s-approved:hover, html[data-theme="sporthub"] body.adm .tm-card.s-waitlist:hover, html[data-theme="sporthub"] body.adm .tm-card.s-rejected:hover { border-color: #06193A; }
+html[data-theme="sporthub"] body.adm .tm-card.s-rejected { background: #F6F7FB; }
+html[data-theme="sporthub"] body.adm .tm-card:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+html[data-theme="sporthub"] body.adm .tm-card-head { margin-bottom: 8px; align-items: center; }
+html[data-theme="sporthub"] body.adm .tm-card-name { font-family: var(--adm-kop); font-weight: 800; font-size: 14.5px; line-height: 1.2; text-transform: none; letter-spacing: -.015em; color: #06193A; align-items: baseline; }
+html[data-theme="sporthub"] body.adm .tm-card-name::before { width: 9px; height: 9px; background: transparent; box-shadow: inset 0 0 0 1.5px #06193A; transform: translateY(-1px); }
+html[data-theme="sporthub"] body.adm .tm-card.s-approved .tm-card-name::before { background: #06193A; }
+html[data-theme="sporthub"] body.adm .tm-card.s-pending .tm-card-name::before { background: #FF6B1A; box-shadow: none; }
+html[data-theme="sporthub"] body.adm .tm-card.s-waitlist .tm-card-name::before { background: transparent; }
+html[data-theme="sporthub"] body.adm .tm-card.s-rejected .tm-card-name::before { background: #C4382E; box-shadow: none; border-radius: 2px; }
+html[data-theme="sporthub"] body.adm .tm-card-head .tm-logo.pending::after { background: #FF6B1A; border-color: #fff; }
+html[data-theme="sporthub"] body.adm .tm-card-cap { margin-bottom: 10px; }
+html[data-theme="sporthub"] body.adm .tm-card-cap .nm { color: #06193A; font-weight: 500; }
+html[data-theme="sporthub"] body.adm .tm-card-cap .em { font-family: var(--adm-label); color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .tm-card-tags { margin-bottom: 12px; }
+html[data-theme="sporthub"] body.adm .tm-tag { font-family: var(--adm-label); font-size: 10px; color: #06193A; background: #F6F7FB; border: 1px solid rgba(6, 25, 58, .14); padding: 3px 9px; }
+html[data-theme="sporthub"] body.adm .tm-card.s-rejected .tm-tag { background: #fff; }
+html[data-theme="sporthub"] body.adm .tm-tag.ci { color: #fff; background: #06193A; border-color: #06193A; }
+html[data-theme="sporthub"] body.adm .tm-card-actions { gap: 6px; }
+html[data-theme="sporthub"] body.adm .tm-card-actions .btn-sm { min-height: 36px; padding: 0 13px; }
+html[data-theme="sporthub"] body.adm .team-open, html[data-theme="sporthub"] body.adm .team-open:hover { color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .team-open:hover { text-decoration-color: #F0685E; }
+
+/* ----------------------------------------------------------------
+   8. TOERNOOI
+   ---------------------------------------------------------------- */
+/* --- opzet kiezen: tegel; gekozen = wit met oranje ring --------- */
+html[data-theme="sporthub"] body.adm .tc-fmt { font-family: var(--body); background: var(--adm-vlak-in); border: 1.5px solid var(--adm-rand-2); border-radius: 14px; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .tc-fmt:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.adm .tc-fmt.sel { background: #fff; border-color: #fff; box-shadow: 0 0 0 3px #FF6B1A; }
+html[data-theme="sporthub"] body.adm .tc-fmt .n, html[data-theme="sporthub"] body.adm .tc-fmt.sel .n { font-family: var(--adm-kop); font-weight: 900; font-size: 22px; letter-spacing: -.03em; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .tc-fmt .t { color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .tc-fmt .d { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .tc-fmt .fit { font-family: var(--adm-label); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .tc-fmt .rec { font-family: var(--adm-label); background: #FF6B1A; color: #06193A; }
+html[data-theme="sporthub"] body.adm .tc-fmt-hint { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-veld); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .tc-fmt-hint.warn { background: var(--adm-vlak-in); color: #fff; border: 1.5px solid #FF6B1A; }
+html[data-theme="sporthub"] body.adm .tc-fmt-hint.ok { background: var(--adm-vlak-in); color: #fff; border: 1.5px solid #fff; }
+html[data-theme="sporthub"] body.adm .tc-gen { min-height: 44px; padding: 0 22px; font-size: 14px; }
+html[data-theme="sporthub"] body.adm .sched-grid { gap: 10px 12px; }
+
+/* --- tijden bijsturen ------------------------------------------- */
+html[data-theme="sporthub"] body.adm .tcz-global, html[data-theme="sporthub"] body.adm .tcz-row, html[data-theme="sporthub"] body.adm .lg-row { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: var(--adm-r-in); }
+html[data-theme="sporthub"] body.adm .tcz-lbl { font-family: var(--adm-label); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .tcz-shift { font-family: var(--adm-kop); font-weight: 800; font-size: 16px; letter-spacing: -.02em; color: #fff; }
+html[data-theme="sporthub"] body.adm .tcz-shift.on { color: #FF6B1A; }
+html[data-theme="sporthub"] body.adm .tcz-time { font-family: var(--adm-kop); font-weight: 800; font-size: 15px; letter-spacing: -.02em; color: #fff; }
+html[data-theme="sporthub"] body.adm .tcz-time .o { font-family: var(--adm-label); letter-spacing: .06em; }
+html[data-theme="sporthub"] body.adm .tcz-info .nm { color: #fff; }
+html[data-theme="sporthub"] body.adm .tcz-info .meta { font-family: var(--adm-label); color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .tcz-acts input[type="time"] { font-size: 14px; min-height: var(--adm-knop); padding: 0 10px; }
+
+/* --- sporten & competities: het icoon in de ring ----------------- */
+html[data-theme="sporthub"] body.adm .hub-list { gap: 8px; grid-template-columns: minmax(0, 1fr); }
+html[data-theme="sporthub"] body.adm .hub-c { min-width: 0; }
+html[data-theme="sporthub"] body.adm .hub-c-act select { max-width: 100%; min-width: 0; }
+html[data-theme="sporthub"] body.adm .hub-c { background: var(--adm-vlak-in); border: 1px solid var(--adm-rand); border-radius: 14px; padding: 14px 16px; }
+html[data-theme="sporthub"] body.adm .hub-c-top { grid-template-columns: 46px minmax(0, 1fr); gap: 14px; }
+html[data-theme="sporthub"] body.adm .hub-c-top img {
+  width: 40px; height: 40px; padding: 5px; box-sizing: border-box; margin: 3px; border-radius: 50%; background: #06193A;
+  box-shadow: 0 0 0 1.5px #06193A, 0 0 0 3px #C4382E;
+}
+html[data-theme="sporthub"] body.adm .hub-c-top b { font-family: var(--adm-kop); font-weight: 800; font-size: 14px; letter-spacing: -.015em; line-height: 1.25; color: #fff; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.adm .hub-c-top span { color: var(--adm-tekst-2); font-size: 12.5px; }
+html[data-theme="sporthub"] body.adm .hub-c-act { gap: 6px; margin-top: 12px; }
+html[data-theme="sporthub"] body.adm .hub-form { background: var(--adm-vlak-in); border: 1.5px dashed var(--adm-rand-2); border-radius: 14px; padding: 16px; gap: 12px 14px; }
+html[data-theme="sporthub"] body.adm .hub-form .small { color: var(--adm-tekst-2); }
+
+/* --- teksten van de meldingen (admin.js zet hier eigen kleuren) --- */
+html[data-theme="sporthub"] body.adm .pt-cat { border-top-color: var(--adm-rand) !important; }
+html[data-theme="sporthub"] body.adm .pt-opt { font-family: var(--body); background: var(--adm-vlak-in) !important; border: 1.5px solid var(--adm-rand) !important; border-radius: var(--adm-r-veld) !important; color: var(--adm-tekst) !important; min-height: 44px; }
+html[data-theme="sporthub"] body.adm .pt-opt:hover { border-color: #fff !important; }
+html[data-theme="sporthub"] body.adm .pt-opt[style*="255, 179, 71"] {
+  --ice: #06193A; --ice-muted: #4A4F72; --adm-tekst: #06193A; --adm-tekst-2: #4A4F72;
+  background: #fff !important; border-color: #fff !important; box-shadow: 0 0 0 2.5px #FF6B1A; color: #06193A !important;
+}
+html[data-theme="sporthub"] body.adm .pt-opt[style*="255, 179, 71"] :is(.muted, .small) { color: #4A4F72 !important; }
+html[data-theme="sporthub"] body.adm [id^="pt-"][id$="-preview"] > div { background: #fff !important; border: 0 !important; border-radius: 14px !important; --ice: #06193A; --ice-muted: #4A4F72; --ice-faint: #4A4F72; }
+html[data-theme="sporthub"] body.adm [id^="pt-"][id$="-preview"] > div > div:first-child { background: var(--sport-icoon, none) center / 62% no-repeat, #06193A !important; border-radius: 50% !important; box-shadow: inset 0 0 0 1.5px #C4382E; }
+html[data-theme="sporthub"] body.adm .pt-cat input[type="text"] { background: var(--adm-vlak-in); color: #fff; border: 1.5px solid var(--adm-rand-2); border-radius: var(--adm-r-veld); min-height: 44px; padding: 9px 12px; font: 16px/1.3 var(--body); margin-top: 5px; }
+html[data-theme="sporthub"] body.adm .pt-cat details > summary { cursor: pointer; padding: 10px 0; }
+
+/* --- feedback-resultaten ---------------------------------------- */
+html[data-theme="sporthub"] body.adm #fb-results b[style*="font-size:22px"] { font-family: var(--adm-kop); font-weight: 900; letter-spacing: -.03em; color: #fff !important; }
+html[data-theme="sporthub"] body.adm #fb-results [style*="height:8px"] { background: rgba(246, 247, 251, .16) !important; border-radius: 999px !important; }
+html[data-theme="sporthub"] body.adm #fb-results [style*="height:8px"] > div { border-radius: 999px !important; }
+html[data-theme="sporthub"] body.adm #fb-results [style*="linear-gradient"] { background: #FF6B1A !important; }
+html[data-theme="sporthub"] body.adm #fb-results [style*="rgba(108,227,160"] { background: #fff !important; }
+html[data-theme="sporthub"] body.adm #fb-results [style*="dashed"] { border-top-color: var(--adm-rand-2) !important; }
+
+/* --- teamlogo's -------------------------------------------------- */
+html[data-theme="sporthub"] body.adm .lg-thumb { background: #fff; border-radius: 10px; }
+html[data-theme="sporthub"] body.adm .lg-thumb.lg-thumb-missing { background: var(--adm-vlak); color: var(--adm-tekst-2); font-family: var(--adm-kop); font-size: 16px; }
+html[data-theme="sporthub"] body.adm .lg-name { color: #fff; font-weight: 600; }
+html[data-theme="sporthub"] body.adm .lg-meta { color: var(--adm-tekst-2); }
+html[data-theme="sporthub"] body.adm .lg-pill { font-family: var(--adm-label); font-weight: 700; border: 1.5px solid var(--adm-rand-2); color: #fff; padding: 2px 9px; }
+html[data-theme="sporthub"] body.adm .lg-pill.lg-pending { background: #FF6B1A; border-color: #FF6B1A; color: #06193A; }
+html[data-theme="sporthub"] body.adm .lg-pill.lg-approved { background: #fff; border-color: #fff; color: #06193A; }
+html[data-theme="sporthub"] body.adm .lg-pill.lg-rejected { border-color: #F0685E; color: #fff; }
+
+/* ----------------------------------------------------------------
+   9. PROGRAMMA, AANMELDINGEN, LOGBOEK
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm .program-wrap { background: var(--adm-vlak); border: 1px solid var(--adm-rand); border-radius: var(--adm-r); }
+html[data-theme="sporthub"] body.adm .program-bar { background: var(--adm-vlak); border-bottom: 1px solid var(--adm-rand); padding: 16px 20px; }
+html[data-theme="sporthub"] body.adm .program-bar-actions .btn-sm { padding: 0 15px !important; }
+html[data-theme="sporthub"] body.adm .program-frame-wrap { border: 0; border-radius: 0; background: #06193A; }
+html[data-theme="sporthub"] body.adm .info-cards { gap: 10px; margin-bottom: 14px; }
+html[data-theme="sporthub"] body.adm .info-card, html[data-theme="sporthub"] body.adm .info-card.highlight { background: var(--adm-vlak); border: 1px solid var(--adm-rand); border-radius: var(--adm-r); box-shadow: none; padding: 18px 20px; grid-template-columns: 44px 1fr; gap: 16px; }
+html[data-theme="sporthub"] body.adm .info-card-icon { width: 44px; height: 44px; border-radius: 50%; font-family: var(--adm-kop); font-size: 16px; font-weight: 800; background: #06193A !important; color: #fff !important; box-shadow: 0 0 0 1.5px var(--adm-rand-2); }
+html[data-theme="sporthub"] body.adm .info-card.highlight .info-card-icon { background: #FF6B1A !important; color: #06193A !important; box-shadow: none; }
+html[data-theme="sporthub"] body.adm .info-card-body h4 { font-family: var(--adm-kop); font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: -.01em; line-height: 1.25; color: #fff; }
+html[data-theme="sporthub"] body.adm .info-card-num, html[data-theme="sporthub"] body.adm .info-card.highlight .info-card-num { font-family: var(--adm-kop); font-weight: 900; font-size: 28px; letter-spacing: -.03em; color: #fff; font-variant-numeric: tabular-nums; }
+html[data-theme="sporthub"] body.adm .info-card-body p { color: var(--adm-tekst-2); }
+
+/* --- tabellen: op een wit kaartje dat zelf zijwaarts schuift ------ */
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] {
+  background: #fff; border-radius: 14px; padding: 4px 14px 6px; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+}
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] table { font-size: 13.5px; }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] thead th {
+  font-family: var(--adm-label); font-size: 10px; font-weight: 600; letter-spacing: .12em; color: #4A4F72;
+  border-bottom: 1.5px solid rgba(6, 25, 58, .5); padding: 12px 10px 10px; white-space: nowrap;
+}
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] tbody td { color: #06193A; border-bottom: 1px solid rgba(6, 25, 58, .14); padding: 11px 10px; }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] tbody tr:hover { background: rgba(6, 25, 58, .04); }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] tbody tr:last-child td { border-bottom: 0; }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] td :is(.muted, .small), html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] th .muted { color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] td a { color: #06193A; text-decoration: underline; text-decoration-color: #C4382E; text-underline-offset: 3px; }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] td.empty-state { color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] :is(select, input[type="text"]) {
+  background: #F6F7FB !important; color: #06193A !important; border: 1.5px solid rgba(6, 25, 58, .5) !important; border-radius: 10px !important; min-height: 38px; font-size: 14px;
+}
+html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] select {
+  appearance: none; -webkit-appearance: none; padding: 0 32px 0 12px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2306193A' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important; background-position: right 10px center !important; background-size: 14px !important;
+}
+
+/* ----------------------------------------------------------------
+   10. MODALS EN MELDINGEN
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm .modal-backdrop { background: rgba(3, 12, 30, .82); padding: 16px; }
+html[data-theme="sporthub"] body.adm .modal {
+  background: #fff; border: 0; border-radius: var(--adm-r); box-shadow: 0 24px 60px rgba(3, 10, 26, .55);
+  padding: 26px 26px 24px; box-sizing: border-box; min-width: 0;
+}
+html[data-theme="sporthub"] body.adm .modal h3 { font-size: 19px; color: #06193A; margin-bottom: 8px; padding-right: 34px; }
+html[data-theme="sporthub"] body.adm .modal p, html[data-theme="sporthub"] body.adm .modal li, html[data-theme="sporthub"] body.adm .modal label, html[data-theme="sporthub"] body.adm .modal dd { color: #06193A; }
+html[data-theme="sporthub"] body.adm .modal :is(.small, .muted, small), html[data-theme="sporthub"] body.adm .modal p[style*="--ice-muted"], html[data-theme="sporthub"] body.adm .modal [style*="--ice-faint"] { color: #4A4F72 !important; }
+html[data-theme="sporthub"] body.adm .modal a:not(.btn):not(.btn-sm) { color: #06193A; text-decoration: underline; text-decoration-color: #C4382E; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+html[data-theme="sporthub"] body.adm .modal-close { color: #06193A; width: 40px; height: 40px; top: 10px; right: 10px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+html[data-theme="sporthub"] body.adm .modal-close:hover { background: rgba(6, 25, 58, .08); color: #06193A; }
+html[data-theme="sporthub"] body.adm .modal-status, html[data-theme="sporthub"] body.adm .team-modal-status { gap: 6px; margin: 0 0 16px; }
+html[data-theme="sporthub"] body.adm .modal-actions { gap: 8px; }
+html[data-theme="sporthub"] body.adm .modal-actions .btn-sm { font-size: 13px; padding: 0 16px; min-height: 42px; }
+html[data-theme="sporthub"] body.adm .modal .btn { min-height: 44px; width: auto; }
+/* keuzeknoppen in "Captain laten aanpassen": witte keuzekaartjes met een duidelijke rand
+   (waren grijze vlakken met kapitalen: lazen als uitgeschakeld) */
+html[data-theme="sporthub"] body.adm .adjust-option { background: #fff; border: 1.5px solid rgba(6, 25, 58, .5); border-radius: var(--adm-r-in); padding: 13px 16px; min-height: 60px; gap: 2px; font-family: var(--body); }
+html[data-theme="sporthub"] body.adm .adjust-option:hover:not(:disabled) { background: #F6F7FB; border-color: #06193A; }
+html[data-theme="sporthub"] body.adm .adjust-option:disabled { opacity: 1; background: #F6F7FB; border-style: dashed; border-color: rgba(6, 25, 58, .5); }
+html[data-theme="sporthub"] body.adm .adjust-option .adjust-option-title { font-family: var(--body); font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; color: #06193A; }
+html[data-theme="sporthub"] body.adm .adjust-option:disabled .adjust-option-title { color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .adjust-option .adjust-option-sub { font-size: 13px; line-height: 1.45; color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .modal .btn.ghost, html[data-theme="sporthub"] body.adm .modal .btn.ghost:hover { color: #06193A; border-color: rgba(6, 25, 58, .5); }
+html[data-theme="sporthub"] body.adm .qr-display { background: #F6F7FB; border: 1px solid rgba(6, 25, 58, .14); border-radius: 14px; }
+html[data-theme="sporthub"] body.adm .url-box { font-family: var(--adm-label); background: #F6F7FB; color: #06193A; border: 1px solid rgba(6, 25, 58, .14); border-radius: var(--adm-r-veld); }
+html[data-theme="sporthub"] body.adm .modal-status-info { background: #F6F7FB; border: 1px solid rgba(6, 25, 58, .14); border-radius: var(--adm-r-veld); color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .modal-status-info b { color: #06193A; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .modal-status-info.checked { background: #06193A; border-color: #06193A; color: #fff; }
+html[data-theme="sporthub"] body.adm .modal-status-info.checked b { color: #fff; }
+html[data-theme="sporthub"] body.adm .person-details dt { font-family: var(--adm-label); color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .person-details dd { color: #06193A; }
+html[data-theme="sporthub"] body.adm .team-modal-schema { background: #F6F7FB; border: 1px solid rgba(6, 25, 58, .14); border-radius: 14px; padding: 16px; }
+html[data-theme="sporthub"] body.adm .modal [style*="rgba(255,179,71"], html[data-theme="sporthub"] body.adm .modal [style*="rgba(255, 179, 71"],
+html[data-theme="sporthub"] body.adm .modal [style*="rgba(108,227,160"], html[data-theme="sporthub"] body.adm .modal [style*="rgba(232,244,255"],
+html[data-theme="sporthub"] body.adm .modal [style*="rgba(0,0,0"] { background: #F6F7FB !important; border-color: rgba(6, 25, 58, .14) !important; color: #06193A !important; }
+html[data-theme="sporthub"] body.adm .modal [style*="rgba(255,100,100"] { background: #fff !important; border: 1.5px solid #C4382E !important; color: #06193A !important; }
+html[data-theme="sporthub"] body.adm .modal .field :is(input, textarea, select) { background-color: #F6F7FB !important; }
+html[data-theme="sporthub"] body.adm .modal .field :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); opacity: 1; }
+/* styles.css zet de velden van de afwijs-modal met een id + !important */
+html[data-theme="sporthub"] body.adm #reject-modal :is(input, textarea),
+html[data-theme="sporthub"] body.adm #reject-modal :is(input, textarea):focus {
+  background: #F6F7FB !important; color: #06193A; border: 1.5px solid rgba(6, 25, 58, .5) !important; border-radius: 10px !important;
+  padding: 11px 12px !important; font-size: 16px; min-height: 44px;
+}
+html[data-theme="sporthub"] body.adm #reject-modal :is(input, textarea):focus { border-color: #06193A !important; background: #fff !important; }
+html[data-theme="sporthub"] body.adm #reject-modal :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); opacity: 1; }
+html[data-theme="sporthub"] body.adm .modal iframe { border: 1px solid rgba(6, 25, 58, .14); border-radius: 12px; }
+
+/* ----------------------------------------------------------------
+   11. TELEFOON
+   ---------------------------------------------------------------- */
+@media (max-width: 600px) {
+  html[data-theme="sporthub"] body.adm { --adm-knop: 44px; --adm-r: 16px; }
+  html[data-theme="sporthub"] body.adm .admin-shell { padding: 12px 14px 32px; }
+  html[data-theme="sporthub"] body.adm .topbar nav { flex: 1 1 100%; justify-content: flex-start; }
+  html[data-theme="sporthub"] body.adm .topbar nav { flex-wrap: wrap; gap: 5px; }
+  html[data-theme="sporthub"] body.adm :is(.sl-chip, .sl-actions button, .jvs-serve-btn, .jvs-cta), html[data-theme="sporthub"] body.adm :is(.sl-chip, .jvs-serve-btn, .jvs-cta):hover { min-height: 44px; }
+  html[data-theme="sporthub"] body.adm .pt-cat details > summary { padding: 12px 0; }
+  html[data-theme="sporthub"] body.adm .modal-close { width: 44px; height: 44px; top: 8px; right: 8px; }
+  html[data-theme="sporthub"] body.adm .topbar nav a, html[data-theme="sporthub"] body.adm .topbar nav a:hover { min-height: 36px; padding: 0 10px; font-size: 9.5px; letter-spacing: .07em; }
+  html[data-theme="sporthub"] body.adm .tc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-theme="sporthub"] body.adm .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 14px 0 16px; }
+  html[data-theme="sporthub"] body.adm .tab-btn, html[data-theme="sporthub"] body.adm .tab-btn:hover { flex: none; width: auto; min-width: 0; padding: 0 6px; font-size: 13px; gap: 5px; }
+  html[data-theme="sporthub"] body.adm .section { padding: 16px 16px 18px; }
+  html[data-theme="sporthub"] body.adm details.fold > summary { padding: 0 16px; }
+  html[data-theme="sporthub"] body.adm details.fold > .fold-body { padding: 2px 16px 18px; }
+  html[data-theme="sporthub"] body.adm :is(.section, .how-card, .modal) h3 { font-size: 16px; }
+  html[data-theme="sporthub"] body.adm details.fold > summary h3 { font-size: 14.5px; }
+  html[data-theme="sporthub"] body.adm .stat { padding: 12px 13px 13px; }
+  html[data-theme="sporthub"] body.adm .stat .value { font-size: 26px; margin-top: 7px; }
+  html[data-theme="sporthub"] body.adm .stat .value .frac { font-size: 13px; }
+  html[data-theme="sporthub"] body.adm .stat .label { font-size: 9.5px; letter-spacing: .1em; }
+  html[data-theme="sporthub"] body.adm .attention { flex-direction: row; flex-wrap: wrap; padding: 14px 16px; }
+  html[data-theme="sporthub"] body.adm .attention .attention-text { flex: 1 1 60%; min-width: 0; }
+  html[data-theme="sporthub"] body.adm .attention button { width: 100%; }
+  html[data-theme="sporthub"] body.adm .how-card { padding: 16px; }
+  html[data-theme="sporthub"] body.adm .tm-card-actions .btn-sm { min-height: 44px; flex: 1 1 auto; }
+  html[data-theme="sporthub"] body.adm .tcz-row { padding: 10px; gap: 8px 10px; }
+  html[data-theme="sporthub"] body.adm .tcz-acts { flex-wrap: nowrap; gap: 4px; width: 100%; }
+  html[data-theme="sporthub"] body.adm .tcz-acts .btn-sm { padding: 0 9px; font-size: 12.5px; flex: 0 1 auto; min-width: 0; }
+  html[data-theme="sporthub"] body.adm .tcz-acts input[type="time"] { flex: 1 1 84px; min-width: 84px; padding: 0 6px !important; min-height: 44px; font-size: 14px; }
+  html[data-theme="sporthub"] body.adm .refresh-btn, html[data-theme="sporthub"] body.adm .refresh-btn:hover { min-height: 36px; }
+  html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] { padding: 2px 10px 4px; }
+  html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] table:not(:has(#tournament-tbody)) { min-width: 520px; }
+  html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] td:first-child { white-space: nowrap; }
+  html[data-theme="sporthub"] body.adm .section div[style*="overflow-x"] table:has(#tournament-tbody) td:first-child { white-space: normal; }
+  html[data-theme="sporthub"] body.adm .modal-backdrop { padding: 10px; }
+  html[data-theme="sporthub"] body.adm .modal { padding: 22px 18px 20px; max-width: 100%; width: 100%; }
+  html[data-theme="sporthub"] body.adm .modal-actions .btn-sm, html[data-theme="sporthub"] body.adm .modal .btn { min-height: 46px; flex: 1 1 auto; }
+  html[data-theme="sporthub"] body.adm .info-card, html[data-theme="sporthub"] body.adm .info-card.highlight { padding: 16px; }
+  html[data-theme="sporthub"] body.adm .tcz-btns .btn-sm { flex: 1 1 auto; }
+}
+
+/* ----------------------------------------------------------------
+   11b. REGIE-LAAG (rg-…): zelfde vormtaal als de rest van de admin.
+   Pillen, hoofdactie oranje (ook in het witte venster), rustige
+   knoppen als randpil, gekozen sport wit zoals de actieve tab.
+   Toestanden (pauze, nood, wedstrijddag aan) blijven zoals ze zijn.
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.adm :is(.rg-knop, .rg-mini, .rg-chip, .rg-dagknop, .rg-item-a, .rg-snel-a, .rg-select, .rg-chip-n) { border-radius: 999px; }
+html[data-theme="sporthub"] body.adm .rg-knop:not(.rg-knop-rustig):not(.rg-knop-nood),
+html[data-theme="sporthub"] body.adm .rg-knop:not(.rg-knop-rustig):not(.rg-knop-nood):hover { background: var(--adm-actie); color: var(--adm-op-actie); border-color: var(--adm-actie); }
+html[data-theme="sporthub"] body.adm :is(.rg-knop-rustig, .rg-mini:not(.is-pauze), .rg-dagknop:not([aria-pressed="true"]), .rg-item-a, .rg-snel-a) { background: transparent; border: 1.5px solid var(--adm-rand-2); color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm :is(.rg-knop-rustig, .rg-mini:not(.is-pauze):not(:disabled), .rg-dagknop:not([aria-pressed="true"]), .rg-item-a, .rg-snel-a):hover { background: var(--adm-tint); border-color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .rg-chip[aria-selected="true"] { background: #fff; color: #06193A; border-color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .rg-chip[aria-selected="true"] .rg-chip-uit { color: #4A4F72; }
+html[data-theme="sporthub"] body.adm .hub-presets .small { color: var(--adm-tekst-2); }
+
+/* Vormen: paneel = --adm-r, tegel/rij erin = --adm-r-in (zoals .section en de tegels) */
+html[data-theme="sporthub"] body.adm :is(.rg-kaart, .rg-nood, .rg-nieuw, .rg-af, .rg-bar) { border-radius: var(--adm-r); }
+html[data-theme="sporthub"] body.adm :is(.rg-rij, .rg-item, .rg-ev, .rg-preset, .rg-cijfers > div, .rg-af-stappen li, .rg-noot-let, .rg-paneel .rg-noot, .rg-gevaar, .rg-alle, .rg-schakel-blok) { border-radius: var(--adm-r-in); }
+/* Koppen: Unbounded in gewone letters, kleiner dan op de voorkant (zoals .section h3) */
+html[data-theme="sporthub"] body.adm .rg-titel { font-family: var(--adm-kop); font-weight: 800; font-size: 24px; line-height: 1.15; letter-spacing: -.02em; text-transform: none; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.adm .rg-af .rg-titel { font-size: 20px; }
+html[data-theme="sporthub"] body.adm .rg-kaart-naam h4 { font-size: 16px; }
+html[data-theme="sporthub"] body.adm :is(.rg-nieuw h4, .rg-form-titel) { font-size: 16px; }
+html[data-theme="sporthub"] body.adm .rg-cijfers dd { font-weight: 800; font-size: 24px; letter-spacing: -.02em; }
+/* Kolomkop = het kleine label van de admin: mono, wit, met het rode streepje
+   (oranje of rood draagt hier geen kleine tekst) */
+html[data-theme="sporthub"] body.adm .rg-kolommen h4 {
+  position: relative; padding-left: 30px; margin: 0 0 10px;
+  font-family: var(--adm-label); font-size: 10.5px; font-weight: 600; letter-spacing: .14em; line-height: 1.6; text-transform: uppercase; color: var(--adm-tekst);
+}
+html[data-theme="sporthub"] body.adm .rg-kolommen h4::before { content: ''; position: absolute; left: 0; top: .8em; margin-top: -1px; width: 22px; height: 1.5px; background: #F0685E; }
+html[data-theme="sporthub"] body.adm .rg-kolommen h4:focus-visible { outline: 2px solid #fff; }
+
+/* Status, zelfde regels als 3. Status: live = oranje vlak met blauwe tekst,
+   gepauzeerd = streepjesrand, uit = randpil. Geen groen of goud uit Schemering. */
+html[data-theme="sporthub"] body.adm .rg-status { font-family: var(--adm-label); font-size: 10px; font-weight: 700; letter-spacing: .08em; padding: 3px 10px; border: 1.5px solid var(--adm-rand-2); background: transparent; color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm :is(.rg-status-live, .rg-live-n) { background: var(--adm-actie); border-color: var(--adm-actie); color: #06193A; font-weight: 700; }
+html[data-theme="sporthub"] body.adm .rg-dagknop[aria-pressed="true"] .rg-live-n { background: #06193A; color: #fff; }
+html[data-theme="sporthub"] body.adm .rg-status-pauze { border-style: dashed; border-color: #fff; color: #fff; background: transparent; }
+html[data-theme="sporthub"] body.adm .rg-rij.is-pauze { border-color: var(--adm-actie); }
+html[data-theme="sporthub"] body.adm .rg-cijfers .is-actie { border-color: var(--adm-actie); }
+html[data-theme="sporthub"] body.adm .rg-rail .is-nu .rg-rail-p { box-shadow: 0 0 0 3px rgba(255, 107, 26, .3); }
+html[data-theme="sporthub"] body.adm .rg-ev.is-ok .rg-ev-m { background: #fff; color: #06193A; }
+html[data-theme="sporthub"] body.adm :is(.rg-noot-let, .rg-paneel .rg-noot) { border: 1.5px solid var(--adm-actie); background: rgba(255, 107, 26, .1); color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .rg-af { border-color: var(--adm-rand-2); background: var(--adm-tint); }
+html[data-theme="sporthub"] body.adm .rg-gevaar { border: 1.5px solid var(--adm-fout); }
+html[data-theme="sporthub"] body.adm .rg-gevaar > summary { color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm .rg-fout { color: var(--adm-tekst); font-weight: 600; }
+html[data-theme="sporthub"] body.adm :is(.modal, .tm-card, .adm-wit) .rg-fout { color: #C4382E; }
+/* Hervat = dan dé actie: oranje pil (zoals "Hervat toernooi" op de tab Toernooi) */
+html[data-theme="sporthub"] body.adm .rg-mini.is-pauze,
+html[data-theme="sporthub"] body.adm .rg-mini.is-pauze:hover { background: var(--adm-actie); color: #06193A; border: 1.5px solid var(--adm-actie); }
+
+/* Noodknop "Pauzeer alles": een echte, actieve knop. Wit vlak met blauwe tekst
+   (17:1) en een rode rand; gepauzeerd wordt hij "Hervat alles" = oranje. */
+html[data-theme="sporthub"] body.adm .rg-knop-nood,
+html[data-theme="sporthub"] body.adm .rg-knop-nood:hover { background: #fff; color: #06193A; border: 2px solid #C4382E; font-family: var(--body); font-size: 17px; font-weight: 700; box-shadow: 0 0 0 3px rgba(196, 56, 46, .35); }
+html[data-theme="sporthub"] body.adm .rg-knop-nood:hover { background: #F6F7FB; }
+html[data-theme="sporthub"] body.adm .rg-knop-nood.is-pauze,
+html[data-theme="sporthub"] body.adm .rg-knop-nood.is-pauze:hover { background: var(--adm-actie); color: #06193A; border-color: var(--adm-actie); box-shadow: none; }
+html[data-theme="sporthub"] body.adm .rg-nood input[type="text"] { border: 1.5px solid var(--adm-rand-2); border-radius: var(--adm-r-veld); }
+html[data-theme="sporthub"] body.adm .rg-nood input[type="text"]:focus { border-color: var(--adm-tekst); }
+html[data-theme="sporthub"] body.adm #rg-reden::placeholder { color: var(--adm-tekst-2); opacity: 1; }
+
+/* Sportbalk: de 8px boven de vastgeplakte balk (en de ronde hoeken) laten de
+   inhoud eronder niet meer doorschijnen: een strook in de paginakleur dekt ze af. */
+html[data-theme="sporthub"] body.adm .rg-bar { box-shadow: 0 -8px 0 0 #06193A, 0 10px 24px -18px rgba(0, 0, 0, .8); }
+@media (max-width: 640px) { html[data-theme="sporthub"] body.adm .rg-bar { box-shadow: 0 -6px 0 0 #06193A, 0 10px 24px -18px rgba(0, 0, 0, .8); } }
+
+/* Lange namen breken op een lettergreep, niet midden in het woord (pagina is lang="nl") */
+html[data-theme="sporthub"] body.adm :is(.rg-item-t b, .rg-num span, .rg-sets-kop span, .rg-eindstand li) { overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+@media (max-width: 640px) {
+  html[data-theme="sporthub"] body.adm .rg-titel { font-size: 20px; }
+}
+
+/* ----------------------------------------------------------------
+   12. MINDER BEWEGING
+   ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="sporthub"] body.adm :is(.rg-knop, .rg-mini, .rg-chip, .rg-dagknop, .rg-item-a, .rg-snel-a) { transition: none !important; }
+  html[data-theme="sporthub"] body.adm .live-dot, html[data-theme="sporthub"] body.adm .tc-statebadge.on .d { animation: none !important; }
+  html[data-theme="sporthub"] body.adm .btn-sm, html[data-theme="sporthub"] body.adm .tab-btn, html[data-theme="sporthub"] body.adm .tm-card, html[data-theme="sporthub"] body.adm .tc-fmt { transition: none !important; }
+}

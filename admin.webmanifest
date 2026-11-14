@@ -1,0 +1,16 @@
+{
+  "name": "JVO Admin",
+  "short_name": "JVO Admin",
+  "description": "Admin-paneel voor aanmeldingen, teams en het toernooi",
+  "start_url": "/admin.html",
+  "scope": "/admin.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A1628",
+  "theme_color": "#FF6B1A",
+  "icons": [
+    { "src": "/icons/admin-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/admin-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/admin-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,324 @@
+/* JVO Admin — Regie-laag (admin-regie.js): Regie-startscherm, sportschakelaar,
+   wedstrijddag-modus, sportpaneel, corrigeer-venster en de kleine aanvullingen.
+
+   Neutraal gebouwd op de bestaande tokens uit styles.css (--midnight, --ice, --gold,
+   --success …), zodat het in elk thema meekleurt. De Sporthub-look van deze
+   onderdelen staat in thema-sporthub-admin.css onder html[data-theme="sporthub"].
+   Alle klassen beginnen met rg-. Niets hier raakt bestaande onderdelen: zolang de
+   laag uit staat (één sport) is alles met [hidden] verborgen. */
+
+[class^="rg-"][hidden], [class*=" rg-"][hidden] { display: none !important; }
+.rg-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── Gedeelde bouwstenen ─────────────────────────────────────────────────── */
+.rg-titel { font-family: var(--display); font-weight: 900; font-size: 30px; line-height: 1; text-transform: uppercase; color: var(--ice); margin: 4px 0 0; }
+.rg-sub { font-size: 14px; line-height: 1.5; color: var(--ice-muted); margin: 6px 0 0; }
+.rg-noot { font-size: 13px; line-height: 1.5; color: var(--ice-muted); margin: 0; }
+/* Waarschuwing op een sportkaart (goedgekeurd team buiten het schema) */
+.rg-noot-let { padding: 9px 11px; border-radius: 10px; border: 1px solid rgba(255,179,71,.5); background: rgba(255,179,71,.08); color: var(--gold-2); font-weight: 600; }
+/* Geen verbinding: het bolletje "Live" pulseert niet door op een bevroren stand */
+.live-status.stale { opacity: .75; }
+.live-status.stale .live-dot { animation: none; }
+.rg-eerlijk { font-size: 12.5px; line-height: 1.55; color: var(--ice-faint); margin: 12px 0 0; }
+.rg-label { display: block; font-size: 12.5px; color: var(--ice-muted); }
+.rg-fout { color: var(--danger); }
+.rg-goed { color: var(--success); }
+.rg-vs { color: var(--ice-faint); font-weight: 400; }
+.rg-live { color: var(--success); }
+.rg-laat { color: var(--gold-2); }
+
+/* Hoofdknop: één per kaart. Goud vlak met donkere tekst (geen wit op fel). */
+.rg-knop { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 48px; padding: 0 18px; border-radius: 10px; border: 1px solid transparent; background: var(--gold); color: var(--midnight); font-family: var(--body); font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; text-decoration: none; text-align: center; cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .1s ease; }
+.rg-knop:hover { background: var(--gold-2); }
+.rg-knop:active { transform: translateY(1px); }
+.rg-knop:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.rg-knop-rustig { width: auto; background: var(--midnight-3); color: var(--ice); border-color: var(--line-strong); font-weight: 600; font-size: 14px; min-height: 44px; }
+.rg-knop-rustig:hover { background: var(--midnight-3); border-color: var(--ice-faint); }
+.rg-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; background: none; border: 0; color: var(--ice-muted); font-family: var(--body); font-size: 13.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); cursor: pointer; }
+.rg-link:hover { color: var(--ice); text-decoration-color: currentColor; }
+.rg-mini { min-width: 52px; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight-3); color: var(--ice); font-family: var(--body); font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.rg-mini:hover:not(:disabled) { border-color: var(--ice-faint); }
+.rg-mini:disabled { opacity: .45; cursor: not-allowed; }
+.rg-mini.is-pauze { background: rgba(108,227,160,.14); color: var(--success); border-color: rgba(108,227,160,.5); }
+.rg-select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font-family: var(--body); font-size: 14px; max-width: 100%; }
+.rg-status { display: inline-flex; align-items: center; flex: none; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line-strong); font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ice-muted); white-space: nowrap; }
+.rg-status-live { color: var(--success); border-color: rgba(108,227,160,.45); background: rgba(108,227,160,.12); }
+.rg-status-pauze { color: var(--ember-2); border-color: rgba(255,138,61,.5); background: rgba(255,138,61,.12); }
+.rg-icoon { width: 40px; height: 40px; object-fit: contain; flex: none; }
+.rg-icoon-leeg { display: block; border-radius: 50%; background: var(--midnight-3); }
+
+/* ── Sportschakelaar + knop Wedstrijddag (plakt onder de tabs) ───────────── */
+.rg-bar { position: sticky; top: 8px; z-index: 40; display: flex; align-items: center; gap: 8px; margin: -10px 0 20px; padding: 6px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--midnight-2); box-shadow: 0 10px 24px -18px rgba(0,0,0,.8); }
+.rg-chips { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 2px; }
+.rg-chips::-webkit-scrollbar { display: none; }
+.rg-chips { position: relative; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); padding-right: 20px; }
+.rg-chip { display: inline-flex; align-items: center; gap: 7px; flex: none; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--ice-muted); font-family: var(--body); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.rg-chip img { width: 22px; height: 22px; object-fit: contain; }
+.rg-chip:hover { color: var(--ice); background: var(--midnight-3); }
+.rg-chip[aria-selected="true"] { background: rgba(255,179,71,.12); color: var(--gold-2); border-color: var(--gold); }
+.rg-chip-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--gold); color: var(--midnight); font-family: var(--mono); font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; }
+.rg-chip-uit { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ice-faint); }
+.rg-dagknop { display: inline-flex; align-items: center; gap: 8px; flex: none; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight-3); color: var(--ice); font-family: var(--body); font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.rg-dagknop:hover { border-color: var(--ice-faint); }
+.rg-dagknop[aria-pressed="true"] { background: var(--gold); color: var(--midnight); border-color: transparent; }
+.rg-live-n { padding: 2px 8px; border-radius: 999px; background: rgba(108,227,160,.16); color: var(--success); font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
+.rg-dagknop[aria-pressed="true"] .rg-live-n { background: var(--midnight); color: var(--success); }
+
+/* ── Regie-startscherm ───────────────────────────────────────────────────── */
+.rg-regie { margin: 0 0 24px; }
+.rg-ev { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin: 16px 0 14px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--midnight-2); color: var(--ice); font-family: var(--body); text-align: left; cursor: pointer; transition: border-color .15s ease; }
+.rg-ev:hover { border-color: var(--ice-faint); }
+.rg-ev > svg { flex: none; color: var(--ice-faint); }
+.rg-ev-m { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; font-family: var(--mono); font-size: 13px; font-weight: 700; background: var(--gold); color: var(--midnight); }
+.rg-ev.is-ok .rg-ev-m { background: rgba(108,227,160,.16); color: var(--success); }
+.rg-ev-t { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.rg-ev-t b { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rg-ev-t span { font-size: 12.5px; color: var(--ice-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rg-ev-s { flex: none; font-size: 13px; font-weight: 700; color: var(--gold-2); white-space: nowrap; }
+.rg-ev.is-ok .rg-ev-s { color: var(--success); }
+
+.rg-kaarten { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.rg-kaart { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--midnight-2); }
+.rg-kaart.is-uit { opacity: .8; }
+.rg-kaart-kop { display: flex; align-items: center; gap: 12px; }
+.rg-kaart-naam { flex: 1; min-width: 0; }
+.rg-kaart-naam h4 { margin: 0; font-family: var(--body); font-size: 17px; font-weight: 700; line-height: 1.2; color: var(--ice); }
+.rg-kaart-naam > span { display: block; margin-top: 3px; font-size: 12.5px; line-height: 1.4; color: var(--ice-muted); }
+.rg-hoofd { margin-left: 4px; font-family: var(--mono); font-size: 9.5px; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; color: var(--ice-faint); white-space: nowrap; }
+
+/* Stappenrail: vijf vaste stappen, de huidige gemarkeerd (ook in tekst voor lezers) */
+.rg-rail { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.rg-rail::before { content: ''; position: absolute; left: 10%; right: 10%; top: 10px; height: 2px; background: var(--line-strong); }
+.rg-rail li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; line-height: 1.2; color: var(--ice-faint); white-space: nowrap; }
+.rg-rail-p { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--midnight-2); font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--ice-faint); }
+.rg-rail .is-klaar .rg-rail-p { border-color: var(--success); background: var(--success); color: var(--midnight); }
+.rg-rail .is-klaar { color: var(--ice-muted); }
+.rg-rail .is-nu .rg-rail-p { border-color: var(--gold); background: var(--gold); color: var(--midnight); box-shadow: 0 0 0 3px rgba(255,179,71,.22); }
+.rg-rail .is-nu { color: var(--ice); font-weight: 700; }
+.rg-rail .is-hier.is-klaar { color: var(--ice); font-weight: 700; }
+
+.rg-cijfers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.rg-cijfers > div { padding: 9px 10px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--midnight); }
+.rg-cijfers dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rg-cijfers dd { margin: 5px 0 0; font-family: var(--display); font-size: 26px; font-weight: 900; line-height: 1; color: var(--ice); }
+.rg-cijfers dd span { font-size: 15px; opacity: .6; }
+.rg-cijfers dd .rg-geen { opacity: .5; }
+.rg-cijfers .is-actie { border-color: rgba(255,179,71,.5); }
+.rg-cijfers .is-actie dd { color: var(--gold-2); }
+
+.rg-acties { display: flex; flex-direction: column; gap: 2px; margin-top: auto; }
+.rg-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 14px; }
+.rg-eindstand { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.rg-eindstand li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; background: var(--midnight); font-size: 14px; color: var(--ice); }
+.rg-eindstand li span { flex: none; width: 22px; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--gold-2); }
+
+.rg-kaart-nieuw { align-items: center; justify-content: center; gap: 4px; min-height: 132px; border-style: dashed; border-color: var(--line-strong); background: transparent; color: var(--ice-muted); font-family: var(--body); cursor: pointer; transition: border-color .15s ease, color .15s ease; }
+.rg-kaart-nieuw:hover, .rg-kaart-nieuw[aria-expanded="true"] { border-color: var(--gold); color: var(--ice); }
+.rg-kaart-nieuw b { font-size: 15px; color: var(--ice); }
+.rg-kaart-nieuw span { font-size: 12.5px; }
+
+.rg-nieuw { margin-top: 14px; padding: 16px; border-radius: 14px; border: 1px dashed var(--line-strong); scroll-margin-top: 76px; }
+.rg-nieuw h4, .rg-form-titel { margin: 0; font-family: var(--body); font-size: 17px; font-weight: 700; color: var(--ice); }
+.rg-form-titel { margin-top: 16px; }
+.rg-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 8px; margin-top: 14px; }
+.rg-preset { display: grid; justify-items: start; align-content: start; gap: 3px; min-height: 104px; padding: 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--midnight-2); color: var(--ice); font-family: var(--body); text-align: left; cursor: pointer; transition: border-color .15s ease; }
+.rg-preset:hover { border-color: var(--ice-faint); }
+.rg-preset[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.rg-preset img, .rg-preset-plus { width: 36px; height: 36px; margin-bottom: 4px; object-fit: contain; }
+.rg-preset-plus { display: grid; place-items: center; border-radius: 50%; border: 1.5px dashed var(--line-strong); color: var(--ice-muted); }
+.rg-preset b { font-size: 14.5px; font-weight: 700; }
+.rg-preset span:not(.rg-preset-plus) { font-size: 12px; color: var(--ice-muted); }
+.rg-form-wrap { scroll-margin-top: 76px; }
+.rg-form-wrap .hub-form { background: var(--midnight-2); }
+.rg-form-wrap .hub-form input:not([type="checkbox"]), .rg-form-wrap .hub-form select { min-height: 44px; font-size: 16px; }
+.rg-form-wrap .hub-form input[type="checkbox"] { width: 22px; height: 22px; flex: none; }
+.rg-form-wrap .hub-form .btn-sm { min-height: 44px; padding: 0 16px; }
+
+/* Afronden */
+.rg-af { margin-top: 18px; padding: 18px; border-radius: 14px; border: 1px solid rgba(108,227,160,.35); background: rgba(108,227,160,.06); scroll-margin-top: 76px; }
+.rg-af .rg-titel { font-size: 24px; }
+.rg-af-stappen { display: grid; gap: 10px; margin: 16px 0 0; padding: 0; list-style: none; }
+.rg-af-stappen li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--midnight-2); }
+.rg-af-n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--line-strong); font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--ice-muted); }
+.rg-af-stappen b { display: block; font-size: 15px; color: var(--ice); }
+.rg-af-stappen li > div:not(.rg-af-k) span { display: block; margin-top: 2px; font-size: 13px; line-height: 1.5; color: var(--ice-muted); }
+.rg-af-k { display: flex; flex-direction: column; align-items: stretch; }
+.rg-af-k .rg-link { justify-content: center; }
+
+/* ── Wedstrijddag-modus ──────────────────────────────────────────────────── */
+.rg-dag { margin: 0 0 24px; }
+.rg-dag-kop { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.rg-nood { display: grid; gap: 10px; margin-bottom: 14px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--midnight-2); }
+.rg-nood-veld { display: grid; gap: 6px; }
+.rg-nood input[type="text"] { width: 100%; min-height: 48px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font-family: var(--body); font-size: 16px; }
+.rg-knop-nood { min-height: 60px; border-color: rgba(255,138,61,.55); background: rgba(255,138,61,.16); color: var(--ember-2); font-size: 18px; }
+.rg-knop-nood:hover { background: rgba(255,138,61,.24); }
+.rg-knop-nood.is-pauze { border-color: rgba(108,227,160,.55); background: rgba(108,227,160,.16); color: var(--success); }
+.rg-knop-nood.is-pauze:hover { background: rgba(108,227,160,.24); }
+.rg-nood-uitleg { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ice-muted); }
+
+/* Ankerrij (alleen waar de drie lijsten onder elkaar staan: telefoon/tablet) */
+.rg-spring { display: none; gap: 6px; margin-bottom: 12px; }
+.rg-spring .rg-mini { flex: 1 1 0; min-width: 0; padding: 0 6px; white-space: nowrap; }
+.rg-spring-n { opacity: .7; font-weight: 600; }
+.rg-kolommen h4 { scroll-margin-top: 76px; }
+.rg-kolommen h4:focus { outline: none; }
+.rg-kolommen h4:focus-visible { outline: 2px solid var(--gold-2); outline-offset: 4px; border-radius: 4px; }
+.rg-rijen { display: grid; gap: 8px; margin-bottom: 20px; }
+.rg-rij { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--midnight-2); }
+.rg-rij.is-pauze { border-color: rgba(255,138,61,.45); }
+.rg-rij-t b { font-size: 15px; font-weight: 700; color: var(--ice); }
+.rg-rij-t .rg-status { margin-left: 8px; vertical-align: 1px; }
+.rg-rij-s { display: block; margin-top: 3px; font-size: 13px; line-height: 1.45; color: var(--ice-muted); }
+.rg-rij-s b { font-size: inherit; }
+.rg-rij-s b.rg-live { color: var(--success); }
+.rg-rij-s b.rg-laat { color: var(--gold-2); }
+.rg-rij-k { display: flex; gap: 6px; }
+
+.rg-kolommen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rg-kolommen-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+.rg-kolommen h4 { margin: 0 0 8px; font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--ember-2); }
+.rg-lijst { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.rg-item { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 8px 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--midnight-2); }
+.rg-item-i { flex: none; width: 28px; height: 28px; object-fit: contain; }
+.rg-item-t { flex: 1; min-width: 0; }
+.rg-item-t b { display: block; font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--ice); overflow-wrap: anywhere; }
+.rg-item-t span:not(.rg-vs) { display: block; margin-top: 2px; font-size: 12px; color: var(--ice-muted); }
+.rg-sets-lijst { display: block; font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--ice-muted); }
+.rg-item-s { flex: none; max-width: 8.5em; font-family: var(--mono); font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--ice); text-align: right; }
+.rg-item-s.rg-live { color: var(--success); }
+.rg-item-s small { display: block; font-size: 10.5px; font-weight: 400; color: var(--ice-faint); }
+.rg-item-a { display: inline-flex; align-items: center; flex: none; min-height: 44px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line-strong); background: transparent; color: var(--ice); font-family: var(--body); font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.rg-item-a:hover { background: var(--midnight-3); border-color: var(--ice-faint); }
+.rg-leeg-li { padding: 10px 2px; font-size: 13.5px; color: var(--ice-muted); list-style: none; }
+.rg-snel { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.rg-snel-a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight-3); color: var(--ice); font-family: var(--body); font-size: 13.5px; font-weight: 600; text-decoration: none; transition: border-color .15s ease; }
+.rg-snel-a:hover { border-color: var(--ice-faint); }
+.rg-snel-print { background: transparent; color: var(--ice-muted); }
+
+/* Met de wedstrijddag open blijft op Overzicht alleen dat blok staan (plus de
+   seintjes "teams wachten" en JVO Smart). De rest is één tik weg: "Terug naar Regie". */
+#tab-overview.rg-dag-aan > :not(#rg-dag):not(#jvs-tower):not(#attention-banner) { display: none !important; }
+
+/* ── Sportpaneel (tab Toernooi) ──────────────────────────────────────────── */
+#tab-tournament.rg-andere-sport [data-rg-hoofd] { display: none !important; }
+.rg-paneel .tc-tile .v small { font-size: 15px; font-weight: 800; opacity: .6; }
+.rg-paneel .rg-noot { margin: 0 0 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,179,71,.3); background: rgba(255,179,71,.08); color: var(--gold-2); }
+.rg-p-rij { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.rg-p-rij .rg-knop { width: auto; }
+.rg-p-rij .btn-sm { min-height: 44px; margin: 0; padding: 0 14px; }
+.rg-p-shift { flex: 1; min-width: 160px; font-size: 13px; color: var(--ice-muted); }
+.rg-gevaar { margin-top: 4px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(255,100,100,.3); }
+.rg-gevaar > summary { display: flex; align-items: center; min-height: 44px; font-size: 13.5px; font-weight: 600; color: var(--danger); cursor: pointer; }
+.rg-gevaar[open] { padding-bottom: 4px; }
+.rg-gevaar .small { margin: 0; color: var(--ice-muted); line-height: 1.5; }
+/* Alle uitslagen van de gekozen sport (met Corrigeer) */
+.rg-alle { margin-top: 16px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); }
+.rg-alle > summary { display: flex; align-items: center; min-height: 44px; font-size: 13.5px; font-weight: 600; color: var(--ice); cursor: pointer; }
+.rg-alle[open] { padding-bottom: 12px; }
+.rg-stand { width: 100%; margin: 0 0 12px; border-collapse: collapse; font-size: 13px; }
+.rg-stand caption { padding: 0 0 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; text-align: left; color: var(--ice-faint); }
+.rg-stand th, .rg-stand td { padding: 7px 8px !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; background: none !important; text-align: right; font-size: 13px !important; color: var(--ice-muted); }
+.rg-stand thead th { font-family: var(--mono); font-size: 10px !important; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--ice-faint); }
+.rg-stand th:nth-child(2), .rg-stand td:nth-child(2), .rg-stand tbody th { text-align: left; color: var(--ice); font-weight: 600; }
+.rg-stand td:first-child, .rg-stand thead th:first-child { text-align: left; width: 28px; }
+.rg-stand td b { color: var(--ice); }
+.rg-stand tbody th { font-family: var(--body) !important; letter-spacing: 0 !important; text-transform: none !important; }
+.section .rg-stand thead { display: table-header-group !important; }
+
+/* ── Uitslag corrigeren ──────────────────────────────────────────────────── */
+.rg-fix-meta { margin: 0 0 4px; color: var(--ice-muted); }
+.rg-score { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 18px 0 6px; }
+.rg-score > .rg-vs { padding-bottom: 16px; font-size: 22px; }
+.rg-num { display: grid; flex: 1; min-width: 0; gap: 6px; font-size: 13px; line-height: 1.3; color: var(--ice-muted); text-align: center; }
+.rg-num span { overflow-wrap: anywhere; }
+.rg-num input, .rg-sets input { width: 100%; min-height: 56px; padding: 0 6px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font-family: var(--display); font-size: 30px; font-weight: 900; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+.rg-num input::-webkit-outer-spin-button, .rg-num input::-webkit-inner-spin-button, .rg-sets input::-webkit-outer-spin-button, .rg-sets input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rg-pens { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-strong); }
+.rg-pens .rg-score { margin-top: 10px; }
+.rg-sets { display: grid; gap: 8px; margin: 18px 0 6px; }
+.rg-sets-kop, .rg-sets-rij { display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; }
+.rg-sets-kop span { font-size: 13px; line-height: 1.3; color: var(--ice-muted); text-align: center; overflow-wrap: anywhere; }
+.rg-sets-n { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-faint); }
+.rg-sets input { min-height: 48px; font-size: 24px; }
+.rg-fix-fout { min-height: 1.2em; margin: 10px 0 0; font-size: 14px; line-height: 1.45; font-weight: 600; color: var(--danger); }
+.rg-fix-fout:empty { margin: 0; min-height: 0; }
+.rg-fix-uitleg { margin: 8px 0 0; color: var(--ice-muted); line-height: 1.5; }
+.rg-fix-acties { display: flex; gap: 8px; margin-top: 16px; }
+.rg-fix-acties .rg-knop { flex: 1; width: auto; min-height: 48px; }
+
+/* ── Kleine aanvullingen ─────────────────────────────────────────────────── */
+/* Lege teamlijst bij een gekozen sport */
+.rg-leeg p { margin: 0 0 14px; }
+.rg-leeg .rg-knop { width: auto; }
+
+/* Team-venster: sport (verplaatsen) */
+.rg-team-sport { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 12px; margin: 14px 0 0; }
+.rg-team-sport label { font-size: 13px; color: var(--ice-muted); }
+.rg-team-sport select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font-family: var(--body); font-size: 16px; min-width: 0; }
+.rg-team-sport .small { grid-column: 1 / -1; min-height: 1em; }
+
+/* Schakelaar "Automatische herinneringen" */
+.rg-schakel-blok { margin: 0 0 16px; padding: 10px 14px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--midnight); }
+.rg-schakel { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 15px; font-weight: 600; color: var(--ice); cursor: pointer; }
+.rg-schakel input { position: absolute; opacity: 0; width: 46px; height: 28px; margin: 0; cursor: pointer; }
+.rg-schakel-spoor { position: relative; flex: none; width: 46px; height: 28px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--midnight-3); transition: background .15s ease, border-color .15s ease; }
+.rg-schakel-spoor::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--ice-muted); transition: transform .15s ease, background .15s ease; }
+.rg-schakel input:checked + .rg-schakel-spoor { background: var(--success); border-color: var(--success); }
+.rg-schakel input:checked + .rg-schakel-spoor::after { transform: translateX(18px); background: var(--midnight); }
+.rg-schakel input:focus-visible + .rg-schakel-spoor { outline: 2px solid var(--gold-2); outline-offset: 3px; }
+.rg-schakel input:disabled + .rg-schakel-spoor { opacity: .5; }
+.rg-schakel-uitleg { margin: 2px 0 0; line-height: 1.5; color: var(--ice-muted); }
+
+/* Uitlegkaart op Teams: zonder meerdere sporten ziet hij eruit zoals altijd (geen
+   kopregel, altijd open). Met meerdere sporten wordt het een dichte uitklapper. */
+.rg-how > summary { display: none; }
+.rg-how > summary::-webkit-details-marker { display: none; }
+body.rg-hub .rg-how { margin-bottom: 18px; }
+body.rg-hub .rg-how > summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--midnight-2); color: var(--ice-muted); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+body.rg-hub .rg-how > summary::after { content: ''; width: 8px; height: 8px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s ease; }
+body.rg-hub .rg-how[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+body.rg-hub .rg-how[open] > summary { margin-bottom: 8px; color: var(--ice); }
+body.rg-hub .rg-how > .how-card { margin-bottom: 0; }
+body.rg-hub .rg-how > .how-card > h3 { display: none; }
+
+/* ── Telefoon ────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .rg-kolommen, .rg-kolommen-2 { grid-template-columns: minmax(0, 1fr); }
+  .rg-spring:not(:empty) { display: flex; }
+}
+@media (max-width: 640px) {
+  .rg-titel { font-size: 25px; }
+  .rg-bar { top: 6px; margin: 0 0 16px; gap: 6px; }
+  .rg-chip { padding: 0 12px; }
+  .rg-dagknop { padding: 0 12px; }
+  .rg-kaarten { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .rg-kaart { padding: 14px; }
+  .rg-ev-s { white-space: normal; max-width: 7.5em; text-align: right; line-height: 1.25; }
+  .rg-rij { grid-template-columns: 40px minmax(0, 1fr); }
+  .rg-rij-k { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .rg-rij-k .rg-mini { min-width: 0; padding: 0 4px; }
+  .rg-snel-a { flex: 1 1 calc(50% - 4px); justify-content: center; }
+  .rg-af { padding: 14px; }
+  .rg-af-stappen li { grid-template-columns: 28px minmax(0, 1fr); }
+  .rg-af-stappen li > button, .rg-af-stappen li > .rg-af-k { grid-column: 1 / -1; }
+  .rg-af-stappen li > button { width: 100%; }
+  .rg-p-rij .rg-select, .rg-p-rij .rg-knop { flex: 1 1 100%; }
+  .rg-p-shift { flex-basis: 100%; }
+  .rg-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  /* Telefoon: de sporten krijgen een eigen rij over de volle breedte (naast de knop
+     Wedstrijddag bleef er ruimte voor één sport). De knop staat erboven; bij het
+     scrollen blijft alleen de rij met sporten plakken (top = min de hoogte van de knoprij). */
+  .rg-bar { flex-wrap: wrap; top: -52px; }
+  .rg-chips { flex: 1 1 100%; }
+  .rg-dagknop { flex: 1 1 100%; order: -1; justify-content: center; }
+  .rg-item { gap: 8px; padding-left: 10px; }
+  .rg-item-i { width: 24px; height: 24px; }
+  .rg-item-open { min-width: 44px; justify-content: center; padding: 0 8px; }
+  .rg-item-open span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rg-knop, .rg-mini, .rg-chip, .rg-dagknop, .rg-schakel-spoor, .rg-schakel-spoor::after, .rg-how > summary::after { transition: none !important; }
+}

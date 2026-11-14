@@ -1,0 +1,832 @@
+/* ================================================================
+   STIJL "SPORTHUB" — de werkschermen
+   crew-bediening (body.wd) · check-in (body.ci) · omroep (body.om)
+   ----------------------------------------------------------------
+   Wordt door de pagina-vuller (server.js, THEME_EXTRA) ná
+   thema-sporthub.css geladen op wedstrijd.html, checkin.html,
+   omroep.html en admin.html. Elke regel staat onder
+   html[data-theme="sporthub"]; de stijl 'schemering' raakt dit
+   bestand nooit. De admin heeft daarnaast thema-sporthub-admin.css;
+   alles hieronder is op body.wd / body.ci / body.om gescoped, behalve
+   de tokens in sectie 1.
+
+   STATUSAFSPRAAK (gelijk aan het live-bord; kleur is nooit het enige
+   signaal — er staat altijd een woord, een stip of een andere vorm bij):
+     live / start      oranje vlak, blauwe tekst, een stip       (5,9:1)
+     klaar             wit vlak, blauwe tekst                    (17:1)
+     gepland           blauw-2 tegel met rand, witte tekst       (15:1)
+     fout / stop       wit vlak met 2px rode rand, rode tekst    (5,3:1)
+                       op blauw: witte tekst, rood-lichte rand
+     let op / wacht    blauw-2 tegel met oranje rand, witte tekst
+   Start en einde verschillen ook in VORM: start = gevulde oranje pil,
+   einde = wit vak met rechte hoeken en een rode rand.
+
+   Opbouw:
+     1. Tokens (compacte maten, wit vlak = omgekeerde set)
+     2. Crew — kop, inloggen, sportkeuze, lijst
+     3. Crew — bediening van één wedstrijd (hoofdtoernooi)
+     4. Crew — de andere sporten (wedstrijd-hub.js, klassen wh-*)
+     5. Crew — uitleg-vel, pauze, wachtrij-teller
+     6. Check-in
+     7. Omroep
+     8. Minder beweging
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   1. TOKENS
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] {
+  --bh-knop: 48px;                            /* tikvlak van een gewone knop op een werkscherm */
+  --bh-knop-groot: 60px;                      /* dé actie: start, +1, einde */
+  --bh-zacht: rgba(255, 255, 255, .84);       /* tweede tekst op blauw (≥ 11:1) */
+}
+
+/* Witte vlakken op de werkschermen: dezelfde namen als in thema-sporthub.css,
+   omgekeerd (tekst en accenten worden logo-blauw). */
+html[data-theme="sporthub"] :is(
+  body.wd .wd-login,
+  body.wd .wd-now,
+  body.wd .wd-match[data-status="done"],
+  body.wd .wd-team,
+  body.wd .wd-sheet-card,
+  body.wd #wd-paused,
+  body.wd .wh-card,
+  body.wd .wh-m.live,
+  body.wd #wd-hub details .wh-m,
+  body.wd .wh-paused:not(#wh-queue),
+  body.ci .checkin-result,
+  body.ci .manual-modal-content,
+  body.om .om-prompt,
+  body.om .om-moment.result
+) {
+  --midnight: #FFFFFF;
+  --midnight-2: #F6F7FB;
+  --midnight-3: #E7E9F2;
+  --ember: #06193A;
+  --ember-2: #06193A;
+  --gold: #06193A;
+  --gold-2: #06193A;
+  --ice: #06193A;
+  --ice-muted: #4A4F72;
+  --ice-faint: #4A4F72;
+  --line: rgba(6, 25, 58, .14);
+  --line-strong: rgba(6, 25, 58, .5);
+  --danger: #C4382E;
+  --success: #06193A;
+  --sh-focus: #06193A;
+  color: #06193A;
+  color-scheme: light;
+}
+html[data-theme="sporthub"] :is(body.wd .wd-login, body.ci .manual-modal-content) .card-eyebrow { padding-left: 0; color: var(--sh-rood); }
+html[data-theme="sporthub"] :is(body.wd .wd-login, body.ci .manual-modal-content) .card-eyebrow::before { content: none; }
+html[data-theme="sporthub"] :is(body.wd .wd-login, body.ci .manual-modal-content) .field :is(input, textarea)::placeholder { color: rgba(6, 25, 58, .62); }
+html[data-theme="sporthub"] body.wd .wd-login .alert.error { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); font-weight: 600; }
+
+@keyframes sh-werk-puls { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes sh-werk-op { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ----------------------------------------------------------------
+   2. CREW — kop, inloggen, sportkeuze, lijst
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.wd { background: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-shell { padding: 14px 14px 96px; }
+
+/* --- kop -------------------------------------------------------- */
+html[data-theme="sporthub"] body.wd .wd-top { gap: 8px 10px; padding: 2px 0 14px; }
+html[data-theme="sporthub"] body.wd .wd-badge { width: 34px; height: 34px; background: url('/jvo-logo.jpg') center/cover, var(--sh-navy); }
+/* ingelogd: merk op regel 1; verbinding links en de twee knoppen rechts op regel 2 */
+html[data-theme="sporthub"] body.wd .wd-top:not(:has(.wd-logout.wd-hidden)) .t { flex-basis: calc(100% - 50px); }
+html[data-theme="sporthub"] body.wd .wd-sync { order: 1; margin-right: auto; }
+html[data-theme="sporthub"] body.wd .wd-checkin { order: 2; }
+html[data-theme="sporthub"] body.wd .wd-logout { order: 3; }
+html[data-theme="sporthub"] body.wd .wd-top .t { flex: 1 1 0; font-size: 10px; letter-spacing: .16em; line-height: 1.55; color: var(--bh-zacht); }
+html[data-theme="sporthub"] body.wd .wd-top .t b { font-size: 11px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme="sporthub"] body.wd .wd-checkin,
+html[data-theme="sporthub"] body.wd .wd-logout,
+html[data-theme="sporthub"] body.wd .wd-checkin:hover,
+html[data-theme="sporthub"] body.wd .wd-logout:hover {
+  position: relative; flex: none; display: inline-flex; align-items: center; min-height: 34px; padding: 0 13px; margin-left: 0;
+  font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; line-height: 1; white-space: nowrap;
+  background: var(--sh-navy); color: #fff; border: 1.5px solid var(--sh-rand); border-radius: 999px; text-decoration: none;
+}
+html[data-theme="sporthub"] body.wd .wd-checkin::before,
+html[data-theme="sporthub"] body.wd .wd-logout::before { content: ''; position: absolute; inset: -6px -2px; }
+html[data-theme="sporthub"] body.wd .wd-checkin:hover,
+html[data-theme="sporthub"] body.wd .wd-logout:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-logout.wd-hidden { display: none; }
+
+/* verbinding: altijd in beeld. Verbonden = rustig; versturen = oranje; offline = open ring + rood-lichte rand */
+html[data-theme="sporthub"] body.wd .wd-sync { min-height: 34px; padding: 0 13px; gap: 8px; font-family: var(--body); font-size: 12.5px; font-weight: 600; border: 1.5px solid transparent; box-sizing: border-box; }
+html[data-theme="sporthub"] body.wd .wd-sync .d { width: 8px; height: 8px; box-sizing: border-box; }
+html[data-theme="sporthub"] body.wd .wd-sync.ok { color: #fff; background: var(--sh-navy-2); border-color: var(--sh-rand); }
+html[data-theme="sporthub"] body.wd .wd-sync.pending { color: var(--sh-navy); background: var(--sh-oranje); border-color: var(--sh-oranje); }
+html[data-theme="sporthub"] body.wd .wd-sync.pending .d { animation: sh-werk-puls 1.4s ease-in-out infinite; }
+html[data-theme="sporthub"] body.wd .wd-sync.off { color: #fff; background: transparent; border-color: var(--sh-rood-l); }
+html[data-theme="sporthub"] body.wd .wd-sync.off .d { background: transparent; border: 2px solid #fff; }
+
+/* "Hoe werkt dit?" */
+html[data-theme="sporthub"] body.wd .wd-help-inline {
+  min-height: var(--bh-knop); margin-top: 0; padding: 10px 16px; border-radius: 16px;
+  background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); color: #fff; font-size: 14px; font-weight: 500; text-align: left;
+}
+html[data-theme="sporthub"] body.wd .wd-help-inline b { color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.wd .wd-help-inline .ar { color: #fff; font-size: 18px; line-height: 1; }
+html[data-theme="sporthub"] body.wd .wd-help-inline:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-help-inline:active { filter: none; }
+
+/* --- inloggen: wit kaartje met strook ---------------------------- */
+html[data-theme="sporthub"] body.wd .wd-login {
+  --sh-strook-h: 60px; --sh-hap: 9px;
+  position: relative; margin-top: 22px; padding: calc(var(--sh-strook-h) + 22px) 20px 24px;
+  background: #fff; border: 0; border-radius: 18px;
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at 0 var(--sh-strook-h), #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% var(--sh-strook-h), #0000 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at 0 var(--sh-strook-h), #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% var(--sh-strook-h), #0000 98%, #000) right / 51% 100% no-repeat;
+}
+html[data-theme="sporthub"] body.wd .wd-login::before {
+  content: 'Jeugdgroep van Oranje';
+  content: 'Jeugdgroep van Oranje' / '';
+  display: flex; align-items: center; box-sizing: border-box;
+  position: absolute; left: 0; right: 0; top: 0; height: var(--sh-strook-h);
+  padding: 0 84px 0 20px; border-bottom: 2px dashed var(--sh-scheur);
+  background: var(--werk-icoon, var(--sport-icoon)) right 29px center / 28px 28px no-repeat,
+              var(--sh-schijf) right 20px center / 46px 46px no-repeat;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4;
+  color: var(--sh-rood);
+}
+html[data-theme="sporthub"] body.wd .wd-login.wd-hidden { display: none; }
+html[data-theme="sporthub"] body.wd .wd-login h2 {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: none; color: var(--sh-navy);
+  font-size: clamp(22px, 6.6vw, 28px); line-height: 1.08; letter-spacing: -.02em; margin: 6px 0 18px;
+}
+html[data-theme="sporthub"] body.wd .wd-login .btn.full { min-height: 56px; }
+
+/* --- sportkeuze -------------------------------------------------- */
+html[data-theme="sporthub"] body.wd .wh-sport { margin: 16px 0 14px; }
+html[data-theme="sporthub"] body.wd :is(.wh-lbl, .wh-sec, .wd-group-h) {
+  position: relative; padding-left: 32px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; line-height: 1.6; color: #fff;
+}
+html[data-theme="sporthub"] body.wd :is(.wh-lbl, .wh-sec, .wd-group-h)::before {
+  content: ''; position: absolute; left: 0; top: .8em; width: 22px; height: 1.5px; margin-top: -1px; background: var(--sh-rood-l);
+}
+html[data-theme="sporthub"] body.wd .wh-lbl { margin: 0 0 9px; }
+html[data-theme="sporthub"] body.wd .wh-chips { gap: 8px; padding: 3px 14px 6px 3px; margin: -3px -14px 0 -3px; }
+html[data-theme="sporthub"] body.wd .wh-chip {
+  min-height: 46px; padding: 0 16px 0 8px; gap: 9px; border-radius: 999px;
+  background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); color: #fff; font: 600 14px/1.2 var(--body);
+}
+html[data-theme="sporthub"] body.wd .wh-chip img {
+  width: 30px; height: 30px; padding: 5px; box-sizing: border-box; border-radius: 50%;
+  background: var(--sh-navy); box-shadow: 0 0 0 1px var(--sh-navy), 0 0 0 2.5px var(--sh-rood);
+}
+html[data-theme="sporthub"] body.wd .wh-chip:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wh-chip[aria-selected="true"] { background: #fff; color: var(--sh-navy); border-color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.wd :is(.wh-m, .wh-chip, .wh-step button, .wh-back):focus-visible { outline: 3px solid var(--sh-focus); outline-offset: 2px; }
+
+/* --- JVO Smart-tip ---------------------------------------------- */
+html[data-theme="sporthub"] body.wd .jvs-crew[hidden] { display: none; }
+html[data-theme="sporthub"] body.wd .jvs-crew { align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 16px; font-size: 14px; line-height: 1.45; }
+html[data-theme="sporthub"] body.wd .jvs-crew .jvs-mark { margin: 3px; align-self: flex-start; }
+html[data-theme="sporthub"] body.wd .jvs-crew.jvs--warn { border-color: var(--sh-oranje); }
+html[data-theme="sporthub"] body.wd .jvs-crew .jvs-mark,
+html[data-theme="sporthub"] body.wd .jvs-crew.jvs--warn .jvs-mark,
+html[data-theme="sporthub"] body.wd .jvs-crew.jvs--clinch .jvs-mark { color: #fff; }
+html[data-theme="sporthub"] body.wd .jvs-crew .wd-tip-sub { color: var(--bh-zacht); }
+html[data-theme="sporthub"] body.wd .jvs-crew .wd-tip-sub b { color: #fff; }
+
+/* --- filters ----------------------------------------------------- */
+html[data-theme="sporthub"] body.wd .wd-filter { gap: 8px; padding: 10px 14px 10px 3px; margin: 0 -14px 2px -3px; background: var(--sh-navy); scrollbar-width: none; }
+html[data-theme="sporthub"] body.wd .wd-vfilter { gap: 8px; padding: 3px 14px 12px 3px; margin: 0 -14px 0 -3px; scrollbar-width: none; }
+html[data-theme="sporthub"] body.wd :is(.wd-filter, .wd-vfilter)::-webkit-scrollbar { display: none; }
+html[data-theme="sporthub"] body.wd :is(.wd-chip, .wd-vchip) {
+  position: relative; min-height: 40px; padding: 0 15px; border-radius: 999px;
+  background: var(--sh-navy); border: 1.5px solid var(--sh-rand); color: #fff; font-size: 13.5px; font-weight: 600;
+}
+html[data-theme="sporthub"] body.wd .wd-vchip { min-height: 36px; padding: 0 13px; font-size: 13px; }
+html[data-theme="sporthub"] body.wd :is(.wd-chip, .wd-vchip)::before { content: ''; position: absolute; inset: -4px 0; }
+html[data-theme="sporthub"] body.wd :is(.wd-chip, .wd-vchip):hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd :is(.wd-chip, .wd-vchip).on { background: #fff; color: var(--sh-navy); border-color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.wd .wd-chip i { background: rgba(255, 255, 255, .16); color: #fff; border-radius: 999px; padding: 2px 8px; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+html[data-theme="sporthub"] body.wd .wd-chip.on i { background: var(--sh-navy); color: #fff; }
+
+/* --- lijst -------------------------------------------------------- */
+html[data-theme="sporthub"] body.wd .wd-group-h { margin: 20px 0 10px; }
+/* één kolom, ook op een breed scherm: het werkscherm is 560px breed en de kaartjes hebben hun breedte nodig */
+html[data-theme="sporthub"] body.wd :is(.wd-grid, .wd-now-grid) { grid-template-columns: minmax(0, 1fr); }
+html[data-theme="sporthub"] body.wd .wd-grid { gap: 8px; }
+
+/* gepland = blauw-2 tegel met rand; klaar = wit kaartje met strookje */
+html[data-theme="sporthub"] body.wd .wd-match {
+  --bh-stub: 76px;
+  grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; min-height: 66px; box-sizing: border-box;
+  padding: 11px 12px 11px 14px; border-radius: 16px;
+  background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand);
+}
+html[data-theme="sporthub"] body.wd .wd-match:not(.locked):hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-m-time { min-width: 50px; font-family: var(--sh-rond); font-weight: 900; font-size: 14px; letter-spacing: -.02em; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-m-time .wd-exp { font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0; color: var(--sh-oranje); margin-top: 5px; }
+/* lange teamnamen: breken op een woordgrens, anders met een afbreekstreepje (lang=nl), nooit midden in een woord */
+html[data-theme="sporthub"] body.wd .wd-match .teams { font-size: 14.5px; font-weight: 600; line-height: 1.3; color: #fff; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.wd .wd-match .teams .v { color: var(--bh-zacht); font-size: 11px; font-weight: 400; margin: 0 6px; }
+html[data-theme="sporthub"] body.wd .wd-match .teams .ctx { color: var(--bh-zacht); font-size: 9.5px; font-weight: 400; letter-spacing: .14em; margin-top: 5px; }
+html[data-theme="sporthub"] body.wd .wd-match .right { text-align: center; min-width: 0; }
+html[data-theme="sporthub"] body.wd .wd-match .scwrap { margin-top: 0; }
+html[data-theme="sporthub"] body.wd .wd-match .scwrap:not(:empty) { margin-top: 6px; }
+html[data-theme="sporthub"] body.wd .wd-match .sc { font-family: var(--sh-rond); font-weight: 900; font-size: 15px; letter-spacing: -.02em; color: #fff; white-space: nowrap; }
+html[data-theme="sporthub"] body.wd .wd-pill,
+html[data-theme="sporthub"] body.wd .wd-c-pill {
+  font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .12em; line-height: 1.3; padding: 4px 9px; border-radius: 999px; white-space: nowrap; animation: none;
+}
+html[data-theme="sporthub"] body.wd :is(.wd-pill, .wd-c-pill).sched { background: transparent; color: #fff; border: 1px solid var(--sh-rand); }
+html[data-theme="sporthub"] body.wd :is(.wd-pill, .wd-c-pill).live { background: var(--sh-oranje); color: var(--sh-navy); border: 1px solid var(--sh-oranje); font-weight: 700; }
+html[data-theme="sporthub"] body.wd :is(.wd-pill, .wd-c-pill).done { background: #fff; color: var(--sh-navy); border: 1px solid #fff; }
+/* een live wedstrijd in de gefilterde lijst: oranje rand om de tegel */
+html[data-theme="sporthub"] body.wd .wd-match.live { background: var(--sh-navy-2); border: 2px solid var(--sh-oranje); padding: 10.5px 11.5px 10.5px 13.5px; }
+/* wacht op de vorige ronde: gestippelde rand, niet aan te tikken */
+html[data-theme="sporthub"] body.wd .wd-match.locked { opacity: 1; filter: none; background: transparent; border: 1.5px dashed var(--sh-rand); }
+html[data-theme="sporthub"] body.wd .wd-match.locked :is(.wd-m-time, .teams) { opacity: .78; }
+/* klaar: wit kaartje, de uitslag op het strookje achter de scheurlijn */
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] {
+  --sh-hap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) var(--bh-stub);
+  background: #fff; border: 0; padding: 0 0 0 15.5px; opacity: 1;
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at calc(100% - var(--bh-stub)) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+                radial-gradient(circle var(--sh-hap) at calc(100% - var(--bh-stub)) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at calc(100% - var(--bh-stub)) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+                radial-gradient(circle var(--sh-hap) at calc(100% - var(--bh-stub)) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+}
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] :is(.wd-m-time, .teams, .sc) { color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] .wd-m-time { font-weight: 700; color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] .teams :is(.v, .ctx) { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] .right {
+  align-self: stretch; display: flex; flex-direction: column-reverse; align-items: center; justify-content: center; gap: 5px;
+  padding: 10px 6px; border-left: 2px dashed var(--sh-scheur); box-sizing: border-box;
+}
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] .scwrap { margin: 0; }
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] .sc { font-size: 17px; }
+html[data-theme="sporthub"] body.wd .wd-match[data-status="done"] .wd-pill.done { background: transparent; border: 0; padding: 0; color: var(--sh-inkt-2); font-weight: 500; letter-spacing: .14em; }
+
+/* --- NU LIVE: het grote kaartje, één tik = bedienen ------------- */
+html[data-theme="sporthub"] body.wd .wd-now-h { gap: 10px; margin: 8px 0 10px; font-size: 10px; font-weight: 500; letter-spacing: .16em; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-now-dot { width: 10px; height: 10px; background: var(--sh-oranje); box-shadow: none; animation: sh-werk-puls 1.6s ease-in-out infinite; }
+html[data-theme="sporthub"] body.wd .wd-now-grid { gap: 10px; margin-bottom: 20px; }
+html[data-theme="sporthub"] body.wd .wd-now {
+  --sh-strook-h: 52px; --sh-hap: 9px;
+  padding: 0; border: 0; border-radius: 18px; background: #fff; box-shadow: none; overflow: visible;
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at 0 var(--sh-strook-h), #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% var(--sh-strook-h), #0000 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at 0 var(--sh-strook-h), #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% var(--sh-strook-h), #0000 98%, #000) right / 51% 100% no-repeat;
+}
+html[data-theme="sporthub"] body.wd .wd-now.locked { opacity: .7; }
+html[data-theme="sporthub"] body.wd .wd-now-top {
+  height: var(--sh-strook-h); box-sizing: border-box; margin: 0; gap: 9px; padding: 0 16px 0 14px;
+  border-bottom: 2px dashed var(--sh-scheur);
+}
+/* het sport-icoon in de ring, vóór het veld */
+html[data-theme="sporthub"] body.wd .wd-now-top::before {
+  content: ''; flex: none; width: 32px; height: 32px;
+  background: var(--wh-icoon, var(--sport-icoon)) center / 19px 19px no-repeat, var(--sh-schijf) center / 32px 32px no-repeat;
+}
+html[data-theme="sporthub"] body.wd .wd-now-field {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+  background: var(--sh-oranje); color: var(--sh-navy); font-size: 9.5px; letter-spacing: .12em; line-height: 1.2;
+}
+html[data-theme="sporthub"] body.wd .wd-now-field::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sh-navy); animation: sh-werk-puls 1.6s ease-in-out infinite; }
+html[data-theme="sporthub"] body.wd .wd-now-ctx { color: var(--sh-inkt-2); font-size: 9.5px; letter-spacing: .12em; }
+html[data-theme="sporthub"] body.wd .wd-now-clk { font-family: var(--sh-rond); font-weight: 900; font-size: 14px; letter-spacing: -.02em; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-now-clk.extra { color: var(--sh-rood); animation: none; }
+html[data-theme="sporthub"] body.wd .wd-now-body { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; padding: 14px 16px 4px; }
+html[data-theme="sporthub"] body.wd .wd-now-team {
+  font-size: 14.5px; font-weight: 600; line-height: 1.25; color: var(--sh-navy);
+  white-space: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4;
+}
+html[data-theme="sporthub"] body.wd .wd-now-sc { gap: 3px; font-family: var(--sh-rond); }
+html[data-theme="sporthub"] body.wd .wd-now-sc b { font-size: 26px; letter-spacing: -.03em; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-now-sc i { font-size: 16px; color: var(--sh-inkt-2); top: -3px; }
+html[data-theme="sporthub"] body.wd .wd-now-cta {
+  display: flex; align-items: center; justify-content: center; min-height: var(--bh-knop); margin: 10px 14px 14px; padding: 0 20px;
+  border-radius: 999px; background: var(--sh-oranje); color: var(--sh-navy); font-size: 15px; font-weight: 600;
+}
+html[data-theme="sporthub"] body.wd .wd-now.locked .wd-now-cta { background: transparent; border: 1.5px dashed var(--sh-rand-wit); color: var(--sh-inkt-2); font-weight: 500; }
+
+/* ----------------------------------------------------------------
+   3. CREW — bediening van één wedstrijd (hoofdtoernooi)
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.wd :is(.wd-back, .wh-back) {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; margin: 2px 0 12px; position: relative;
+  border: 1.5px solid var(--sh-rand); border-radius: 999px; background: var(--sh-navy); color: #fff; font: 600 13.5px/1 var(--body);
+}
+html[data-theme="sporthub"] body.wd :is(.wd-back, .wh-back)::before { content: ''; position: absolute; inset: -4px 0; }
+html[data-theme="sporthub"] body.wd :is(.wd-back, .wh-back):hover { border-color: #fff; }
+
+html[data-theme="sporthub"] body.wd .wd-c-head { gap: 9px; margin-bottom: 10px; padding: 10px 12px; border-radius: 14px; background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); }
+html[data-theme="sporthub"] body.wd .wd-c-head.live { background: var(--sh-navy-2); border-color: var(--sh-oranje); }
+html[data-theme="sporthub"] body.wd .wd-c-field { background: #fff; color: var(--sh-navy); border-radius: 999px; padding: 5px 10px; font-size: 9.5px; letter-spacing: .12em; line-height: 1.2; }
+html[data-theme="sporthub"] body.wd .wd-c-head.live .wd-c-field { background: #fff; }
+html[data-theme="sporthub"] body.wd .wd-c-ctx { color: var(--bh-zacht); font-size: 10px; letter-spacing: .1em; }
+
+/* het scorebord: twee witte vlakken, de klok ertussen op blauw */
+html[data-theme="sporthub"] body.wd .wd-board { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 6px; }
+html[data-theme="sporthub"] body.wd .wd-team { display: flex; flex-direction: column; background: #fff; border: 0; border-radius: 18px; padding: 14px 10px 10px; }
+html[data-theme="sporthub"] body.wd .wd-team .nm { font-size: 14.5px; font-weight: 600; line-height: 1.2; min-height: 36px; color: var(--sh-navy); overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.wd .wd-team .num {
+  font-family: var(--sh-rond); font-weight: 900; font-size: clamp(40px, 13.5vw, 58px); line-height: 1.05; letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums; color: var(--sh-navy); margin: 6px 0 12px;
+}
+html[data-theme="sporthub"] body.wd .wd-plus,
+html[data-theme="sporthub"] body.wd .wd-plus:hover {
+  min-height: var(--bh-knop-groot); padding: 0; border-radius: 999px; background: var(--sh-oranje); color: var(--sh-navy);
+  font-family: var(--sh-rond); font-weight: 900; font-size: 20px; letter-spacing: -.02em; transition: transform .12s ease-out;
+}
+html[data-theme="sporthub"] body.wd .wd-plus:active:not(:disabled) { filter: none; transform: scale(.96); }
+html[data-theme="sporthub"] body.wd .wd-minus {
+  min-height: 44px; margin-top: 8px; padding: 4px 6px; border: 1.5px solid var(--sh-rand-wit); border-radius: 999px;
+  background: #fff; color: var(--sh-navy); font-family: var(--body); font-size: 12px; font-weight: 600; line-height: 1.15;
+}
+html[data-theme="sporthub"] body.wd .wd-minus:hover:not(:disabled) { border-color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-mid { min-width: 0; padding: 18px 2px 0; }
+html[data-theme="sporthub"] body.wd .wd-timer { font-family: var(--sh-rond); font-weight: 900; font-size: clamp(16px, 4.9vw, 21px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-timer.extra { color: var(--sh-oranje); }
+html[data-theme="sporthub"] body.wd .wd-timer-lbl { color: var(--bh-zacht); letter-spacing: .12em; margin-top: 5px; text-align: center; }
+html[data-theme="sporthub"] body.wd .wd-timer.extra + .wd-timer-lbl { color: var(--sh-oranje); font-weight: 600; }
+html[data-theme="sporthub"] body.wd .wd-vs { color: var(--bh-zacht); }
+
+/* grote knoppen: start = oranje pil, einde = wit vak met rode rand */
+html[data-theme="sporthub"] body.wd .wd-actions { margin-top: 14px; gap: 10px; }
+html[data-theme="sporthub"] body.wd .wd-big {
+  min-height: var(--bh-knop-groot); padding: 12px 22px; border-radius: 999px; border: 0;
+  background: var(--sh-oranje); color: var(--sh-navy);
+  font-family: var(--sh-rond); font-weight: 700; font-size: 15px; line-height: 1.2; letter-spacing: -.01em; text-transform: none;
+  transition: transform .12s ease-out;
+}
+html[data-theme="sporthub"] body.wd .wd-big:active { transform: scale(.98); }
+html[data-theme="sporthub"] body.wd .wd-big.start { background: var(--sh-oranje); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-big.end { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); border-radius: 14px; }
+html[data-theme="sporthub"] body.wd .wd-big.correct,
+html[data-theme="sporthub"] body.wd #wd-pens-redo { background: transparent; color: #fff; border: 1.5px solid var(--sh-rand); border-radius: 999px; }
+html[data-theme="sporthub"] body.wd .wd-note { font-size: 12.5px; line-height: 1.45; color: var(--bh-zacht); margin-top: 2px; }
+
+/* "juiste wedstrijd?" — let op: blauw-2 met oranje rand */
+html[data-theme="sporthub"] body.wd .wd-verify { background: var(--sh-navy-2); border: 1.5px solid var(--sh-oranje); border-radius: 18px; padding: 18px 16px 16px; gap: 10px; }
+html[data-theme="sporthub"] body.wd .wd-verify-h { font-family: var(--sh-rond); font-weight: 900; font-size: 16px; letter-spacing: -.01em; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-verify-m { font-size: 16px; line-height: 1.4; color: #fff; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.wd .wd-verify-m b { color: #fff; font-weight: 700; }
+
+/* niet op komen dagen */
+html[data-theme="sporthub"] body.wd .wd-noshow-btn {
+  min-height: 46px; margin-top: 4px; padding: 8px 12px; border: 1.5px dashed var(--sh-rand); border-radius: 14px;
+  color: #fff; font-family: var(--body); font-size: 13px; font-weight: 500; letter-spacing: 0; line-height: 1.3;
+}
+html[data-theme="sporthub"] body.wd .wd-noshow-btn:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-noshow { background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); border-radius: 16px; padding: 14px; }
+html[data-theme="sporthub"] body.wd .wd-noshow .t { font-size: 14px; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-btn {
+  min-height: 46px; padding: 8px 16px; border-radius: 999px; border: 1.5px solid var(--sh-rand); background: transparent; color: #fff;
+  font-size: 14px; font-weight: 600; line-height: 1.2;
+}
+html[data-theme="sporthub"] body.wd .wd-btn:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-btn.go,
+html[data-theme="sporthub"] body.wd .wd-btn.go.start { background: var(--sh-oranje); color: var(--sh-navy); border-color: var(--sh-oranje); font-weight: 700; }
+html[data-theme="sporthub"] body.wd .wd-btn.go.end { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); border-radius: 12px; }
+html[data-theme="sporthub"] body.wd #wd-pens-ok { background: var(--sh-oranje); color: var(--sh-navy); border: 1.5px solid var(--sh-oranje); border-radius: 999px; }
+html[data-theme="sporthub"] body.wd .wd-noshow .wd-noshow-pick { border-radius: 14px; padding: 10px 14px; font-weight: 500; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.wd .wd-noshow .wd-noshow-pick b { font-family: var(--sh-rond); font-weight: 900; font-size: 13px; color: #fff; white-space: nowrap; }
+
+/* het wachtvak (8 seconden om terug te draaien) */
+html[data-theme="sporthub"] body.wd .wd-pending { margin-top: 12px; padding: 14px; border-radius: 16px; background: var(--sh-navy-2); border: 1.5px solid var(--sh-oranje); }
+html[data-theme="sporthub"] body.wd .wd-pending .msg { font-size: 14.5px; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-pending .msg b { font-family: var(--sh-rond); font-weight: 900; letter-spacing: -.02em; color: #fff; white-space: nowrap; }
+html[data-theme="sporthub"] body.wd .wd-pending .cnt { font-family: var(--sh-rond); font-size: 20px; color: var(--sh-oranje); font-variant-numeric: tabular-nums; }
+html[data-theme="sporthub"] body.wd .wd-pending .bar { background: rgba(255, 255, 255, .2); }
+html[data-theme="sporthub"] body.wd .wd-pending .bar i { background: var(--sh-oranje); }
+html[data-theme="sporthub"] body.wd .wd-pending-warn { background: var(--sh-navy); border: 1.5px solid #fff; border-radius: 12px; color: #fff; padding: 10px 12px; font-size: 13.5px; animation: sh-werk-op .34s cubic-bezier(.16, 1, .3, 1) both; }
+html[data-theme="sporthub"] body.wd .wd-pending-warn b { color: #fff; font-weight: 700; }
+
+/* beslissing na gelijkspel */
+html[data-theme="sporthub"] body.wd .wd-pens { margin-top: 12px; padding: 16px 14px; border-radius: 18px; background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); }
+html[data-theme="sporthub"] body.wd .wd-pens-h { font-size: 10px; font-weight: 500; letter-spacing: .16em; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-pens-team .nm { color: #fff; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.wd .wd-pens-step { gap: 6px; }
+html[data-theme="sporthub"] body.wd .wd-pens-btn {
+  width: 46px; height: 46px; flex: none; border-radius: 50%; border: 1.5px solid var(--sh-rand); background: var(--sh-navy); color: #fff;
+  font-family: var(--body); font-weight: 600; font-size: 22px;
+}
+html[data-theme="sporthub"] body.wd .wd-pens-btn[data-d="1"] { background: var(--sh-oranje); border-color: var(--sh-oranje); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-pens-btn:active { filter: none; transform: scale(.94); }
+html[data-theme="sporthub"] body.wd .wd-pens-step .val { font-family: var(--sh-rond); font-size: 26px; letter-spacing: -.03em; min-width: 30px; color: #fff; font-variant-numeric: tabular-nums; }
+html[data-theme="sporthub"] body.wd .wd-pens-x { color: var(--bh-zacht); }
+html[data-theme="sporthub"] body.wd .wd-pens-warn { color: #fff; font-size: 13px; font-weight: 600; min-height: 18px; }
+html[data-theme="sporthub"] body.wd .wd-pens-acts { margin-top: 8px; }
+
+/* ----------------------------------------------------------------
+   4. CREW — de andere sporten (wedstrijd-hub.js)
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.wd .wh-head { gap: 14px; margin: 4px 0 6px 3px; }
+html[data-theme="sporthub"] body.wd .wh-head img {
+  width: 48px; height: 48px; padding: 8px; box-sizing: border-box; flex: none; border-radius: 50%;
+  background: var(--sh-navy); box-shadow: 0 0 0 1.5px var(--sh-navy), 0 0 0 3px var(--sh-rood);
+}
+html[data-theme="sporthub"] body.wd .wh-head b { font-family: var(--sh-rond); font-weight: 900; font-size: 19px; line-height: 1.15; letter-spacing: -.02em; color: #fff; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.wd .wh-head span { display: block; margin-top: 4px; font-size: 9.5px; letter-spacing: .14em; line-height: 1.5; color: var(--bh-zacht); }
+html[data-theme="sporthub"] body.wd .wh-sec { margin: 20px 0 10px; }
+html[data-theme="sporthub"] body.wd summary.wh-sec { display: flex; align-items: center; min-height: 44px; margin: 10px 0 4px; list-style: none; }
+html[data-theme="sporthub"] body.wd summary.wh-sec::-webkit-details-marker { display: none; }
+html[data-theme="sporthub"] body.wd summary.wh-sec::after {
+  content: ''; width: 7px; height: 7px; margin-left: 10px; border-right: 1.5px solid #fff; border-bottom: 1.5px solid #fff;
+  transform: translateY(-2px) rotate(45deg); transition: transform .2s ease-out;
+}
+html[data-theme="sporthub"] body.wd details[open] > summary.wh-sec::after { transform: translateY(2px) rotate(-135deg); }
+html[data-theme="sporthub"] body.wd .wh-note { font-size: 14px; color: var(--bh-zacht); }
+
+html[data-theme="sporthub"] body.wd .wh-m {
+  grid-template-columns: 54px minmax(0, 1fr) auto; gap: 12px; min-height: 66px; box-sizing: border-box; padding: 11px 14px;
+  border-radius: 16px; background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); color: #fff;
+}
+html[data-theme="sporthub"] body.wd .wh-m:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wh-m .tm { font-family: var(--sh-rond); font-weight: 900; font-size: 14px; letter-spacing: -.02em; color: #fff; }
+html[data-theme="sporthub"] body.wd .wh-m .tt { font-size: 14.5px; font-weight: 600; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.wd .wh-m .tt small { font-size: 9.5px; font-weight: 400; letter-spacing: .14em; color: var(--bh-zacht); margin-top: 5px; }
+html[data-theme="sporthub"] body.wd .wh-m .sc { font-family: var(--sh-rond); font-weight: 900; font-size: 15px; letter-spacing: -.02em; white-space: nowrap; }
+/* live: wit kaartje — icoon in de ring, oranje "live", de stand groot */
+html[data-theme="sporthub"] body.wd .wh-m.live {
+  grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: "ic tm sc" "tt tt tt"; gap: 10px 10px;
+  padding: 12px 16px 14px 14px; border: 0; border-radius: 18px; background: #fff; color: var(--sh-navy);
+}
+html[data-theme="sporthub"] body.wd .wh-m.live::before {
+  content: ''; grid-area: ic; width: 32px; height: 32px;
+  background: var(--wh-icoon, var(--sport-icoon)) center / 19px 19px no-repeat, var(--sh-schijf) center / 32px 32px no-repeat;
+}
+html[data-theme="sporthub"] body.wd .wh-m.live .tm {
+  grid-area: tm; justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+  background: var(--sh-oranje); color: var(--sh-navy);
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; line-height: 1.2;
+}
+html[data-theme="sporthub"] body.wd .wh-m.live .tm::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sh-navy); animation: sh-werk-puls 1.6s ease-in-out infinite; }
+html[data-theme="sporthub"] body.wd .wh-m.live .tt { grid-area: tt; font-size: 15.5px; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wh-m.live .tt small { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd .wh-m.live .sc { grid-area: sc; font-size: 22px; letter-spacing: -.03em; color: var(--sh-navy); }
+/* klaar (in de uitklapper): wit kaartje */
+html[data-theme="sporthub"] body.wd #wd-hub details .wh-m { background: #fff; border-color: #fff; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd #wd-hub details .wh-m .tm { font-weight: 700; color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd #wd-hub details .wh-m .tt small { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd #wd-hub details .wh-m .sc { font-size: 17px; color: var(--sh-navy); }
+
+/* de bediening: één wit kaartje, bovenaan het strookje met het sport-icoon */
+html[data-theme="sporthub"] body.wd .wh-card { position: relative; margin-top: 0; padding: 0 16px 18px; background: #fff; border: 0; border-radius: 18px; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wh-card > .wh-ctx:first-child {
+  display: flex; align-items: center; min-height: 58px; box-sizing: border-box; margin: 0 -16px 6px; padding: 10px 66px 10px 16px;
+  border-bottom: 2px dashed var(--sh-scheur);
+  background: var(--wh-icoon, var(--sport-icoon)) right 23px center / 22px 22px no-repeat, var(--sh-schijf) right 16px center / 36px 36px no-repeat;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .14em; line-height: 1.6; color: var(--sh-inkt-2);
+}
+html[data-theme="sporthub"] body.wd .wh-ctx { font-size: 9.5px; letter-spacing: .14em; color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd .wh-card > .wh-ctx:not(:first-child) { color: var(--sh-rood); font-weight: 600; letter-spacing: .16em; }
+html[data-theme="sporthub"] body.wd .wh-sets { margin-top: 12px; font-size: 12px; letter-spacing: .02em; color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd .wh-team { gap: 10px; margin-top: 12px; min-height: 56px; }
+html[data-theme="sporthub"] body.wd .wh-team .nm { font-size: 16px; font-weight: 600; line-height: 1.25; color: var(--sh-navy); overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.wd .wh-team > b { font-family: var(--sh-rond); font-weight: 900; font-size: 28px; letter-spacing: -.03em; color: var(--sh-navy); font-variant-numeric: tabular-nums; }
+html[data-theme="sporthub"] body.wd .wh-step { gap: 6px; }
+html[data-theme="sporthub"] body.wd .wh-step b {
+  min-width: 52px; font-family: var(--sh-rond); font-weight: 900; font-size: 30px; line-height: 1; letter-spacing: -.04em; color: var(--sh-navy);
+}
+html[data-theme="sporthub"] body.wd .wh-step button {
+  width: 50px; height: 50px; flex: none; border-radius: 50%; border: 1.5px solid var(--sh-rand-wit); background: #fff; color: var(--sh-navy);
+  font-family: var(--body); font-size: 24px; font-weight: 600; line-height: 1; transition: transform .12s ease-out;
+}
+html[data-theme="sporthub"] body.wd .wh-step button[data-step$=",1"] { width: 58px; height: 58px; border: 0; background: var(--sh-oranje); color: var(--sh-navy); font-size: 28px; }
+html[data-theme="sporthub"] body.wd .wh-step button:active { transform: scale(.94); }
+html[data-theme="sporthub"] body.wd .wh-setrow { grid-template-columns: 58px minmax(0, 1fr) minmax(0, 1fr); }
+html[data-theme="sporthub"] body.wd .wh-setrow label { font-size: 10px; letter-spacing: .1em; line-height: 1.35; color: var(--sh-inkt-2); overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.wd :is(.wh-setrow, .wh-pens) input {
+  min-height: 50px; box-sizing: border-box; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--sh-rand-wit);
+  background: var(--sh-wit); color: var(--sh-navy); font-family: var(--sh-rond); font-weight: 700; font-size: 17px;
+}
+html[data-theme="sporthub"] body.wd :is(.wh-setrow, .wh-pens) input:focus { background: #fff; border-color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wh-pens label { font-size: 14px; font-weight: 600; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wh-actions { gap: 10px; margin-top: 18px; }
+html[data-theme="sporthub"] body.wd .wh-actions .btn { min-height: var(--bh-knop-groot); font-family: var(--sh-rond); font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+html[data-theme="sporthub"] body.wd .wh-actions .btn:hover { transform: none; }
+/* einde = wit vak met rode rand (start blijft de oranje pil) */
+html[data-theme="sporthub"] body.wd .wh-actions .btn[data-act="end"],
+html[data-theme="sporthub"] body.wd .wh-actions .btn[data-act="end"]:hover { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); border-radius: 14px; }
+html[data-theme="sporthub"] body.wd .wh-actions .btn.ghost,
+html[data-theme="sporthub"] body.wd .wh-actions .btn.ghost:hover { min-height: var(--bh-knop); font-family: var(--body); font-weight: 600; font-size: 14.5px; letter-spacing: 0; color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); background: #fff; }
+html[data-theme="sporthub"] body.wd .wh-card .wh-note { color: var(--sh-inkt-2); padding: 6px 0; }
+
+/* meldingen: alleen zichtbaar als er iets staat */
+html[data-theme="sporthub"] body.wd .wh-alert { margin-top: 12px; min-height: 0; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.4; }
+html[data-theme="sporthub"] body.wd .wh-alert:not(:empty) { padding: 11px 14px; border: 1.5px solid var(--sh-rood-l); border-radius: 14px; }
+html[data-theme="sporthub"] body.wd #wh-msg { margin: 0 0 12px; }
+html[data-theme="sporthub"] body.wd .wh-card .wh-alert:not(:empty) { background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); }
+
+/* ----------------------------------------------------------------
+   5. CREW — pauze, wachtrij-teller, uitleg-vel
+   ---------------------------------------------------------------- */
+/* gepauzeerd = stop: wit vak met rode rand */
+html[data-theme="sporthub"] body.wd #wd-paused,
+html[data-theme="sporthub"] body.wd .wh-paused:not(#wh-queue) {
+  margin: 12px 0 !important; padding: 14px 16px !important; background: #fff !important; border: 2px solid var(--sh-rood) !important; border-radius: 16px !important;
+  color: var(--sh-navy) !important; font-size: 14px; font-weight: 500; line-height: 1.45;
+}
+html[data-theme="sporthub"] body.wd #wd-paused > div:first-child { font-family: var(--sh-rond); font-weight: 900 !important; font-size: 15px !important; letter-spacing: -.01em !important; color: var(--sh-rood) !important; }
+html[data-theme="sporthub"] body.wd #wd-paused > div:last-child { color: var(--sh-navy) !important; }
+
+/* de wachtrij-teller: iets wacht op verbinding (niet fout, niet gepauzeerd).
+   Blauw-2 met oranje rand, een kloppende stip en het getal vooraan. */
+html[data-theme="sporthub"] body.wd #wh-queue {
+  position: relative; margin: 0 0 12px; padding: 13px 16px 13px 42px; border-radius: 16px;
+  background: var(--sh-navy-2); border: 1.5px solid var(--sh-oranje); color: #fff; font-size: 14px; font-weight: 500; line-height: 1.45;
+}
+html[data-theme="sporthub"] body.wd #wh-queue::before {
+  content: ''; position: absolute; left: 16px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--sh-oranje);
+  animation: sh-werk-puls 1.4s ease-in-out infinite;
+}
+html[data-theme="sporthub"] body.wd #wh-queue[hidden] { display: none; }
+
+/* het uitleg-vel: een wit kaartje dat van onder komt */
+html[data-theme="sporthub"] body.wd .wd-fab { width: 52px; height: 52px; background: var(--sh-navy-2); color: #fff; border: 1.5px solid var(--sh-rand); box-shadow: 0 10px 24px rgba(2, 9, 24, .5); }
+html[data-theme="sporthub"] body.wd .wd-fab:hover { background: var(--sh-navy-2); border-color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-fab svg { width: 24px; height: 24px; }
+html[data-theme="sporthub"] body.wd .wd-sheet-bd { background: rgba(2, 9, 24, .74); }
+html[data-theme="sporthub"] body.wd .wd-sheet-card { background: #fff; border: 0; border-radius: 22px 22px 0 0; padding: 6px 20px max(22px, env(safe-area-inset-bottom)); box-shadow: 0 -18px 50px rgba(2, 9, 24, .5); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-sheet-grip { background: rgba(6, 25, 58, .22); }
+html[data-theme="sporthub"] body.wd .wd-sheet-ic { width: 38px; height: 38px; border-radius: 50%; background: var(--sh-navy); border: 0; color: #fff; }
+html[data-theme="sporthub"] body.wd .wd-sheet-title { font-family: var(--sh-rond); font-weight: 900; text-transform: none; font-size: 18px; line-height: 1.12; letter-spacing: -.02em; color: var(--sh-navy); overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.wd .wd-sheet-sub { color: var(--sh-rood); font-weight: 600; letter-spacing: .14em; font-size: 9.5px; margin-top: 5px; }
+html[data-theme="sporthub"] body.wd .wd-sheet-x { width: 44px; height: 44px; padding: 0; margin-right: -8px; color: var(--sh-navy); border-radius: 50%; }
+html[data-theme="sporthub"] body.wd .wd-sheet-body,
+html[data-theme="sporthub"] body.wd .wd-sheet-body p.lead,
+html[data-theme="sporthub"] body.wd .wd-sheet-body b,
+html[data-theme="sporthub"] body.wd .wd-sheet-body li,
+html[data-theme="sporthub"] body.wd .wd-step-t { color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-sheet-body p { color: var(--sh-inkt-2); }
+html[data-theme="sporthub"] body.wd .wd-sheet-body b { font-weight: 700; }
+html[data-theme="sporthub"] body.wd .wd-sheet-body .hl { color: var(--sh-navy); font-weight: 700; }
+html[data-theme="sporthub"] body.wd .wd-sheet-body li,
+html[data-theme="sporthub"] body.wd .wd-step { border-bottom-color: rgba(6, 25, 58, .12); }
+html[data-theme="sporthub"] body.wd .wd-sheet-body li::before { background: var(--sh-rood); width: 6px; height: 6px; top: 16px; }
+html[data-theme="sporthub"] body.wd .wd-step-n { width: 26px; height: 26px; background: var(--sh-navy); color: #fff; font-family: var(--sh-rond); font-size: 11.5px; }
+html[data-theme="sporthub"] body.wd .wd-kbd { background: var(--sh-wit); border-color: rgba(6, 25, 58, .22); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-sheet-foot { border-top: 2px dashed var(--sh-scheur); }
+html[data-theme="sporthub"] body.wd .wd-sheet-install,
+html[data-theme="sporthub"] body.wd .wd-sheet-ghost { min-height: var(--bh-knop); border-radius: 999px; border: 1.5px solid var(--sh-rand-wit); background: #fff; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.wd .wd-sheet-cta,
+html[data-theme="sporthub"] body.wd .wd-sheet-cta:hover { min-height: 56px; border-radius: 999px; background: var(--sh-oranje); color: var(--sh-navy); font-family: var(--sh-rond); font-weight: 700; text-transform: none; font-size: 15px; letter-spacing: -.01em; }
+html[data-theme="sporthub"] body.wd .wd-sheet :is(button, a):focus-visible { outline: 3px solid var(--sh-navy); outline-offset: 2px; }
+
+@media (min-width: 592px) {
+  html[data-theme="sporthub"] body.wd .wd-shell { padding-top: 22px; }
+}
+
+/* ----------------------------------------------------------------
+   6. CHECK-IN
+   ---------------------------------------------------------------- */
+/* de ring met het sport-icoon, half buiten beeld rechtsboven (zoals de losse publiekspagina's) */
+html[data-theme="sporthub"] body.ci .checkin-wrap { overflow: hidden; }
+@supports (overflow: clip) { html[data-theme="sporthub"] body.ci .checkin-wrap { overflow: visible; overflow-x: clip; } }
+html[data-theme="sporthub"] body.ci .checkin-wrap::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none; box-sizing: border-box;
+  right: -56px; top: 66px; width: 190px; height: 190px; border-radius: 50%; border: 2px solid var(--sh-rood);
+}
+html[data-theme="sporthub"] body.ci .checkin-wrap::after {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  right: 0; top: 118px; width: 86px; height: 86px;
+  background: var(--werk-icoon-groot, var(--sport-icoon-groot)) center / contain no-repeat;
+  filter: drop-shadow(0 12px 16px rgba(0, 0, 0, .35));
+}
+html[data-theme="sporthub"] body.ci .who { margin-top: 20px !important; font-size: 10px; letter-spacing: .16em; color: var(--bh-zacht); max-width: calc(100% - 120px); }
+html[data-theme="sporthub"] body.ci .who b { color: #fff; font-weight: 600; margin-left: 0; }
+html[data-theme="sporthub"] body.ci h1.checkin-h1 { font-size: clamp(28px, 8.6vw, 40px); max-width: calc(100% - 96px); text-wrap: balance; }
+html[data-theme="sporthub"] body.ci .checkin-wrap .lead { font-size: 15px; max-width: min(40ch, calc(100% - 104px)); }
+html[data-theme="sporthub"] body.ci details.help { margin-top: 22px; }
+
+html[data-theme="sporthub"] body.ci #qr-reader { margin: 16px auto 14px; border-radius: 18px; border: 1.5px solid var(--sh-rand); background: #020918; }
+html[data-theme="sporthub"] body.ci #qr-reader:empty { display: none; }
+html[data-theme="sporthub"] body.ci #restart-btn,
+html[data-theme="sporthub"] body.ci #manual-btn { flex: 1 1 0; min-height: var(--bh-knop); padding: 8px 12px; line-height: 1.2; }
+
+/* het resultaat: een kaartje dat wordt afgescheurd — strookje met status, daaronder het team */
+html[data-theme="sporthub"] body.ci .checkin-result {
+  position: relative; margin-top: 14px; padding: 0 20px 20px; background: #fff; border: 0; border-radius: 18px;
+  color: var(--sh-navy); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere;
+  animation: sh-werk-op .4s cubic-bezier(.16, 1, .3, 1) both;
+}
+html[data-theme="sporthub"] body.ci .checkin-result h3 {
+  display: flex; align-items: center; gap: 12px; min-height: 58px; box-sizing: border-box; margin: 0 -20px 16px; padding: 10px 20px;
+  border-bottom: 2px dashed var(--sh-scheur);
+  font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; line-height: 1.4; color: var(--sh-navy);
+}
+html[data-theme="sporthub"] body.ci .checkin-result h3::before {
+  flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; box-sizing: border-box;
+  font-family: var(--sh-rond); font-weight: 900; font-size: 14px; letter-spacing: 0; line-height: 1;
+}
+/* een kaartje van een team: rechts op het strookje het sport-icoon in de ring */
+html[data-theme="sporthub"] body.ci .checkin-result:has(h2) h3::after {
+  content: ''; flex: none; width: 34px; height: 34px; margin-left: auto;
+  background: var(--sport-icoon) center / 20px 20px no-repeat, var(--sh-schijf) center / 34px 34px no-repeat;
+}
+/* goed: oranje schijf met vinkje + happen op de scheurlijn */
+html[data-theme="sporthub"] body.ci .checkin-result.success {
+  --sh-hap: 9px;
+  -webkit-mask: radial-gradient(circle var(--sh-hap) at 0 58px, #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% 58px, #0000 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle var(--sh-hap) at 0 58px, #0000 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--sh-hap) at 100% 58px, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+html[data-theme="sporthub"] body.ci .checkin-result.success h3::before { content: '\2713'; content: '\2713' / ''; background: var(--sh-oranje); color: var(--sh-navy); }
+/* let op (al ingecheckt, offline bewaard): oranje rand, uitroepteken */
+html[data-theme="sporthub"] body.ci .checkin-result.warn { box-shadow: inset 0 0 0 3px var(--sh-oranje); }
+html[data-theme="sporthub"] body.ci .checkin-result.warn h3::before { content: '!'; content: '!' / ''; background: var(--sh-navy); color: #fff; }
+/* fout: rode rand, rood kruis, rode kop */
+html[data-theme="sporthub"] body.ci .checkin-result.error { box-shadow: inset 0 0 0 2px var(--sh-rood); }
+html[data-theme="sporthub"] body.ci .checkin-result.error h3 { color: var(--sh-rood); }
+html[data-theme="sporthub"] body.ci .checkin-result.error h3::before { content: '\00D7'; content: '\00D7' / ''; background: #fff; color: var(--sh-rood); border: 2px solid var(--sh-rood); font-size: 17px; }
+html[data-theme="sporthub"] body.ci .checkin-result h2.h-display {
+  font-family: var(--sh-rond); font-weight: 900; text-transform: none; color: var(--sh-navy);
+  font-size: clamp(22px, 7vw, 34px) !important; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 16px !important; overflow-wrap: anywhere;
+}
+html[data-theme="sporthub"] body.ci .checkin-result p { color: var(--sh-navy); margin: 0; }
+html[data-theme="sporthub"] body.ci .checkin-result p b { font-weight: 700; }
+html[data-theme="sporthub"] body.ci .checkin-result ul { color: var(--sh-navy); }
+html[data-theme="sporthub"] body.ci .checkin-result code { font-family: var(--mono); font-size: 13px; background: var(--sh-wit); border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
+html[data-theme="sporthub"] body.ci .checkin-result dl { display: grid; grid-template-columns: repeat(3, minmax(0, auto)); justify-content: start; gap: 2px 26px; margin: 0; }
+html[data-theme="sporthub"] body.ci .checkin-result dt { grid-row: 1; font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--sh-inkt-2); margin: 0; }
+html[data-theme="sporthub"] body.ci .checkin-result dd { grid-row: 2; margin: 0; font-family: var(--sh-rond); font-weight: 700; font-size: 13px; line-height: 1.3; letter-spacing: 0; color: var(--sh-navy); text-transform: none; overflow-wrap: anywhere; }
+
+/* teamcode invoeren: wit kaartje boven een donkere laag */
+html[data-theme="sporthub"] body.ci .manual-modal { background: rgba(2, 9, 24, .8); padding: 16px; }
+html[data-theme="sporthub"] body.ci .manual-modal-content { background: #fff; border: 0; border-radius: 18px; padding: 24px 20px 20px; box-shadow: 0 20px 50px rgba(2, 9, 24, .5); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.ci .manual-modal-content h3 { font-family: var(--sh-rond); font-weight: 900; text-transform: none; font-size: 20px; line-height: 1.1; letter-spacing: -.02em; color: var(--sh-navy); margin-bottom: 10px; }
+html[data-theme="sporthub"] body.ci .manual-modal-content p { color: var(--sh-inkt-2); font-size: 14px; line-height: 1.5; }
+html[data-theme="sporthub"] body.ci .manual-modal-content p b { color: var(--sh-navy); font-weight: 700; }
+html[data-theme="sporthub"] body.ci .manual-modal-content input[type="text"] {
+  background: var(--sh-wit); color: var(--sh-navy); border: 1.5px solid var(--sh-rand-wit); border-radius: 12px; min-height: 48px; font-size: 16px;
+}
+html[data-theme="sporthub"] body.ci .manual-modal-content input[type="text"]::placeholder { color: rgba(6, 25, 58, .62); }
+html[data-theme="sporthub"] body.ci .manual-modal-content input[type="text"]:focus { background: #fff; border-color: var(--sh-navy); outline: 3px solid var(--sh-navy); outline-offset: 2px; }
+html[data-theme="sporthub"] body.ci #manual-code-input { font-family: var(--sh-rond) !important; font-weight: 900 !important; font-size: clamp(22px, 7.4vw, 28px) !important; letter-spacing: .08em !important; min-height: 64px; }
+html[data-theme="sporthub"] body.ci #manual-code-input::placeholder { color: rgba(6, 25, 58, .62); font-weight: 400; }
+html[data-theme="sporthub"] body.ci .manual-modal-content summary { min-height: 44px; display: flex; align-items: center; color: var(--sh-navy) !important; text-decoration: underline; text-decoration-color: var(--sh-rood); text-underline-offset: 3px; }
+html[data-theme="sporthub"] body.ci .manual-modal-content .btn-sm { min-height: var(--bh-knop); color: var(--sh-navy); border-color: var(--sh-rand-wit); }
+html[data-theme="sporthub"] body.ci .manual-modal-content .btn-sm.primary { min-height: 52px; color: var(--sh-navy); border-color: var(--sh-oranje); font-weight: 700; }
+html[data-theme="sporthub"] body.ci .manual-modal-content .btn-sm.primary:disabled { opacity: .5; }
+
+@media (min-width: 601px) {
+  html[data-theme="sporthub"] body.ci .checkin-wrap::before { width: 300px; height: 300px; right: -70px; top: 60px; }
+  html[data-theme="sporthub"] body.ci .checkin-wrap::after { width: 136px; height: 136px; right: 12px; top: 142px; }
+  html[data-theme="sporthub"] body.ci h1.checkin-h1 { font-size: clamp(38px, 5.4vw, 50px); max-width: calc(100% - 240px); }
+  html[data-theme="sporthub"] body.ci .checkin-wrap .lead { max-width: min(44ch, calc(100% - 250px)); font-size: 16.5px; }
+  html[data-theme="sporthub"] body.ci .who { max-width: calc(100% - 250px); }
+}
+
+/* ----------------------------------------------------------------
+   7. OMROEP
+   Wordt op afstand gelezen: weinig versiering, groot contrast. Het
+   enige grote witte vlak is "lees dit voor".
+   ---------------------------------------------------------------- */
+html[data-theme="sporthub"] body.om { background: var(--sh-navy); }
+html[data-theme="sporthub"] body.om .om-top { gap: 10px; padding: 2px 0 12px; }
+html[data-theme="sporthub"] body.om .om-badge { width: 34px; height: 34px; background: url('/jvo-logo.jpg') center/cover, var(--sh-navy); }
+html[data-theme="sporthub"] body.om .om-top .t { min-width: 0; flex: 1 1 0; font-size: 10px; letter-spacing: .16em; line-height: 1.55; color: var(--bh-zacht); }
+html[data-theme="sporthub"] body.om .om-top .t b { font-size: 11px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme="sporthub"] body.om .om-tv-btn,
+html[data-theme="sporthub"] body.om .om-tv-btn:hover {
+  position: relative; flex: none; min-height: 34px; padding: 0 13px; margin-left: 0; border-radius: 999px; border: 1.5px solid var(--sh-rand);
+  background: var(--sh-navy); color: #fff; font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+}
+html[data-theme="sporthub"] body.om .om-tv-btn::before { content: ''; position: absolute; inset: -6px -2px; }
+html[data-theme="sporthub"] body.om .om-tv-btn:hover { border-color: #fff; }
+html[data-theme="sporthub"] body.om .om-clock,
+html[data-theme="sporthub"] body.om .om-top .om-clock { margin-left: 2px; font-family: var(--sh-rond); font-weight: 900; font-size: 19px; letter-spacing: -.03em; color: #fff; }
+html[data-theme="sporthub"] body.om .om-updated { color: var(--bh-zacht); letter-spacing: .14em; margin: -4px 0 14px; }
+
+html[data-theme="sporthub"] body.om .om-h { position: relative; gap: 10px; margin: 24px 0 10px; padding-left: 32px; font-size: 10.5px; font-weight: 500; letter-spacing: .16em; line-height: 1.6; color: #fff; flex-wrap: wrap; }
+html[data-theme="sporthub"] body.om .om-h::before { content: ''; position: absolute; left: 0; top: .8em; width: 22px; height: 1.5px; margin-top: -1px; background: var(--sh-rood-l); }
+html[data-theme="sporthub"] body.om .om-h .dot { width: 10px; height: 10px; background: var(--sh-oranje); animation: sh-werk-puls 1.6s ease-in-out infinite; }
+html[data-theme="sporthub"] body.om .om-h .n { color: var(--bh-zacht); font-size: 9.5px; letter-spacing: .1em; }
+
+/* LEES DIT VOOR — hét witte vlak */
+html[data-theme="sporthub"] body.om .om-prompt { margin: 0 0 8px; padding: 0 20px 20px; background: #fff; border: 0; border-radius: 18px; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.om .om-prompt .om-prompt-lbl {
+  display: flex; align-items: center; min-height: 46px; margin: 0 -20px 16px; padding: 0 20px; border-bottom: 2px dashed var(--sh-scheur);
+  font-size: 10px; font-weight: 600; letter-spacing: .16em; color: var(--sh-rood);
+}
+html[data-theme="sporthub"] body.om .om-prompt .om-prompt-txt { font-size: 20px; line-height: 1.42; font-weight: 500; color: var(--sh-navy); overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.om .om-prompt .om-prompt-txt b { color: var(--sh-navy); font-weight: 800; }
+
+/* momenten: volle rand in plaats van een zijstreep */
+html[data-theme="sporthub"] body.om .om-moments { gap: 8px; margin: 0 0 12px; }
+html[data-theme="sporthub"] body.om .om-moment { padding: 12px 16px; border-radius: 14px; font-size: 16.5px; font-weight: 700; line-height: 1.35; background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); color: #fff; }
+html[data-theme="sporthub"] body.om .om-moment.headline { background: var(--sh-oranje); border-color: var(--sh-oranje); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.om .om-moment.result { background: #fff; border-color: #fff; color: var(--sh-navy); }
+/* (.lead is ook de naam van de inleidende alinea op de publiekspagina's: maat en breedte hier vastzetten) */
+html[data-theme="sporthub"] body.om .om-moment.lead { background: var(--sh-navy-2); border-color: var(--sh-oranje); color: #fff; max-width: none; margin: 0; font-size: 16.5px; font-weight: 700; line-height: 1.35; opacity: 1; }
+html[data-theme="sporthub"] body.om-tv .om-moment.lead { font-size: 22px; }
+
+/* NU BEZIG */
+html[data-theme="sporthub"] body.om .om-lv { gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); }
+html[data-theme="sporthub"] body.om .om-lv .veld { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--sh-oranje); color: var(--sh-navy); font-size: 9.5px; letter-spacing: .12em; line-height: 1.2; }
+html[data-theme="sporthub"] body.om .om-lv .veld::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--sh-navy); animation: sh-werk-puls 1.6s ease-in-out infinite; }
+html[data-theme="sporthub"] body.om .om-lv .wie { font-size: 16px; font-weight: 600; color: #fff; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.om .om-lv .wie .sc { font-family: var(--sh-rond); font-size: 17px; letter-spacing: -.03em; color: #fff; margin: 0 8px; white-space: nowrap; display: inline-block; /* inline-block: de regel mag vóór en ná de stand breken, niet midden in een naam */ }
+html[data-theme="sporthub"] body.om .om-lv .wie .waar { color: var(--bh-zacht); font-size: 9.5px; letter-spacing: .14em; margin-top: 4px; }
+html[data-theme="sporthub"] body.om .om-lv .wie span[style] { color: #fff !important; }
+html[data-theme="sporthub"] body.om .om-lv .klok { font-family: var(--sh-rond); font-size: 16px; letter-spacing: -.03em; color: #fff; }
+html[data-theme="sporthub"] body.om .om-lv .klok.extra { color: var(--sh-oranje); }
+
+/* ZO OMROEPEN */
+html[data-theme="sporthub"] body.om .om-q { gap: 12px 14px; padding: 14px; border-radius: 16px; background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); box-shadow: none; }
+html[data-theme="sporthub"] body.om .om-q.eerst { border: 2px solid var(--sh-oranje); padding: 13.5px; box-shadow: none; }
+html[data-theme="sporthub"] body.om .om-q .when { min-width: 76px; }
+html[data-theme="sporthub"] body.om .om-q .when .rel { font-family: var(--sh-rond); font-size: 13px; line-height: 1.15; letter-spacing: -.02em; color: #fff; white-space: normal; }
+html[data-theme="sporthub"] body.om .om-q .when .rel.nu { display: inline-block; padding: 5px 11px; border-radius: 999px; background: var(--sh-oranje); color: var(--sh-navy); }
+html[data-theme="sporthub"] body.om .om-q .when .abs { color: var(--bh-zacht); font-size: 10.5px; margin-top: 5px; }
+html[data-theme="sporthub"] body.om .om-q .wie .teams { font-size: 17px; font-weight: 700; color: #fff; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.om .om-q .wie .teams i { color: var(--bh-zacht); font-size: 11px; }
+html[data-theme="sporthub"] body.om .om-q .veldchip { background: #fff; color: var(--sh-navy); border-radius: 999px; padding: 4px 10px; font-size: 9.5px; letter-spacing: .12em; line-height: 1.2; }
+html[data-theme="sporthub"] body.om .om-q .waar { color: var(--bh-zacht); font-size: 9.5px; letter-spacing: .12em; }
+html[data-theme="sporthub"] body.om .om-q .warn { color: #fff; background: transparent; border: 1.5px solid var(--sh-oranje); border-radius: 999px; padding: 3px 9px; font-size: 9.5px; letter-spacing: .06em; font-weight: 600; }
+html[data-theme="sporthub"] body.om .om-q .warn.bezig { color: #fff; background: transparent; border-color: #fff; }
+html[data-theme="sporthub"] body.om .om-q .ok { min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--sh-navy); border: 1.5px solid var(--sh-rand); color: #fff; font-size: 13.5px; }
+html[data-theme="sporthub"] body.om .om-q .ok:hover { border-color: #fff; color: #fff; }
+html[data-theme="sporthub"] body.om .om-q.gedaan { opacity: .64; }
+html[data-theme="sporthub"] body.om .om-q.gedaan .ok { background: #fff; color: var(--sh-navy); border-color: #fff; }
+html[data-theme="sporthub"] body.om .om-hint { font-size: 12.5px; line-height: 1.5; color: var(--bh-zacht); margin: 8px 0 0; }
+html[data-theme="sporthub"] body.om .om-hint b { color: #fff; }
+
+/* NET KLAAR */
+html[data-theme="sporthub"] body.om .om-d { padding: 11px 14px; border-radius: 14px; background: var(--sh-navy-2); border: 1.5px solid rgba(255, 255, 255, .22); }
+html[data-theme="sporthub"] body.om .om-d .wie { font-size: 15px; color: var(--bh-zacht); overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; }
+html[data-theme="sporthub"] body.om .om-d .wie .w { color: #fff; font-weight: 800; }
+html[data-theme="sporthub"] body.om .om-d .wie .sc { font-family: var(--sh-rond); font-size: 14px; letter-spacing: -.02em; color: #fff; white-space: nowrap; display: inline-block; }
+html[data-theme="sporthub"] body.om .om-d .wie .np { color: var(--bh-zacht); }
+html[data-theme="sporthub"] body.om .om-d .waar { color: var(--bh-zacht); font-size: 9.5px; letter-spacing: .12em; }
+html[data-theme="sporthub"] body.om .om-empty { padding: 24px 14px; border-radius: 16px; background: transparent; border: 1.5px dashed var(--sh-rand); color: var(--bh-zacht); }
+
+/* grote letters (presentator op afstand) */
+html[data-theme="sporthub"] body.om-tv .om-prompt .om-prompt-txt { font-size: 28px; line-height: 1.35; }
+html[data-theme="sporthub"] body.om-tv .om-prompt .om-prompt-lbl { font-size: 12px; min-height: 52px; }
+html[data-theme="sporthub"] body.om-tv .om-moment { font-size: 22px; padding: 16px 20px; }
+html[data-theme="sporthub"] body.om-tv .om-lv .wie { font-size: 23px; }
+html[data-theme="sporthub"] body.om-tv .om-lv .wie .sc { font-size: 24px; }
+html[data-theme="sporthub"] body.om-tv .om-lv .klok { font-size: 22px; }
+html[data-theme="sporthub"] body.om-tv .om-lv .veld,
+html[data-theme="sporthub"] body.om-tv .om-q .veldchip { font-size: 12px; padding: 6px 12px; }
+html[data-theme="sporthub"] body.om-tv .om-q .when { min-width: 104px; }
+html[data-theme="sporthub"] body.om-tv .om-q .when .rel { font-size: 18px; }
+html[data-theme="sporthub"] body.om-tv .om-q .when .abs { font-size: 13px; }
+html[data-theme="sporthub"] body.om-tv .om-q .wie .teams { font-size: 24px; }
+html[data-theme="sporthub"] body.om-tv .om-q :is(.waar, .warn) { font-size: 12px; }
+html[data-theme="sporthub"] body.om-tv .om-q .ok { min-height: 52px; font-size: 16px; padding: 0 20px; }
+html[data-theme="sporthub"] body.om-tv .om-d .wie { font-size: 20px; }
+html[data-theme="sporthub"] body.om-tv .om-d .wie .sc { font-size: 19px; }
+html[data-theme="sporthub"] body.om-tv .om-h { font-size: 13px; }
+html[data-theme="sporthub"] body.om-tv .om-h .n,
+html[data-theme="sporthub"] body.om-tv .om-lv .wie .waar,
+html[data-theme="sporthub"] body.om-tv .om-d .waar { font-size: 12px; }
+html[data-theme="sporthub"] body.om-tv .om-clock,
+html[data-theme="sporthub"] body.om-tv .om-top .om-clock { font-size: 26px; }
+
+@media (max-width: 560px) {
+  /* telefoon: merk op regel 1, knop links en klok rechts op regel 2 */
+  html[data-theme="sporthub"] body.om .om-top { flex-wrap: wrap; gap: 8px 10px; }
+  html[data-theme="sporthub"] body.om .om-top .t { flex-basis: calc(100% - 50px); }
+  html[data-theme="sporthub"] body.om .om-tv-btn { margin-right: auto; }
+  html[data-theme="sporthub"] body.om-tv .om-q .when { min-width: 84px; }
+  html[data-theme="sporthub"] body.om-tv .om-q .when .rel { font-size: 14px; }
+  html[data-theme="sporthub"] body.om .om-lv { grid-template-columns: minmax(0, 1fr) auto; }
+  html[data-theme="sporthub"] body.om .om-lv .veld { grid-column: 1; justify-self: start; }
+  html[data-theme="sporthub"] body.om .om-lv .klok { grid-column: 2; grid-row: 1; }
+  html[data-theme="sporthub"] body.om .om-lv .wie { grid-column: 1 / -1; font-size: 16px; }
+  html[data-theme="sporthub"] body.om .om-q .wie .teams { font-size: 16.5px; }
+  html[data-theme="sporthub"] body.om-tv .om-lv .wie { font-size: 20px; }
+  html[data-theme="sporthub"] body.om-tv .om-q .wie .teams { font-size: 20px; }
+  html[data-theme="sporthub"] body.om-tv .om-prompt .om-prompt-txt { font-size: 24px; }
+}
+
+/* ----------------------------------------------------------------
+   8. MINDER BEWEGING
+   ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="sporthub"] :is(body.wd, body.ci, body.om) *,
+  html[data-theme="sporthub"] :is(body.wd, body.ci, body.om) *::before,
+  html[data-theme="sporthub"] :is(body.wd, body.ci, body.om) *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── omroep, hub-modus: sportfilter, gepauzeerde sport, setstanden ── */
+html[data-theme="sporthub"] body.om .om-chip { background: var(--sh-navy-2); border: 1.5px solid var(--sh-rand); color: #fff; font-size: 13.5px; font-weight: 600; }
+html[data-theme="sporthub"] body.om .om-chip:hover { border-color: #fff; color: #fff; }
+html[data-theme="sporthub"] body.om .om-chip[aria-pressed="true"] { background: #fff; border-color: #fff; color: var(--sh-navy); }
+html[data-theme="sporthub"] body.om .om-chip-stil { font-size: 9px; letter-spacing: .1em; }
+html[data-theme="sporthub"] body.om .om-pauze-rij { background: var(--sh-navy-2); border: 2px solid var(--sh-oranje); border-radius: 16px; padding: 13px 16px; color: #fff; }
+html[data-theme="sporthub"] body.om .om-pauze-lbl { color: var(--sh-oranje); font-size: 10px; letter-spacing: .16em; }
+html[data-theme="sporthub"] body.om .om-sp { color: #fff; font-weight: 700; }
+html[data-theme="sporthub"] body.om .om-sets { color: var(--bh-zacht); font-size: 11.5px; }
+html[data-theme="sporthub"] body.om .om-q.stil { opacity: .7; }
+html[data-theme="sporthub"] body.om .om-q.stil .when .rel { color: var(--sh-oranje); }
+html[data-theme="sporthub"] body.om-tv .om-chip { font-size: 16px; }
+html[data-theme="sporthub"] body.om-tv .om-pauze-rij { font-size: 20px; }
+html[data-theme="sporthub"] body.om-tv .om-pauze-lbl, html[data-theme="sporthub"] body.om-tv .om-sets { font-size: 12.5px; }

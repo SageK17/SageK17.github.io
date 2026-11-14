@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <script src="/voorbeeld.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programma &amp; standen — JVO Sportdag</title>
+  <style>
+    /* Print-first: black on white, readable on paper, sane page breaks. The
+       on-screen view is just a preview of what prints. */
+    :root { --line: #888; --line-soft: #ccc; --head: #111; --muted: #555; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f4f4; color: #111; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 13px; }
+    .page { max-width: 820px; margin: 0 auto; background: #fff; padding: 24px 30px 40px; }
+    .toolbar { position: sticky; top: 0; background: #1a2030; color: #fff; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .toolbar b { font-size: 14px; }
+    .toolbar .sp { flex: 1; }
+    .btn { background: #FF6B1A; color: #111; border: none; border-radius: 7px; padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4); }
+    .hint { color: #cdd6e6; font-size: 12px; }
+
+    h1 { font-size: 22px; margin: 4px 0 2px; }
+    .sub { color: var(--muted); font-size: 13px; margin-bottom: 2px; }
+    .gen { color: var(--muted); font-size: 11px; margin-bottom: 18px; }
+    h2 { font-size: 16px; margin: 20px 0 8px; border-bottom: 2px solid #111; padding-bottom: 4px; }
+    h3 { font-size: 13px; margin: 14px 0 5px; color: var(--head); text-transform: uppercase; letter-spacing: .04em; }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    th, td { border: 1px solid var(--line-soft); padding: 5px 8px; text-align: left; font-size: 12px; }
+    th { background: #eee; font-weight: 700; }
+    td.c, th.c { text-align: center; }
+    td.t { font-family: 'Courier New', monospace; white-space: nowrap; }
+    .res { font-family: 'Courier New', monospace; letter-spacing: .12em; color: #333; white-space: nowrap; }
+    .ph { color: var(--muted); font-style: italic; }
+    .poule { page-break-inside: avoid; }
+    .empty { color: var(--muted); padding: 30px 0; text-align: center; }
+    /* sport-hub: sportkeuze in de balk + invulvakjes (per set) */
+    .sporten { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
+    .sporten[hidden] { display: none; }
+    .sporten a { color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+    .sporten a[aria-current="page"] { background: #fff; color: #1a2030; border-color: #fff; }
+    .sporten a:focus-visible, .btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .schema td { padding: 7px 8px; vertical-align: middle; }
+    .schema tr { page-break-inside: avoid; }
+    .schema .rl { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+    .schema td.uit { white-space: nowrap; }
+    .vak { display: inline-block; font-family: 'Courier New', monospace; letter-spacing: .08em; color: #333; border: 1px solid var(--line); border-radius: 3px; padding: 9px 6px 3px; margin: 1px 4px 1px 0; position: relative; min-width: 64px; text-align: center; }
+    .vak i { position: absolute; top: 1px; left: 4px; font: normal 8px -apple-system, Arial, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+    .vak.tot { border-width: 2px; border-color: #111; }
+    .vak:not(:has(i)) { padding-top: 6px; padding-bottom: 6px; }
+    .setjes { color: var(--muted); font-size: 11px; }
+    .note { color: var(--muted); font-size: 11px; margin-top: 18px; border-top: 1px solid var(--line-soft); padding-top: 8px; }
+
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      .toolbar { display: none; }
+      .page { max-width: none; margin: 0; padding: 0 6mm; }
+      h2 { page-break-after: avoid; }
+      .poule, .ko-round { page-break-inside: avoid; }
+      a { color: #111; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <b>Papieren back-up</b>
+    <span class="hint">Print dit (of bewaar als PDF) terwijl de wifi het nog doet — voor als het netwerk op locatie uitvalt.</span>
+    <span class="sp"></span>
+    <button class="btn" id="print-btn">Printen / opslaan als PDF</button>
+    <button class="btn ghost" id="refresh-btn">Ververs</button>
+    <nav class="sporten" id="sporten" aria-label="Kies een sport" hidden></nav>
+  </div>
+  <!-- data-event-name: server-gevulde terugval voor als de toernooi-data geen evenementnaam meestuurt. -->
+  <div class="page" id="page" data-event-name="JVO Sportdag"><div class="empty">Laden…</div></div>
+
+  <script src="/print.js"></script>
+</body>
+</html>

@@ -1,0 +1,1922 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/klembord-klein.webp');--werk-icoon-groot:url('/sport/werk/klembord.webp')">
+<head>
+  <script src="/voorbeeld.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>JVO Admin — Sportdag</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/jvo-smart.css" />
+  <link rel="stylesheet" href="/admin-regie.css" />
+  <link rel="manifest" href="/admin.webmanifest" />
+  <meta name="theme-color" content="#FF6B1A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="JVO Admin" />
+  <link rel="apple-touch-icon" href="/icons/admin-192.png" />
+  <link rel="icon" type="image/png" href="/icons/favicon.png" />
+  <style>
+    /* ===== Tournament control center (Toernooi tab) ===== */
+    .tc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tc-statebadge { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; white-space: nowrap; flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .tc-statebadge.on { background: rgba(108,227,160,.14); color: var(--success); border: 1px solid rgba(108,227,160,.4); }
+    .tc-statebadge.off { background: rgba(232,244,255,.06); color: var(--ice-muted); border: 1px solid var(--line-strong); }
+    .tc-statebadge .d { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .tc-statebadge.on .d { animation: tcpulse 1.8s infinite; }
+    @keyframes tcpulse { 0%{box-shadow:0 0 0 0 rgba(108,227,160,.5);} 70%{box-shadow:0 0 0 7px rgba(108,227,160,0);} 100%{box-shadow:0 0 0 0 rgba(108,227,160,0);} }
+
+    /* stat tiles */
+    .tc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .tc-tile { background: var(--midnight); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; }
+    .tc-tile .v { font-family: var(--display); font-weight: 900; font-size: 30px; line-height: 1; color: var(--ice); }
+    .tc-tile .v.gold { color: var(--gold-2); }
+    .tc-tile .v.live { color: var(--success); }
+    .tc-tile .k { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ice-faint); margin-top: 6px; }
+
+    /* progress bars */
+    .tc-progress { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 620px) { .tc-progress { grid-template-columns: 1fr; } }
+    .tc-bar-row .lbl { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ice-muted); margin-bottom: 6px; }
+    .tc-bar-row .lbl b { color: var(--ice); font-size: 12px; }
+    .tc-bar { height: 8px; border-radius: 6px; background: rgba(232,244,255,.08); overflow: hidden; }
+    .tc-bar i { display: block; height: 100%; border-radius: 6px; background: var(--gold); transition: width .4s ease; }
+    .tc-bar.green i { background: var(--success); }
+
+    /* format selector cards */
+    .tc-sub-label { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ember); margin: 4px 0 10px; }
+    .tc-formats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 620px) { .tc-formats { grid-template-columns: 1fr; } }
+    .tc-fmt { text-align: left; background: var(--midnight); border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px 15px; cursor: pointer; transition: all .15s; position: relative; color: var(--ice); }
+    .tc-fmt:hover { border-color: rgba(255,179,71,.5); }
+    .tc-fmt.sel { border-color: var(--gold); background: rgba(255,179,71,.1); box-shadow: 0 0 0 1px rgba(255,179,71,.5) inset; }
+    .tc-fmt .n { font-family: var(--display); font-weight: 900; font-size: 26px; line-height: 1; color: var(--ice); }
+    .tc-fmt.sel .n { color: var(--gold-2); }
+    .tc-fmt .t { font-size: 13px; color: var(--ice); margin-top: 6px; font-weight: 600; }
+    .tc-fmt .d { font-size: 12px; color: var(--ice-muted); margin-top: 4px; line-height: 1.4; }
+    .tc-fmt .rec { position: absolute; top: 10px; right: 10px; font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--midnight); background: var(--success); border-radius: 999px; padding: 2px 8px; font-weight: 700; }
+    .tc-fmt .fit { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-faint); margin-top: 8px; }
+    .tc-fmt-hint { font-size: 13px; color: var(--ice-muted); margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(232,244,255,.04); border: 1px solid var(--line); }
+    .tc-fmt-hint.warn { color: var(--gold-2); background: rgba(255,179,71,.08); border-color: rgba(255,179,71,.3); }
+    .tc-fmt-hint.ok { color: var(--success); background: rgba(108,227,160,.07); border-color: rgba(108,227,160,.28); }
+    /* Haalbaarheids-pil: loopt de dag uit t.o.v. de sluitingstijd? (control-tower-signaal) */
+    .feas-pill { display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; font-weight: 700; padding: 3px 10px; border-radius: 999px; margin-left: 6px; white-space: nowrap; vertical-align: 1px; }
+    .feas-pill.feas-ok { color: var(--midnight); background: var(--success); }
+    .feas-pill.feas-warn { color: var(--midnight); background: var(--gold); }
+    .feas-pill.feas-crit { color: #fff; background: #FF6464; }
+
+    .tc-actions { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; flex-wrap: wrap; }
+    .tc-actions .grow { flex: 1; }
+    .tc-gen { font-size: 14px; padding: 12px 22px; }
+
+    /* quick links */
+    .tc-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .tc-link { display: inline-flex; align-items: center; gap: 7px; background: var(--midnight-3); border: 1px solid var(--line-strong); color: var(--ice); border-radius: 9px; padding: 9px 14px; font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; text-decoration: none; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease; }
+    .tc-link:hover { background: #20406e; border-color: var(--ice-faint); color: var(--ice); }
+    .tc-link.primary { background: var(--gold); color: var(--midnight); border: 1px solid transparent; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.28); }
+    .tc-link.primary:hover { background: var(--gold-2); color: var(--midnight); transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(255,179,71,.5); }
+    .tc-link svg { width: 13px; height: 13px; }
+
+    /* status & mails table polish */
+    .tc-poule-chip { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-2); background: rgba(255,179,71,.12); border: 1px solid rgba(255,179,71,.28); border-radius: 6px; padding: 2px 7px; margin-right: 6px; }
+    .tc-empty-cta { text-align: center; padding: 30px 16px; color: var(--ice-muted); }
+
+    /* ===================================================================
+       ADMIN REDESIGN — the control-center language across every tab.
+       (Inline, so it only restyles admin.html — other pages are untouched.)
+       =================================================================== */
+    /* Tab navigation → gradient pills (matches the live board / control center) */
+    .tabs { gap: 8px; margin: 22px 0 26px; border-bottom: none; flex-wrap: wrap; }
+    .tab-btn { background: transparent; color: var(--ice-muted); border: 1px solid var(--line); border-radius: 9px; padding: 9px 16px; font-family: var(--body); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; border-bottom: 1px solid var(--line); margin-bottom: 0; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+    .tab-btn:hover { color: var(--ice); border-color: var(--line-strong); background: rgba(232,244,255,.03); }
+    .tab-btn.active { background: rgba(255,179,71,.12); color: var(--gold-2); border-color: rgba(255,179,71,.4); font-weight: 700; }
+    .tab-btn .badge { background: var(--danger); color: #fff; border-radius: 999px; padding: 1px 7px; font-size: 10px; margin-left: 5px; vertical-align: 1px; }
+    .tab-btn.active .badge { background: var(--gold); color: var(--midnight); }
+
+    /* "Ingelogd als" status strip */
+    .who { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ice-muted); margin: 18px 0 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .who b { color: var(--gold-2); margin-left: 4px; font-weight: 600; }
+    .live-status { display: inline-flex; align-items: center; gap: 7px; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 0 rgba(108,227,160,.5); animation: tcpulse 2s infinite; }
+    .refresh-btn { display: inline-flex; align-items: center; gap: 7px; background: var(--midnight-3); border: 1px solid var(--line-strong); color: var(--ice-muted); border-radius: 9px; padding: 7px 12px; font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+    .refresh-btn:hover { background: #20406e; border-color: var(--ice-faint); color: var(--ice); }
+    .refresh-btn svg { width: 14px; height: 14px; }
+    .refresh-btn .spin { animation: tc-spin .8s linear infinite; }
+    @keyframes tc-spin { to { transform: rotate(360deg); } }
+
+    /* Stat tiles → cleaner, with a hover affordance on the clickable one */
+    .stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    /* Telefoon: de vier kerncijfers twee-op-twee i.p.v. onder elkaar — dat scheelt
+       ruim een half scherm scrollen zonder dat je iets kwijt bent. */
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .stat { padding: 13px 14px; }
+      .stat .value { font-size: 32px; margin-top: 4px; }
+      .stat .label { font-size: 9.5px; letter-spacing: .1em; }
+    }
+    .stat { background: var(--midnight-2); padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line); transition: border-color .15s, transform .1s; }
+    .stat .label { font-size: 10px; letter-spacing: .14em; color: var(--ice-faint); }
+    .stat .value { font-size: 44px; margin-top: 7px; font-variant-numeric: tabular-nums; }
+    .stat .value .frac { font-size: 20px; color: var(--ice-faint); font-weight: 700; }
+    .stat .sub { font-size: 11px; color: var(--ice-muted); margin-top: 7px; font-family: var(--mono); letter-spacing: .03em; }
+    .stat-clickable { cursor: pointer; text-align: left; width: 100%; }
+    .stat-clickable:hover { border-color: rgba(255,179,71,.5); transform: translateY(-1px); }
+    #ov-pending-card .value { color: var(--gold-2); }
+
+    /* Filter pills → gradient active (Teams + signups) */
+    .filter-pill { font-family: var(--body); text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; border-radius: 999px; border-color: var(--line-strong); color: var(--ice-muted); padding: 8px 14px; }
+    .filter-pill:hover { color: var(--ice); border-color: var(--ice-faint); }
+    .filter-pill .count { background: rgba(232,244,255,.1); color: var(--ice); border-radius: 999px; padding: 1px 7px; font-size: 11px; margin-left: 6px; }
+    .filter-pill.active { background: rgba(255,179,71,.12); color: var(--gold-2); border-color: rgba(255,179,71,.4); font-weight: 700; }
+    .filter-pill.active .count { background: var(--gold); color: var(--midnight); }
+
+    /* Tables → quiet header + row hover */
+    table thead th { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ice-faint); font-weight: 400; text-align: left; padding: 8px 12px 11px; border-bottom: 1px solid var(--line-strong); }
+    table tbody td { padding: 13px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    table tbody tr { transition: background .12s; }
+    table tbody tr:hover { background: rgba(232,244,255,.025); }
+    table tbody tr:last-child td { border-bottom: none; }
+    table td .muted, table td .small { color: var(--ice-faint); font-size: 12px; }
+
+    /* Status pills → colour-coded chips */
+    .pill { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; line-height: 1.4; }
+    .pill.approved { background: rgba(108,227,160,.16); color: var(--success); border-color: rgba(108,227,160,.42); }
+    .pill.pending { background: rgba(255,179,71,.16); color: var(--gold-2); border-color: rgba(255,179,71,.42); }
+    .pill.waitlist { background: rgba(255,107,26,.14); color: var(--ember-2); border-color: rgba(255,107,26,.42); }
+    .pill.rejected { background: rgba(255,100,100,.14); color: #FF8484; border-color: rgba(255,100,100,.42); }
+    .pill.checked-in { background: rgba(108,227,160,.1); color: var(--success); border-color: rgba(108,227,160,.3); }
+    .pill.waiting-rename, .pill.waiting-count, .pill.renamed { background: rgba(255,179,71,.1); color: var(--gold-2); border-color: rgba(255,179,71,.32); cursor: pointer; }
+    .pill-stack { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    /* Row action buttons — consistent small buttons */
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+
+    /* "Hoe werkt dit" how-card + steps */
+    .how-card { background: var(--midnight-2); border: 1px solid rgba(255,179,71,0.28); border-radius: 16px; }
+    .step-num { background: var(--gold); color: var(--midnight); }
+
+    /* Login screen polish — drop the poster offset-shadow + gold dot */
+    .login-card { border-radius: 20px; border: 1px solid var(--line-strong); }
+    .login-card.card { box-shadow: 0 24px 60px -24px rgba(0,0,0,.75); }
+    .login-card.card::before { display: none; }
+
+    /* Recent-activity rows as tidy cards */
+    .recent-activity { gap: 7px; }
+
+    /* Programma frame */
+    .program-frame-wrap { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+
+    /* Clickable team name (opens the team detail modal) */
+    .team-open { background: none; border: none; padding: 0; margin: 0; cursor: pointer; font: inherit; color: var(--ice); font-weight: 700; text-align: left; transition: color .12s; }
+    .team-open:hover { color: var(--gold-2); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* Team detail modal */
+    .team-modal-status { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 16px; }
+    .team-modal-schema { margin-top: 18px; padding: 16px; border-radius: 12px; background: rgba(255,179,71,.06); border: 1px solid rgba(255,179,71,.22); }
+    .team-modal-schema.off { display: none; }
+
+    /* ===== Teams tab → team cards ===== */
+    .tm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+    @media (max-width: 560px) { .tm-cards { grid-template-columns: 1fr; } }
+    .tm-card { position: relative; background: var(--midnight-2); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; cursor: pointer; overflow: hidden; transition: border-color .15s ease, transform .1s ease, box-shadow .15s ease; }
+    /* status carried by a full-border tint + a leading status dot — no side-stripe */
+    .tm-card.s-approved { border-color: rgba(108,227,160,.26); }
+    .tm-card.s-pending  { border-color: rgba(255,179,71,.3); }
+    .tm-card.s-waitlist { border-color: rgba(120,170,255,.3); }
+    .tm-card.s-rejected { border-color: rgba(255,100,100,.26); }
+    .tm-card:hover { border-color: var(--ice-faint); transform: translateY(-1px); box-shadow: 0 12px 30px -12px rgba(0,0,0,.5); }
+    .tm-card.s-approved:hover { border-color: rgba(108,227,160,.5); }
+    .tm-card.s-pending:hover  { border-color: rgba(255,179,71,.55); }
+    .tm-card.s-waitlist:hover { border-color: rgba(120,170,255,.55); }
+    .tm-card.s-rejected:hover { border-color: rgba(255,100,100,.5); }
+    .tm-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .tm-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+    /* teamlogo op de kaart — de naam blijft de kop, het logo is de herkenning.
+       De kop mag afbreken: is er te weinig ruimte (smalle kaart + lange teamnaam),
+       dan zakt de status-pil naar de volgende regel i.p.v. dat de naam eronderdoor
+       loopt. Zonder dit werd de naam tot ~60px geknepen en overlapte hij de pil. */
+    .tm-card-head { flex-wrap: wrap; row-gap: 6px; }
+    .tm-card-head .tm-card-name { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+    .tm-card-head .pill { flex: 0 0 auto; }
+    .tm-card-head .tm-logo { flex: none; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; position: relative; }
+    .tm-card-head .tm-logo svg, .tm-card-head .tm-logo img { display: block; width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
+    .tm-card-head .tm-logo.pending { opacity: .6; }
+    .tm-card-head .tm-logo.pending::after { content: ''; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); border: 2px solid var(--midnight-2); }
+    .tm-card-name { display: inline-flex; align-items: center; gap: 9px; min-width: 0; font-family: var(--display); font-weight: 900; font-size: 22px; line-height: 1; text-transform: uppercase; color: var(--ice); letter-spacing: -.01em; }
+    .tm-card-name::before { content: ''; width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--line-strong); }
+    .tm-card.s-approved .tm-card-name::before { background: var(--success); }
+    .tm-card.s-pending  .tm-card-name::before { background: var(--gold); }
+    .tm-card.s-waitlist .tm-card-name::before { background: #78aaff; }
+    .tm-card.s-rejected .tm-card-name::before { background: var(--danger); }
+    .tm-card .pill { flex: none; }
+    .tm-card-cap { display: flex; flex-direction: column; gap: 1px; margin-bottom: 13px; min-width: 0; }
+    .tm-card-cap .nm { font-size: 14px; color: var(--ice); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tm-card-cap .em { font-family: var(--mono); font-size: 11px; color: var(--ice-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tm-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .tm-tag { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-muted); background: rgba(232,244,255,.05); border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; }
+    .tm-tag.ci { color: var(--success); background: rgba(108,227,160,.1); border-color: rgba(108,227,160,.3); }
+    .tm-card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* ===================================================================
+       UNIFIED CONTROL SYSTEM — buttons, alerts, modals, secondary chrome.
+       Clean Geist actions; the warm accent spent only on primary intent.
+       =================================================================== */
+
+    /* ---- Buttons: one vocabulary across the whole panel ---- */
+    .btn { font-family: var(--body); font-size: 15px; letter-spacing: 0; text-transform: none; font-weight: 700; gap: 8px; background: var(--gold); color: var(--midnight); border-radius: 10px; padding: 14px 20px; box-shadow: 0 1px 2px rgba(0,0,0,.28); }
+    .btn:hover { background: var(--gold-2); transform: translateY(-1px); box-shadow: 0 10px 26px -10px rgba(255,179,71,.55); }
+    .btn.ghost { background: transparent; color: var(--ice); border: 1px solid var(--line-strong); box-shadow: none; font-weight: 600; }
+    .btn.ghost:hover { background: rgba(232,244,255,.05); border-color: var(--ice-faint); }
+
+    .btn-sm { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; padding: 9px 14px; min-height: 38px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: var(--midnight-3); color: var(--ice); border: 1px solid var(--line-strong); transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease, box-shadow .15s ease; }
+    .btn-sm:hover { background: #20406e; border-color: var(--ice-faint); color: var(--ice); }
+    .btn-sm:active { transform: translateY(1px); }
+    .btn-sm:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn-sm svg { width: 14px; height: 14px; }
+    .btn-sm.primary { background: var(--gold); color: var(--midnight); border-color: transparent; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.28); }
+    .btn-sm.primary:hover { background: var(--gold-2); color: var(--midnight); transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(255,179,71,.5); }
+    .btn-sm.primary:active { transform: translateY(0); }
+    .btn-sm.danger { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; padding: 9px 14px; border-radius: 9px; background: rgba(255,100,100,.1); color: #FF8C8C; border: 1px solid rgba(255,100,100,.34); }
+    .btn-sm.danger:hover:not(:disabled) { background: rgba(255,100,100,.18); color: #FFA3A3; border-color: rgba(255,100,100,.55); }
+    .btn-sm.qr { background: rgba(255,179,71,.12); color: var(--gold-2); border-color: rgba(255,179,71,.38); font-weight: 600; }
+    .btn-sm.qr:hover { background: rgba(255,179,71,.2); color: var(--gold-2); border-color: var(--gold); }
+
+    /* export buttons → the same two shapes (primary gold / ghost) */
+    .csv-btn { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 9px; background: var(--gold); color: var(--midnight); border: 1px solid transparent; box-shadow: 0 1px 2px rgba(0,0,0,.28); transition: background .15s ease, border-color .15s ease, transform .1s ease, box-shadow .15s ease; }
+    .csv-btn:hover { background: var(--gold-2); transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(255,179,71,.5); }
+    .csv-btn svg { width: 14px; height: 14px; }
+    .csv-btn.ghost-csv { background: var(--midnight-3); color: var(--ice); border-color: var(--line-strong); box-shadow: none; font-weight: 600; }
+    .csv-btn.ghost-csv:hover { background: #20406e; border-color: var(--ice-faint); transform: none; box-shadow: none; }
+
+    /* ---- Topbar nav: calm chips (no ember fill on hover) ---- */
+    .topbar nav a { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; color: var(--ice-muted); border: 1px solid var(--line-strong); border-radius: 9px; padding: 8px 13px; }
+    .topbar nav a:hover { color: var(--ice); background: rgba(232,244,255,.05); border-color: var(--ice-faint); }
+
+    /* ---- Sections + the attention alert ---- */
+    .section { border-radius: 16px; padding: 22px 24px; }
+    .attention { background: rgba(255,179,71,.1); border: 1px solid rgba(255,179,71,.4); color: var(--ice); box-shadow: none; border-radius: 16px; padding: 18px 22px; }
+    .attention .attention-icon { width: 44px; height: 44px; background: var(--gold); color: var(--midnight); font-size: 26px; }
+    .attention h3 { color: var(--gold-2); font-size: 22px; }
+    .attention p { color: var(--ice-muted); }
+    .attention button { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 700; background: var(--gold); color: var(--midnight); border-radius: 9px; padding: 10px 16px; }
+    .attention button:hover { background: var(--gold-2); transform: translateY(-1px); box-shadow: none; }
+
+    /* ---- Sub-tabs + audit filters → match the Teams filter language ---- */
+    .subtab { font-family: var(--body); font-size: 14px; letter-spacing: 0; text-transform: none; font-weight: 600; }
+    .subtab.active { color: var(--gold-2); border-bottom-color: var(--gold); }
+    .subtab.active .subtab-count { background: var(--gold); color: var(--midnight); }
+    .audit-filter-pill { font-family: var(--body); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; border-color: var(--line-strong); }
+    .audit-filter-pill:hover { color: var(--ice); border-color: var(--ice-faint); }
+    .audit-filter-pill.active { background: rgba(255,179,71,.12); color: var(--gold-2); border-color: rgba(255,179,71,.4); }
+
+    /* ---- Modals: drop the poster gold-dot, soften the shadow ---- */
+    .modal { border-radius: 16px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.8); border: 1px solid var(--line-strong); }
+    .modal::before { display: none; }
+    .modal-close { border-radius: 9px; }
+
+    /* ---- Help FAB: a quiet secondary affordance, not a beacon ---- */
+    #admin-help-fab { background: var(--midnight-3) !important; color: var(--gold-2) !important; border: 1px solid rgba(255,179,71,.4) !important; font-weight: 600 !important; box-shadow: 0 10px 30px -10px rgba(0,0,0,.7) !important; }
+    #admin-help-fab:hover { background: #20406e !important; }
+
+    /* ---- Pause / resume: a clear toggle, not a billboard ---- */
+    #tourn-pause { background: rgba(255,138,61,.14) !important; color: var(--ember-2) !important; border: 1px solid rgba(255,138,61,.5) !important; font-family: var(--body) !important; font-size: 15px !important; font-weight: 700 !important; text-transform: none !important; letter-spacing: 0 !important; border-radius: 10px !important; padding: 14px !important; display: flex !important; align-items: center; justify-content: center; gap: 9px; transition: background .15s ease, border-color .15s ease !important; }
+    #tourn-pause:hover { background: rgba(255,138,61,.22) !important; }
+    #tourn-pause svg { width: 18px; height: 18px; }
+    #tourn-pause.is-paused { background: rgba(108,227,160,.14) !important; color: var(--success) !important; border-color: rgba(108,227,160,.5) !important; }
+
+    /* ---- Mobile: 2-up tab grid (deterministic, thumb-sized) ---- */
+    @media (max-width: 600px) {
+      .tabs { gap: 8px; border-bottom: none; }
+      .tab-btn { flex: 1 1 calc(50% - 4px); font-size: 13px; padding: 11px 8px; text-align: center; border: 1px solid var(--line); border-radius: 9px; }
+      .tab-btn.active { border-color: rgba(255,179,71,.4); }
+    }
+    /* Telefoon: drie tabs per rij (2 rijen i.p.v. 3) — scheelt weer een stuk scrollen. */
+    @media (max-width: 480px) {
+      .tab-btn { flex: 1 1 calc(33.333% - 6px); font-size: 12.5px; padding: 11px 4px; }
+    }
+
+    /* ---- Reduced motion ---- */
+    @media (prefers-reduced-motion: reduce) {
+      .tc-statebadge.on .d, .live-dot { animation: none !important; }
+      .refresh-btn .spin { animation: none !important; }
+      .stat-clickable, .tm-card, .btn, .btn-sm, .csv-btn, .tc-link, .tc-fmt,
+      .filter-pill, .tab-btn, .refresh-btn, .topbar nav a, .attention button { transition: none !important; }
+    }
+
+    /* ---- Tijden bijsturen (admin time control) ---- */
+    .tcz-global { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: var(--midnight); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+    .tcz-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ice-faint); }
+    .tcz-shift { font-family: var(--display); font-weight: 900; font-size: 22px; color: var(--ice); line-height: 1; margin-top: 4px; }
+    .tcz-shift.on { color: var(--gold-2); }
+    .tcz-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tcz-sub-label { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ember); margin: 2px 0 10px; }
+    .tcz-list { display: flex; flex-direction: column; gap: 8px; }
+    .tcz-empty { color: var(--ice-muted); font-size: 14px; padding: 14px 2px; }
+    .tcz-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; background: var(--midnight); border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; }
+    .tcz-time { font-family: var(--display); font-weight: 900; font-size: 19px; color: var(--gold-2); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .tcz-time .o { display: block; font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; margin-top: 3px; }
+    .tcz-info { min-width: 0; }
+    .tcz-info .nm { font-size: 14px; color: var(--ice); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tcz-info .meta { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ice-faint); margin-top: 3px; }
+    .tcz-acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .tcz-acts input[type=time] { background: var(--midnight-2); border: 1px solid var(--line-strong); color: var(--ice); border-radius: 8px; padding: 7px 9px; font-family: var(--body); font-size: 13px; }
+    @media (max-width: 600px) { .tcz-row { grid-template-columns: auto 1fr; } .tcz-acts { grid-column: 1 / -1; justify-content: flex-start; } }
+    /* Teamlogo-inzendingen (goedkeuren/afkeuren) */
+    .lg-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; background: var(--midnight); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+    .lg-thumb { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 10px; overflow: hidden; background: var(--midnight-2); flex: none; }
+    .lg-thumb img { width: 52px; height: 52px; object-fit: cover; border-radius: 10px; display: block; }
+    .lg-thumb.lg-thumb-missing { color: var(--ice-faint); font-family: var(--display); font-weight: 900; font-size: 22px; }
+    .lg-info { min-width: 0; }
+    .lg-name { font-size: 15px; color: var(--ice); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lg-meta { font-size: 12px; color: var(--ice-faint); margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lg-pill { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line-strong); }
+    .lg-pill.lg-pending { color: var(--gold-2); }
+    .lg-pill.lg-approved { color: var(--success); }
+    .lg-pill.lg-rejected { color: var(--ice-faint); }
+    .lg-acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    @media (max-width: 600px) { .lg-row { grid-template-columns: auto 1fr; } .lg-acts { grid-column: 1 / -1; justify-content: flex-start; } }
+
+    /* ---- Foldable sections (collapsed by default) — keep the Toernooi tab short ---- */
+    details.section.fold { padding: 0; margin-bottom: 14px; }
+    details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 18px 22px; }
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary h3 { margin: 0; }
+    details.fold > summary .fold-chev { margin-left: auto; flex: none; width: 20px; height: 20px; color: var(--ice-faint); transition: transform .18s ease; }
+    details.fold > summary:hover .fold-chev { color: var(--ice); }
+    details.fold[open] > summary .fold-chev { transform: rotate(180deg); }
+    details.fold[open] > summary { padding-bottom: 4px; }
+    details.fold > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; border-radius: 16px; }
+    details.fold > .fold-body { padding: 0 22px 20px; }
+
+    /* ---- Evenement-instellingen + Spelregels (Overzicht) ----
+       Zelfde rustige taal als het Tijdschema-formulier: mono-labels, omkaderde
+       velden. Labels zijn met for/id gekoppeld; 16px in de velden voorkomt de
+       iOS-inzoom. Status draagt altijd een woord, nooit alleen een kleur. */
+    .tc-link[hidden], .evc [hidden] { display: none !important; }
+    .evc-badge { flex: none; font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,100,100,.14); color: #FF9C9C; border: 1px solid rgba(255,100,100,.45); white-space: nowrap; }
+    .evc-quiet { font-size: 13px; color: var(--ice-muted); line-height: 1.5; margin: 0; }
+    .evc-checklist { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .evc-check { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: baseline; background: var(--midnight); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.45; color: var(--ice); }
+    .evc-check-tag { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+    .evc-check-tag .d { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+    .evc-check.lv-fout { border-color: rgba(255,100,100,.42); }
+    .evc-check.lv-fout .evc-check-tag { color: #FF9C9C; }
+    .evc-check.lv-let-op .evc-check-tag { color: var(--gold-2); }
+    .evc-check.lv-ok .evc-check-tag { color: var(--success); }
+    @media (max-width: 480px) { .evc-check { grid-template-columns: 1fr; gap: 4px; } }
+
+    fieldset.evc-group { border: 0; padding: 0; margin: 0 0 22px; min-width: 0; }
+    .evc-group > legend { padding: 0; margin: 0 0 10px; }
+    .evc-group > .evc-quiet { margin: -4px 0 12px; }
+    .evc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+    .evc-grid.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .evc-grid.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .evc-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .evc-f.wide { grid-column: 1 / -1; }
+    .evc-f > label { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--ice-muted); }
+    .evc-f input, .evc-f select, .evc-f textarea { width: 100%; min-width: 0; background: var(--midnight); border: 1px solid var(--line-strong); color: var(--ice); border-radius: 8px; padding: 10px 12px; font-family: var(--body); font-size: 16px; line-height: 1.4; color-scheme: dark; }
+    .evc-f textarea { resize: vertical; min-height: 76px; }
+    .evc-f input::placeholder, .evc-f textarea::placeholder { color: var(--ice-faint); }
+    .evc-f input:focus, .evc-f select:focus, .evc-f textarea:focus { border-color: var(--gold); }
+    .evc-f select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8bdd4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 15px; padding-right: 34px; cursor: pointer; }
+    .evc-hint { font-size: 12.5px; color: var(--ice-muted); line-height: 1.45; }
+    .evc-hint b { color: var(--ice); font-weight: 600; }
+    .evc-acts { margin-bottom: 4px; }
+    .evc-act { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+    .evc-act .btn-sm { margin: 0; }
+    .evc-savebar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+    .evc-savebar .btn-sm, .evc-foot .btn-sm { margin: 0; text-decoration: none; }
+    .evc-savebar .btn-sm.primary { padding: 12px 18px; }
+    .evc-error { margin-top: 10px; padding: 11px 14px; border-radius: 10px; background: rgba(255,100,100,.13); color: #FFB7B7; border: 1px solid rgba(255,100,100,.42); font-size: 14px; line-height: 1.45; }
+    .evc-error:empty { display: none; }
+    .evc-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+    @media (max-width: 620px) {
+      .evc-grid, .evc-grid.c3 { grid-template-columns: 1fr; }
+      .evc-grid.c4 { grid-template-columns: 1fr 1fr; }
+      .evc-act { grid-template-columns: 1fr; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+      .evc-act .btn-sm { justify-self: start; }
+    }
+
+    /* Spelregels: teller + voorbeeld (server-gerenderde HTML, zie admin.js) */
+    .evr-count.over { color: #FF9C9C; font-weight: 600; }
+    .evr-preview { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: var(--midnight); border: 1px solid var(--line); }
+    .evr-preview [data-fx-reveal] { opacity: 1 !important; transform: none !important; }
+    .evr-preview .rules-block + .rules-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .evr-preview .rules-h { font-family: var(--display); font-weight: 900; font-size: 19px; line-height: 1.1; text-transform: uppercase; color: var(--gold-2); margin: 0 0 8px; }
+    .evr-preview .rules-p { font-size: 14px; line-height: 1.55; color: var(--ice); margin: 0 0 8px; }
+    .evr-preview .rules-list { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.55; color: var(--ice); }
+    .evr-preview .rules-list li { margin-bottom: 4px; }
+
+    /* Schone start: wat gaat weg / wat blijft */
+    .ss-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 14px; }
+    @media (max-width: 620px) { .ss-lists { grid-template-columns: 1fr; } }
+    .ss-list { background: var(--midnight); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.55; color: var(--ice-muted); }
+    .ss-list b { display: block; color: var(--ice); font-weight: 600; margin-bottom: 4px; }
+    .ss-list ul { margin: 0; padding-left: 18px; }
+  </style>
+  <link rel="stylesheet" href="/thema-sporthub.css" />
+  <link rel="stylesheet" href="/thema-sporthub-beheer.css" />
+  <link rel="stylesheet" href="/thema-sporthub-admin.css" />
+</head>
+<body class="adm">
+
+<!-- LOGIN -->
+<div id="login" class="login-wrap">
+  <div class="login-card card">
+    <div class="card-eyebrow">Admin · <span data-ev="name">JVO Sportdag</span></div>
+    <h2>Inloggen</h2>
+    <form id="login-form">
+      <div class="field">
+        <label for="admin-name">Jouw naam</label>
+        <input type="text" id="admin-name" required autocomplete="off" placeholder="Bijv. Sanne" />
+      </div>
+      <div class="field">
+        <label for="admin-code">Gedeelde admincode</label>
+        <input type="password" id="admin-code" required autocomplete="off" />
+      </div>
+      <div id="login-alert"></div>
+      <button type="submit" class="btn full" style="margin-top:14px;">Inloggen →</button>
+      <p class="small mono" style="text-align:center; margin-top:14px; color: var(--ice-faint); letter-spacing:.18em;">
+        Elke actie wordt gelogd onder jouw naam.
+      </p>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" class="admin-shell" style="display:none;">
+
+  <header class="topbar">
+    <div class="brand-badge">
+      <span class="badge-circle">JVO</span>
+      <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; <span data-ev="shortName">Sportdag</span> · Admin</span>
+      <span class="brand-text-short"><b>JVO</b> · Admin</span>
+    </div>
+    <nav>
+      <a href="/" target="_blank">Aanmeldformulier ↗</a>
+      <a href="/checkin.html" target="_blank">Check-in ↗</a>
+      <a href="/system-overview.html" target="_blank" class="nav-link-icon" title="Hoe het systeem werkt">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>Systeemoverzicht</span>
+      </a>
+      <a href="#" id="logout-btn">Uitloggen</a>
+    </nav>
+  </header>
+
+  <div class="who">
+    Ingelogd als <b id="who"></b>
+    <span class="live-status" id="live-status" title="Dashboard ververst automatisch elke 10 seconden">
+      <span class="live-dot"></span> Live
+    </span>
+    <button type="button" class="refresh-btn" id="refresh-btn" title="Direct vernieuwen"><svg class="ri" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg><span class="rl">Vernieuw</span></button>
+  </div>
+
+  <!-- TAB NAV -->
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview" id="tabbtn-overview">Overzicht</button>
+    <button class="tab-btn" data-tab="teams" role="tab" aria-selected="false" aria-controls="tab-teams" id="tabbtn-teams">Teams <span class="badge" id="tab-teams-badge" style="visibility:hidden;">0</span></button>
+    <button class="tab-btn" data-tab="tournament" role="tab" aria-selected="false" aria-controls="tab-tournament" id="tabbtn-tournament">Toernooi</button>
+    <button class="tab-btn" data-tab="program" role="tab" aria-selected="false" aria-controls="tab-program" id="tabbtn-program">Programma</button>
+    <button class="tab-btn" data-tab="signups" role="tab" aria-selected="false" aria-controls="tab-signups" id="tabbtn-signups">Aanmeldingen</button>
+    <button class="tab-btn" data-tab="audit" role="tab" aria-selected="false" aria-controls="tab-audit" id="tabbtn-audit">Logboek</button>
+  </div>
+
+  <!-- REGIE-LAAG (admin-regie.js): sportschakelaar + knop "Wedstrijddag". Blijft
+       verborgen zolang er precies één sport is; dan verandert er niets. -->
+  <div class="rg-bar" id="rg-bar" hidden></div>
+
+  <!-- TAB: OVERZICHT -->
+  <div class="tab-pane active" id="tab-overview" role="tabpanel" aria-labelledby="tabbtn-overview">
+    <!-- WEDSTRIJDDAG-MODUS (admin-regie.js): het scherm dat je op de dag open laat staan -->
+    <section class="rg-dag" id="rg-dag" hidden aria-labelledby="rg-dag-titel"></section>
+    <details class="help">
+      <summary>Hoe werkt dit?</summary>
+      <div class="help-body">
+        <p>Dit is het organisatie-paneel. Vanuit de tabs hierboven beheer je alles rond <span data-ev="withArticle">de JVO Sportdag</span>:</p>
+        <ul>
+          <li><strong>Evenement</strong> en <strong>Spelregels</strong> (hieronder op Overzicht) — naam, datum, locatie, tijden, teksten en sponsor. Alles wat je daar invult staat meteen op de site en in de mails.</li>
+          <li><strong>Teams</strong> — goedkeuren, afwijzen of op de wachtlijst zetten. Goedkeuren stuurt automatisch de check-in-QR naar de captain.</li>
+          <li><strong>Toernooi &amp; Programma</strong> — het schema genereren, de stand volgen en de teamschema’s mailen.</li>
+          <li><strong>Aanmeldingen &amp; Logboek</strong> — wie zich heeft aangemeld en wat er is gebeurd.</li>
+          <li><strong>Mijn notificaties</strong> (onderaan Overzicht) — zet per apparaat aan of je mail/push wilt bij nieuwe aanmeldingen.</li>
+          <li><strong>Database-snapshot</strong> (Bewaren &amp; exporteren) — een kopie van de database om de noodserver op een laptop te starten als het internet op locatie volledig uitvalt (zie LOCAL-FALLBACK.md).</li>
+        </ul>
+        <p class="off"><svg class="off-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> <b>Geen internet?</b> Het paneel toont de laatst geladen gegevens, maar wijzigingen (goedkeuren, mailen) hebben verbinding nodig. De pagina zelf blijft gewoon laden dankzij de offline-cache.</p>
+      </div>
+    </details>
+    <div class="attention" id="attention-banner" style="display:none;">
+      <div class="attention-icon">!</div>
+      <div class="attention-text">
+        <h3 id="attention-title">— teams wachten op beoordeling</h3>
+        <p>Goedkeuren stuurt automatisch een check-in QR naar de captain.</p>
+      </div>
+      <button id="attention-go">Bekijken →</button>
+    </div>
+
+    <section id="jvs-tower" class="jvs jvs-tower" hidden aria-live="polite"></section>
+
+    <!-- REGIE-STARTSCHERM (admin-regie.js): per sport de stappen en de volgende actie -->
+    <section class="rg-regie" id="rg-regie" hidden aria-labelledby="rg-regie-titel"></section>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Aanmeldingen totaal</div>
+        <div class="value" id="ov-signups">—</div>
+        <div class="sub">Unieke personen</div>
+      </div>
+      <div class="stat">
+        <div class="label">Goedgekeurde teams</div>
+        <div class="value"><span id="ov-approved">—</span><span class="frac" id="ov-max"></span></div>
+        <div class="sub" id="ov-team-sub">— voor toernooi</div>
+      </div>
+      <button type="button" class="stat stat-clickable" id="ov-pending-card" title="Naar de teams die wachten op beoordeling">
+        <div class="label">Wacht op beoordeling</div>
+        <div class="value" id="ov-pending">—</div>
+        <div class="sub">Klik om te bekijken →</div>
+      </button>
+      <div class="stat">
+        <div class="label">Ingecheckt</div>
+        <div class="value" id="ov-checkedin">—</div>
+        <div class="sub">Op de dag zelf</div>
+      </div>
+    </div>
+
+    <!-- LIVE TOURNAMENT DASHBOARD (only while a schedule exists) -->
+    <div class="section" id="ov-live" style="display:none;">
+      <div class="tc-head">
+        <div>
+          <div class="card-eyebrow">Toernooi · live</div>
+          <h3 style="margin:2px 0 0;">Nu op de velden</h3>
+        </div>
+        <div class="tc-statebadge off" id="ov-live-state"><span class="d"></span>—</div>
+      </div>
+      <div class="tc-stats" id="ov-live-stats"></div>
+      <div class="tc-progress" id="ov-live-progress"></div>
+      <div class="tc-links" style="border-top:none; padding-top:2px; margin-top:2px;">
+        <a class="tc-link primary" href="/sporten" target="_blank" rel="noopener">Live-pagina ↗</a>
+        <a class="tc-link" href="/sporten" target="_blank" rel="noopener">TV / scherm ↗</a>
+        <a class="tc-link" href="/wedstrijd.html" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
+      </div>
+    </div>
+
+    <!-- EVENEMENT — het evenement-profiel: alles wat per evenement verschilt (naam,
+         datum, locatie, tijden, teksten, sponsor). Klapt vanzelf open zolang er
+         nog iets opgelost moet worden; zie "Klaar voor de start?". -->
+    <details class="section fold evc" id="evc-fold">
+      <summary><h3>Evenement</h3><span class="evc-badge" id="evc-badge" hidden></span><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+        <div class="section-sub">
+          Hier stel je het evenement in. Alles wat je invult staat na het opslaan meteen op de site,
+          in de mails en in de meldingen — je hoeft nergens anders iets aan te passen.
+        </div>
+
+        <div id="evc-load" class="small muted" aria-live="polite">Instellingen laden…</div>
+        <button type="button" class="btn-sm" id="evc-retry" hidden>Probeer opnieuw</button>
+
+        <div id="evc-checks-wrap" hidden>
+          <div class="tcz-sub-label" id="evc-checks-h">Klaar voor de start?</div>
+          <ul class="evc-checklist" id="evc-checks" aria-labelledby="evc-checks-h"></ul>
+        </div>
+
+        <div id="evc-form" hidden>
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Basis</legend>
+            <div class="evc-grid">
+              <div class="evc-f">
+                <label for="evc-name">Naam van het evenement</label>
+                <input type="text" id="evc-name" autocomplete="off" aria-describedby="evc-name-hint" />
+                <span class="evc-hint" id="evc-name-hint">Zo heet het overal: op de site, in mails en in meldingen.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-shortName">Korte naam</label>
+                <input type="text" id="evc-shortName" autocomplete="off" aria-describedby="evc-shortName-hint" />
+                <span class="evc-hint" id="evc-shortName-hint">Voor krappe plekken, zoals de titel van een tabblad.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-article">Lidwoord</label>
+                <select id="evc-article" aria-describedby="evc-article-hint">
+                  <option value="de">de</option>
+                  <option value="het">het</option>
+                  <option value="">geen lidwoord</option>
+                </select>
+                <span class="evc-hint" id="evc-article-hint">Zo schrijven we het in een zin: <b id="evc-article-preview">—</b></span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-audience">Doelgroep</label>
+                <input type="text" id="evc-audience" autocomplete="off" aria-describedby="evc-audience-hint" />
+                <span class="evc-hint" id="evc-audience-hint">Bijvoorbeeld “15-30 jaar”. Leeg = niet tonen.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-date">Datum</label>
+                <input type="date" id="evc-date" aria-describedby="evc-date-hint" />
+                <span class="evc-hint" id="evc-date-hint">Weet je de datum nog niet? Laat leeg — aanmelden blijft dan dicht.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-dateText">Datumtekst</label>
+                <input type="text" id="evc-dateText" autocomplete="off" placeholder="Automatisch" aria-describedby="evc-dateText-hint" />
+                <span class="evc-hint" id="evc-dateText-hint">Leeg = automatisch uit de datum. <span id="evc-dateText-preview" aria-live="polite"></span></span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-priceText">Toegang / prijs</label>
+                <input type="text" id="evc-priceText" autocomplete="off" aria-describedby="evc-priceText-hint" />
+                <span class="evc-hint" id="evc-priceText-hint">Bijvoorbeeld “Gratis”. Leeg = niet tonen.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Locatie</legend>
+            <div class="evc-grid">
+              <div class="evc-f">
+                <label for="evc-location">Locatie</label>
+                <input type="text" id="evc-location" autocomplete="off" aria-describedby="evc-location-hint" />
+                <span class="evc-hint" id="evc-location-hint">De naam van de plek, liefst met de plaats erbij.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-address">Adres</label>
+                <input type="text" id="evc-address" autocomplete="off" aria-describedby="evc-address-hint" />
+                <span class="evc-hint" id="evc-address-hint">Straat, huisnummer, postcode en plaats — daarmee maken we de routelink.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Tijden</legend>
+            <p class="evc-quiet">De tijden op de site en in de mails. Wanneer de eerste wedstrijd begint stel je apart in bij <b>Toernooi → Tijdschema</b>.</p>
+            <div class="evc-grid c4">
+              <div class="evc-f">
+                <label for="evc-teamArrivalTime">Teams aanwezig</label>
+                <input type="time" id="evc-teamArrivalTime" />
+              </div>
+              <div class="evc-f">
+                <label for="evc-doorsTime">Inloop</label>
+                <input type="time" id="evc-doorsTime" />
+              </div>
+              <div class="evc-f">
+                <label for="evc-startTime">Start</label>
+                <input type="time" id="evc-startTime" />
+              </div>
+              <div class="evc-f">
+                <label for="evc-endTime">Einde</label>
+                <input type="time" id="evc-endTime" />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Toernooi</legend>
+            <div class="evc-grid">
+              <div class="evc-f">
+                <label for="evc-tournamentName">Naam van het toernooi</label>
+                <input type="text" id="evc-tournamentName" autocomplete="off" aria-describedby="evc-tournamentName-hint" />
+                <span class="evc-hint" id="evc-tournamentName-hint">De kop boven het toernooi-deel van de aanmeldpagina.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-tournamentShort">Korte aanduiding</label>
+                <input type="text" id="evc-tournamentShort" autocomplete="off" aria-describedby="evc-tournamentShort-hint" />
+                <span class="evc-hint" id="evc-tournamentShort-hint">Bijvoorbeeld “5v5” — dan schrijven we “het 5v5-toernooi”. Leeg = gewoon “het toernooi”.</span>
+              </div>
+            </div>
+            <div class="evc-grid c4" style="margin-top:12px;">
+              <div class="evc-f">
+                <label for="evc-minTeams">Teams minimaal</label>
+                <input type="number" id="evc-minTeams" inputmode="numeric" step="1" />
+              </div>
+              <div class="evc-f">
+                <label for="evc-maxTeams">Teams maximaal</label>
+                <input type="number" id="evc-maxTeams" inputmode="numeric" step="1" />
+              </div>
+              <div class="evc-f">
+                <label for="evc-minPlayers">Spelers per team min.</label>
+                <input type="number" id="evc-minPlayers" inputmode="numeric" step="1" />
+              </div>
+              <div class="evc-f">
+                <label for="evc-maxPlayers">Spelers per team max.</label>
+                <input type="number" id="evc-maxPlayers" inputmode="numeric" step="1" />
+              </div>
+            </div>
+            <p class="evc-quiet" style="margin:10px 0 0;">Het toernooischema werkt met 10 tot 24 teams (opzet 16, 18 of 20). Wedstrijdduur en aantal velden stel je in bij <b>Toernooi → Tijdschema</b>.</p>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Aanmelden</legend>
+            <div class="evc-grid">
+              <div class="evc-f">
+                <label for="evc-registration">Aanmelden open of dicht</label>
+                <select id="evc-registration" aria-describedby="evc-registration-hint evc-reg-status">
+                  <option value="auto">Automatisch</option>
+                  <option value="open">Altijd open</option>
+                  <option value="closed">Dicht</option>
+                </select>
+                <span class="evc-hint" id="evc-registration-hint">Automatisch = open zodra er een datum is, tot en met de dag zelf.</span>
+                <span class="evc-hint" id="evc-reg-status" aria-live="polite"></span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Uiterlijk</legend>
+            <div class="evc-grid">
+              <div class="evc-f">
+                <label for="evc-theme">Stijl</label>
+                <select id="evc-theme" aria-describedby="evc-theme-hint">
+                  <option value="schemering">Schemering — donker met oranje gloed (Open Dag)</option>
+                  <option value="sporthub">Sporthub — logo-blauw, wit en oranje, met sport-iconen</option>
+                </select>
+                <span class="evc-hint" id="evc-theme-hint">Geldt voor de aanmeldpagina, het live-bord en de andere pagina's voor bezoekers. De admin, de crew-bediening en de check-in blijven zoals ze zijn.</span>
+              </div>
+              <div class="evc-f">
+                <label for="evc-sportIcon">Icoon van de sport</label>
+                <select id="evc-sportIcon" aria-describedby="evc-sportIcon-hint">
+                  <option value="beker">Beker — algemeen toernooi</option>
+                  <option value="voetbal">Voetbal</option>
+                  <option value="volleybal">Volleybal</option>
+                  <option value="basketbal">Basketbal</option>
+                  <option value="tafeltennis">Tafeltennis</option>
+                  <option value="badminton">Badminton</option>
+                  <option value="hockey">Hockey</option>
+                  <option value="padel">Padel</option>
+                  <option value="hardlopen">Hardlopen</option>
+                </select>
+                <span class="evc-hint" id="evc-sportIcon-hint">Het beeld bij je toernooi in de stijl Sporthub: groot op de aanmeldpagina, klein op het live-bord.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Teksten op de aanmeldpagina</legend>
+            <div class="evc-grid">
+              <div class="evc-f wide">
+                <label for="evc-intro">Intro</label>
+                <textarea id="evc-intro" rows="3" aria-describedby="evc-intro-hint"></textarea>
+                <span class="evc-hint" id="evc-intro-hint">De eerste alinea onder de titel. Leeg = geen intro.</span>
+              </div>
+            </div>
+            <p class="evc-quiet" style="margin:14px 0 10px;"><b style="color:var(--ice);">Activiteiten</b> — wat er naast het toernooi te doen is, als kopje + korte tekst. Maximaal 6; geen activiteiten = het blok verdwijnt.</p>
+            <div class="evc-acts" id="evc-acts"></div>
+            <button type="button" class="btn-sm" id="evc-act-add">+ Activiteit toevoegen</button>
+            <div class="evc-grid" style="margin-top:14px;">
+              <div class="evc-f">
+                <label for="evc-calloutTitle">Uitgelicht blok — titel</label>
+                <input type="text" id="evc-calloutTitle" autocomplete="off" />
+              </div>
+              <div class="evc-f wide">
+                <label for="evc-calloutText">Uitgelicht blok — tekst</label>
+                <textarea id="evc-calloutText" rows="3" aria-describedby="evc-calloutText-hint"></textarea>
+                <span class="evc-hint" id="evc-calloutText-hint">Een opvallend blokje op de aanmeldpagina. Laat de tekst leeg om het blok weg te laten.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Teksten in de mails</legend>
+            <p class="evc-quiet">Laat je een veld leeg, dan laten we die zin in de mails gewoon weg.</p>
+            <div class="evc-grid">
+              <div class="evc-f wide">
+                <label for="evc-sideProgram">Randprogramma</label>
+                <textarea id="evc-sideProgram" rows="2" aria-describedby="evc-sideProgram-hint"></textarea>
+                <span class="evc-hint" id="evc-sideProgram-hint">Eén opsomming die in een zin past, bijvoorbeeld “volleybal, muziek en spelletjes”.</span>
+              </div>
+              <div class="evc-f wide">
+                <label for="evc-cateringText">Eten &amp; drinken</label>
+                <textarea id="evc-cateringText" rows="2" aria-describedby="evc-cateringText-hint"></textarea>
+                <span class="evc-hint" id="evc-cateringText-hint">Eén hele zin, bijvoorbeeld “Eten en drinken te koop op locatie.”</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Sponsor</legend>
+            <label class="toggle-row" for="evc-sp-enabled">
+              <input type="checkbox" id="evc-sp-enabled" />
+              <span>
+                <b>Er is een sponsor</b>
+                <small>Uit = nergens een sponsorblok, geen prijzen en geen sponsor-mail.</small>
+              </span>
+            </label>
+            <div id="evc-sp-fields" hidden style="margin-top:12px;">
+              <div class="evc-grid">
+                <div class="evc-f">
+                  <label for="evc-sp-name">Naam van de sponsor</label>
+                  <input type="text" id="evc-sp-name" autocomplete="off" maxlength="60" />
+                </div>
+                <div class="evc-f">
+                  <label for="evc-sp-tagline">Omschrijving</label>
+                  <input type="text" id="evc-sp-tagline" autocomplete="off" maxlength="80" aria-describedby="evc-sp-tagline-hint" />
+                  <span class="evc-hint" id="evc-sp-tagline-hint">Een paar woorden, bijvoorbeeld “restaurant in de buurt”.</span>
+                </div>
+                <div class="evc-f">
+                  <label for="evc-sp-url">Website</label>
+                  <input type="url" id="evc-sp-url" autocomplete="off" inputmode="url" placeholder="https://" maxlength="300" />
+                </div>
+                <div class="evc-f">
+                  <label for="evc-sp-logo-file">Logo uploaden</label>
+                  <input type="file" id="evc-sp-logo-file" accept="image/png,image/jpeg,image/webp" aria-describedby="evc-sp-logo-hint" />
+                  <span class="evc-hint" id="evc-sp-logo-hint">PNG, JPG of WebP, maximaal 2 MB. Het logo staat er meteen op zodra het uploaden klaar is.</span>
+                  <label for="evc-sp-logo" style="margin-top:8px;">Of een pad op deze site</label>
+                  <input type="text" id="evc-sp-logo" autocomplete="off" maxlength="300" placeholder="/…" />
+                </div>
+              </div>
+              <div class="evc-grid c3" style="margin-top:12px;">
+                <div class="evc-f">
+                  <label for="evc-sp-prize1">Prijs 1e plaats</label>
+                  <input type="text" id="evc-sp-prize1" autocomplete="off" maxlength="24" />
+                </div>
+                <div class="evc-f">
+                  <label for="evc-sp-prize2">Prijs 2e plaats</label>
+                  <input type="text" id="evc-sp-prize2" autocomplete="off" maxlength="24" />
+                </div>
+                <div class="evc-f">
+                  <label for="evc-sp-prize3">Prijs 3e plaats</label>
+                  <input type="text" id="evc-sp-prize3" autocomplete="off" maxlength="24" />
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group">
+            <legend class="tcz-sub-label">Deelafbeelding</legend>
+            <div class="evc-grid">
+              <div class="evc-f wide">
+                <label for="evc-ogImage-file">Afbeelding uploaden</label>
+                <input type="file" id="evc-ogImage-file" accept="image/png,image/jpeg,image/webp" aria-describedby="evc-ogImage-hint" />
+                <span class="evc-hint" id="evc-ogImage-hint">Het plaatje dat verschijnt als iemand de link deelt (WhatsApp, Instagram): 1200×630 pixels, PNG of JPG, maximaal 2 MB. Een opzetje met je eigen naam en datum vind je op <a href="/og-bron" target="_blank" rel="noopener">/og-bron</a> — maak daar een schermafbeelding van. Niets geüpload = de standaardafbeelding.</span>
+                <label for="evc-ogImage" style="margin-top:8px;">Of een pad op deze site / https-adres</label>
+                <input type="text" id="evc-ogImage" autocomplete="off" maxlength="300" />
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="evc-savebar">
+            <button type="button" class="btn-sm primary" id="evc-save">Evenement opslaan</button>
+            <span class="small muted" id="evc-status" aria-live="polite"></span>
+          </div>
+          <div class="evc-error" id="evc-error" role="alert"></div>
+
+          <div class="evc-foot">
+            <a class="btn-sm" href="/" target="_blank" rel="noopener">Bekijk de aanmeldpagina ↗</a>
+            <button type="button" class="btn-sm" id="evc-reset">Zet alles terug naar standaard</button>
+          </div>
+          <p class="evc-quiet" id="evc-profile"></p>
+        </div>
+      </div>
+    </details>
+
+    <!-- SPELREGELS — eigen regels voor de spelregelpagina (eenvoudige opmaak) -->
+    <details class="section fold evc" id="rules-fold">
+      <summary><h3>Spelregels</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+        <div class="section-sub">
+          De regels op de spelregelpagina, waar ook de mails naar verwijzen. <span id="rules-empty-note"></span>
+        </div>
+        <div class="evc-f">
+          <label for="rules-text">Spelregels</label>
+          <textarea id="rules-text" rows="12" spellcheck="true" aria-describedby="rules-hint rules-count" disabled></textarea>
+          <span class="evc-hint" id="rules-hint">Opmaak: <b># Kop</b> = nieuw blok · <b>- regel</b> = opsomming · <b>**vet**</b> = vet · <b>{minuten}</b> = de wedstrijdduur uit het tijdschema.</span>
+          <span class="evc-hint evr-count" id="rules-count"></span>
+        </div>
+        <div class="evc-savebar" style="margin-top:12px;">
+          <button type="button" class="btn-sm primary" id="rules-save" disabled>Spelregels opslaan</button>
+          <a class="btn-sm" href="/spelregels" target="_blank" rel="noopener">Bekijk de spelregelpagina ↗</a>
+          <span class="small muted" id="rules-status" aria-live="polite"></span>
+        </div>
+        <div class="evc-error" id="rules-error" role="alert"></div>
+        <div id="rules-preview-wrap" hidden>
+          <div class="tcz-sub-label" style="margin-top:18px;">Voorbeeld</div>
+          <div class="evr-preview" id="rules-preview"></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="section fold">
+      <summary><h3>Recente activiteit</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+        <div class="section-sub">Laatste 5 acties van admins. Het volledige logboek staat in de tab <b>Logboek</b>.</div>
+        <div class="recent-activity" id="recent-activity"></div>
+      </div>
+    </details>
+
+    <details class="section fold">
+      <summary><h3>Herinneringsmails</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        <span id="rem-intro-auto">Gaan automatisch uit</span> <b>1 week</b> en <b>24 uur</b> voor <span data-ev="withArticle">de JVO Sportdag</span>, naar iedereen die toestemming gaf voor herinneringen.
+        Goedgekeurde captains krijgen de captain-mail (met spelregels + QR-uitleg), wachtlijst-teams de wachtlijst-mail, de rest de bezoekers-mail.
+        Je kunt elke golf ook nu sturen of eerst een test naar jezelf doen.
+      </div>
+
+      <div class="rg-schakel-blok">
+        <label class="rg-schakel" for="rem-auto">
+          <input type="checkbox" id="rem-auto" role="switch" />
+          <span class="rg-schakel-spoor" aria-hidden="true"></span>
+          <span class="rg-schakel-tekst">Automatische herinneringen</span>
+        </label>
+        <p class="small rg-schakel-uitleg" id="rem-auto-uitleg" aria-live="polite">Status laden…</p>
+      </div>
+
+      <div class="reminders-grid" id="reminders-grid">
+        <div class="reminder-wave">
+          <div class="reminder-wave-head">
+            <h4>1 week vooraf</h4>
+            <span class="reminder-badge" id="rem-week-badge">—</span>
+          </div>
+          <div class="reminder-meta" id="rem-week-meta">Status laden…</div>
+          <button class="btn-sm primary" id="rem-week-send">Verstuur 1-week nu</button>
+        </div>
+
+        <div class="reminder-wave">
+          <div class="reminder-wave-head">
+            <h4>24 uur vooraf</h4>
+            <span class="reminder-badge" id="rem-day-badge">—</span>
+          </div>
+          <div class="reminder-meta" id="rem-day-meta">Status laden…</div>
+          <button class="btn-sm primary" id="rem-day-send">Verstuur 24-uur nu</button>
+        </div>
+      </div>
+
+      <div class="reminder-test-row">
+        <button class="btn-sm" id="rem-test">Stuur testmails naar mij</button>
+        <span class="small muted">Eén van elke variant naar je eigen e-mailadres.</span>
+      </div>
+      </div>
+    </details>
+
+    <details class="section fold profile-section">
+      <summary><h3>Mijn notificaties</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">Voorkeuren zijn persoonlijk en gelden alleen voor jouw inlog. Je kunt e-mail én push tegelijk aanzetten — of allebei uit, als je liever alleen via het dashboard kijkt.</div>
+
+      <div class="profile-grid">
+        <!-- E-mail kanaal -->
+        <div class="notif-channel">
+          <div class="notif-channel-head">
+            <h4><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:4px;" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>E-mail</h4>
+            <small>Klassieke notificatie. Werkt overal, ook als je het dashboard niet open hebt staan.</small>
+          </div>
+          <div class="field" style="margin-bottom: 12px;">
+            <label for="profile-email">E-mailadres</label>
+            <input type="email" id="profile-email" placeholder="jij@voorbeeld.nl" autocomplete="email" />
+          </div>
+          <div class="profile-toggles">
+            <label class="toggle-row">
+              <input type="checkbox" id="profile-notify-signups" />
+              <span>
+                <b>Alle aanmeldingen</b>
+                <small>Mail bij elke bezoeker die zich aanmeldt</small>
+              </span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="profile-notify-teams" />
+              <span>
+                <b>Team-aanmeldingen</b>
+                <small>Mail zodra er een team binnenkomt om te beoordelen</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Push kanaal -->
+        <div class="notif-channel">
+          <div class="notif-channel-head">
+            <h4><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:4px;" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Push-melding</h4>
+            <small>Direct op dit apparaat — net als notificaties van andere apps. Kan elk moment uit.</small>
+          </div>
+
+          <div id="push-status" class="push-status">
+            <span id="push-status-text">Status laden…</span>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 14px;">
+            <button class="btn-sm primary" id="push-enable-btn" style="display:none;">Push aanzetten op dit apparaat</button>
+            <button class="btn-sm" id="push-disable-btn" style="display:none;">Uit op dit apparaat</button>
+            <button class="btn-sm" id="push-test-btn" style="display:none;">Stuur testmelding</button>
+          </div>
+
+          <div class="profile-toggles">
+            <label class="toggle-row">
+              <input type="checkbox" id="profile-notify-push-signups" />
+              <span>
+                <b>Alle aanmeldingen</b>
+                <small>Push bij elke bezoeker die zich aanmeldt</small>
+              </span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="profile-notify-push-teams" />
+              <span>
+                <b>Team-aanmeldingen</b>
+                <small>Push zodra er een team binnenkomt om te beoordelen</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <button class="btn-sm primary" id="profile-save" style="padding: 12px 18px; grid-column: 1 / -1; justify-self: start;">Voorkeuren opslaan</button>
+      </div>
+      </div>
+    </details>
+
+    <!-- JVO SMART LEERT — het lerende geheugen (learnings uit onderzoek + vorige edities + werkwijze) -->
+    <details class="section fold" id="smart-learn-fold">
+      <summary><h3>JVO Smart leert</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+        <p class="section-sub" style="margin-top:0;">
+          Wat JVO Smart heeft geleerd — uit internet-onderzoek, vorige edities en onze werkwijze. Bekijk de bron en
+          <b>pas toe</b> of <b>wijs af</b>. JVO Smart verandert nooit zelf iets; jij bevestigt. Toegepaste kennis stuurt
+          de tips op de dag (volledig offline en deterministisch).
+        </p>
+        <div class="sl-toolbar">
+          <div class="sl-filters" id="smart-learn-filters" role="tablist" aria-label="Filter learnings op onderwerp"></div>
+          <button type="button" class="btn-sm" id="smart-enrich-btn" hidden>Verrijk vanuit het internet</button>
+        </div>
+        <div id="smart-learn-groups" aria-live="polite"></div>
+      </div>
+    </details>
+
+    <div class="section danger-zone">
+      <h3>Schone start</h3>
+      <div class="section-sub">
+        Begin met een lege lijst. Hiervoor is dit bedoeld:
+        <b>testdata weghalen vóór je live gaat</b>, of <b>een volgende editie beginnen</b> op deze installatie.
+      </div>
+      <details class="danger-collapse">
+        <summary>Open wis-paneel</summary>
+        <div class="danger-body">
+          <div class="ss-lists">
+            <div class="ss-list">
+              <b>Dit wordt gewist</b>
+              <ul>
+                <li>alle aanmeldingen</li>
+                <li>alle teams, met hun geüploade logo's</li>
+                <li>het toernooi: indeling, wedstrijden en uitslagen</li>
+                <li>volgers van teams (push)</li>
+                <li>de administratie van verstuurde herinneringen</li>
+                <li>feedback uit de enquête</li>
+                <li>het logboek</li>
+                <li>de toernooi-staat: pauze, opgeschoven tijden en de knock-out-opzet</li>
+              </ul>
+            </div>
+            <div class="ss-list">
+              <b>Dit blijft staan</b>
+              <ul>
+                <li>de admin-code en de admin-profielen</li>
+                <li>de evenement-instellingen</li>
+                <li>de spelregels</li>
+                <li>de schema-instellingen</li>
+                <li>de push-teksten</li>
+                <li>het geheugen van JVO Smart</li>
+              </ul>
+            </div>
+          </div>
+          <p class="danger-warn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:5px;" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>Wissen kun je hier niet terugdraaien. De server maakt eerst zelf een back-up-zip; de lijst met mensen die nieuws wilden ontvangen zit daarin. Lukt die back-up niet, dan wordt er niets gewist.</p>
+          <div class="field">
+            <label for="wipe-confirm">Type <b>WIS ALLES</b> om te bevestigen</label>
+            <input type="text" id="wipe-confirm" placeholder="WIS ALLES" autocomplete="off" />
+          </div>
+          <button class="btn-sm danger" id="wipe-btn" disabled>Wis alles en begin opnieuw</button>
+          <div id="wipe-result" class="wipe-result" role="status" aria-live="polite"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- TAB: TEAMS -->
+  <div class="tab-pane" id="tab-teams" role="tabpanel" aria-labelledby="tabbtn-teams">
+    <details class="rg-how" id="rg-how" open>
+    <summary>Hoe werken de QR-codes?</summary>
+    <div class="how-card">
+      <h3>Hoe werken de QR-codes?</h3>
+      <ol class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <div class="step-text">Een team meldt zich aan via het formulier. Status wordt <b>wacht op beoordeling</b> — wachten op jou.</div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div class="step-text">Jij klikt op <b>Goedkeuren</b>. Het systeem maakt direct een unieke ondertekende QR voor dit team en mailt 'm naar de captain.</div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div class="step-text">Op locatie opent een vrijwilliger <span class="mono-inline">/checkin.html</span>, scant de QR met de camera.</div>
+        </li>
+        <li>
+          <span class="step-num">4</span>
+          <div class="step-text">Het systeem checkt: handtekening klopt + team is goedgekeurd + nog niet eerder ingecheckt. Bij hit → <span style="color:var(--success);">groene melding</span>, team staat ingecheckt.</div>
+        </li>
+      </ol>
+      <div class="how-note">
+        <b>Beveiliging:</b> de QR bevat een ondertekende JWT, geen ruwe ID. Iemand kan 'm dus niet faken — maar een captain kán 'm doorsturen aan een vriend. Een korte oogcontrole bij de check-in voorkomt dat. Klik <b>QR</b> bij een goedgekeurd team om te zien hoe de QR eruit ziet.
+      </div>
+    </div>
+    </details>
+
+    <div class="freeze-banner" id="freeze-banner" style="display:none;">
+      <div class="freeze-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="freeze-text">
+        <b>Zelf-service wijzigen staat uit</b>
+        <span id="freeze-detail">We zitten in de week van het toernooi — captains kunnen hun teamnaam of aantal spelers niet meer zelf aanpassen.</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <h3>Teams</h3>
+          <div class="section-sub">Zoek of filter op status. Klik <b>QR</b> bij een goedgekeurd team voor de check-in code.</div>
+        </div>
+      </div>
+
+      <div class="field admin-search">
+        <input type="search" id="team-search" placeholder="Zoek op teamnaam, captain of e-mail…" autocomplete="off" aria-label="Zoek teams" />
+      </div>
+
+      <div class="filters" id="filters">
+        <button class="filter-pill active" data-filter="all">Alle <span class="count" id="cnt-all">0</span></button>
+        <button class="filter-pill" data-filter="pending">Wachten <span class="count" id="cnt-pending">0</span></button>
+        <button class="filter-pill" data-filter="approved">Goedgekeurd <span class="count" id="cnt-approved">0</span></button>
+        <button class="filter-pill" data-filter="waitlist">Wachtlijst <span class="count" id="cnt-waitlist">0</span></button>
+        <button class="filter-pill" data-filter="rejected">Afgewezen <span class="count" id="cnt-rejected">0</span></button>
+      </div>
+
+      <div class="tm-cards" id="teams-cards"></div>
+    </div>
+  </div>
+
+  <!-- TAB: TOERNOOI -->
+  <div class="tab-pane" id="tab-tournament" role="tabpanel" aria-labelledby="tabbtn-tournament">
+    <!-- SPORTPANEEL (admin-regie.js): "Schema van <sport>" zodra de sportschakelaar op
+         een andere sport dan het hoofdtoernooi staat. De blokken met data-rg-hoofd
+         bedienen alleen het hoofdtoernooi en gaan dan uit beeld (ze bestaan nog). -->
+    <section class="section rg-paneel" id="rg-sportpaneel" hidden aria-labelledby="rg-paneel-titel"></section>
+    <!-- CONTROL CENTER -->
+    <div class="section" data-rg-hoofd>
+      <div class="tc-head">
+        <div>
+          <div class="card-eyebrow">Toernooi · controle</div>
+          <h3 style="margin:2px 0 0;">Schema &amp; wedstrijden</h3>
+        </div>
+        <div class="tc-statebadge off" id="tc-state"><span class="d"></span>Laden…</div>
+      </div>
+
+      <!-- live status (filled by JS) -->
+      <div class="tc-stats" id="tc-stats"></div>
+      <div class="tc-progress" id="tc-progress"></div>
+
+      <!-- trek-naar-voren-voorstel (2-min-veto): gevuld door JS zodra de dag vóórloopt -->
+      <div id="tc-pull-banner" hidden style="margin:12px 0; padding:12px 16px; border-radius:12px; background:rgba(89,195,255,.08); border:1px solid rgba(89,195,255,.35); font-size:14.5px; line-height:1.6;"></div>
+      <div id="tc-smart-banner" hidden style="margin:12px 0; padding:12px 16px; border-radius:12px; background:rgba(255,179,71,.08); border:1px solid rgba(255,179,71,.35); font-size:14.5px; line-height:1.6;"></div>
+
+      <!-- big pause / resume control -->
+      <div style="margin:14px 0;">
+        <input type="text" id="tourn-pause-msg" maxlength="140" placeholder="Reden voor op het bord (optioneel) — bijv. Onweer, we schuilen even" style="width:100%; margin-bottom:8px; padding:11px 13px; background:var(--midnight); border:1px solid var(--line); border-radius:10px; color:var(--ice); font-size:14px;" />
+        <button id="tourn-pause" style="width:100%;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> <span>Pauzeer toernooi</span></button>
+        <div class="small muted" id="tourn-pause-hint" style="margin-top:6px;">Pauzeert alle wedstrijden: niemand kan een nieuwe wedstrijd starten en de crew kan niets meer aanpassen. Jij (admin) kunt nog wel standen bijwerken.</div>
+      </div>
+
+      <!-- de twee dag-kritieke schermen altijd binnen handbereik; de rest zit
+           in de fold "Schermen & pagina's" hieronder -->
+      <div class="tc-links">
+        <a class="tc-link primary" id="tourn-live" href="/sporten" target="_blank" rel="noopener">Live-pagina ↗</a>
+        <a class="tc-link" id="tourn-crew" href="/wedstrijd.html" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
+      </div>
+    </div>
+
+    <!-- OPZET & GENEREREN — vanzelf open zolang er geen toernooi staat -->
+    <!-- SPORT-HUB (branch sport-hub): competities beheren — admin-competities.js -->
+    <details class="section fold" id="hub-fold">
+      <summary><h3>Sporten &amp; competities</h3><span class="evc-badge" id="hub-badge" hidden></span><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+        <style>
+          .hub-list { display: grid; gap: 10px; margin-top: 12px; }
+          .hub-c { border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px 14px; }
+          .hub-c-top { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; }
+          .hub-c-top img { width: 40px; height: 40px; object-fit: contain; }
+          .hub-c-top b { display: block; font-size: 15px; color: var(--ice); }
+          .hub-c-top span { display: block; font-size: 12.5px; color: var(--ice-muted); margin-top: 2px; line-height: 1.45; }
+          .hub-c-act { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+          .hub-c-act select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font-size: 13px; }
+          .hub-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; margin-top: 12px; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 12px; }
+          .hub-form label { display: grid; gap: 4px; font-size: 12.5px; color: var(--ice-muted); }
+          .hub-form input, .hub-form select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font-size: 14px; min-width: 0; }
+          .hub-form .wide { grid-column: 1 / -1; }
+          .hub-form .chk { display: flex; gap: 8px; align-items: center; }
+          .hub-presets .small { margin: 12px 0 0; }
+          .hub-msg { margin-top: 10px; font-size: 13px; min-height: 1em; }
+          .hub-msg.err { color: #FFB4A8; }
+          @media (max-width: 520px) { .hub-form { grid-template-columns: 1fr; } }
+        </style>
+        <div class="section-sub">
+          Laat meerdere sporten tegelijk spelen. Elke sport krijgt eigen teams, eigen velden/banen/tafels,
+          een eigen schema en een eigen uitslag (gewone stand, of sets). Het hoofdtoernooi stel je in met de
+          blokken hieronder; extra sporten maak en genereer je hier. Live bord van alle sporten: <a href="/sporten" target="_blank" rel="noopener">/sporten</a>.
+        </div>
+        <div class="hub-list" id="hub-list"><p class="small">Laden…</p></div>
+        <div class="hub-c-act"><button type="button" class="btn-sm primary" id="hub-new">+ Nieuwe sport</button></div>
+        <div id="hub-form-wrap"></div>
+        <div class="hub-msg" id="hub-msg" role="status" aria-live="polite"></div>
+      </div>
+    </details>
+
+    <details class="section fold" id="tc-setup-fold" data-rg-hoofd>
+      <summary><h3>Opzet &amp; genereren</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Kies het format (en bij 18 teams de knock-out-variant) en genereer het schema.
+        Ná het genereren heb je dit zelden meer nodig — het klapt dan vanzelf dicht.
+      </div>
+      <div class="tc-formats" id="tc-formats">
+        <button type="button" class="tc-fmt" data-fmt="16">
+          <div class="n">16</div>
+          <div class="t">4 poules van 4</div>
+          <div class="d">→ 8-team knock-out · top 2 + play-off (laagste nr. 2 × beste nr. 3)</div>
+          <div class="fit" data-fit></div>
+        </button>
+        <button type="button" class="tc-fmt" data-fmt="18">
+          <div class="n">18</div>
+          <div class="t">3 poules van 6</div>
+          <div class="d">→ 12-team knock-out · top 3 + beste nr. 4 + play-off · met achtste finales</div>
+          <div class="fit" data-fit></div>
+        </button>
+        <button type="button" class="tc-fmt" data-fmt="20">
+          <div class="n">20</div>
+          <div class="t">4 poules van 5</div>
+          <div class="d">→ 12-team knock-out · top 2 + 2× beste nr. 3 + play-off · met achtste finales</div>
+          <div class="fit" data-fit></div>
+        </button>
+      </div>
+      <div class="tc-fmt-hint" id="tc-fmt-hint">Status laden…</div>
+
+      <div class="tcz-sub-label" id="tc-variant-label" hidden>Knock-out-variant</div>
+      <div id="tc-variants" hidden></div>
+
+      <div class="tc-actions">
+        <button class="btn-sm primary tc-gen" id="tourn-generate">Genereer schema</button>
+        <span class="grow"></span>
+        <button class="btn-sm danger" id="tourn-reset">Reset toernooi</button>
+      </div>
+      <div id="tc-wait-warn" class="small" hidden style="margin-top:10px; padding:10px 14px; border-radius:10px; border:1px solid var(--line); color:var(--ice-muted); line-height:1.5;"></div>
+      </div>
+    </details>
+
+    <!-- SCHEDULE -->
+    <details class="section fold" id="tc-schedule-fold" data-rg-hoofd>
+      <summary><h3>Tijdschema</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Starttijd, aantal velden en wedstrijd-/wisseltijd. Hieruit berekent het systeem voor elke
+        wedstrijd een <b>aftraptijd + veld</b>. Loopt het op de dag uit, dan schuift de
+        <b>verwachte tijd</b> automatisch mee. Pas dit aan en sla op om opnieuw in te plannen.
+      </div>
+      <div class="sched-grid">
+        <label>Starttijd<input type="time" id="sched-start" /></label>
+        <label>Aantal velden<input type="number" id="sched-fields" min="1" max="12" step="1" /></label>
+        <label>Wedstrijd (min)<input type="number" id="sched-match" min="1" max="60" step="1" /></label>
+        <label>Wisseltijd (min)<input type="number" id="sched-break" min="0" max="60" step="1" /></label>
+      </div>
+      <div class="tcz-sub-label" style="margin-top:14px;">Veldrollen</div>
+      <div class="section-sub" style="margin-bottom:8px;">
+        Het <b>hoofdveld</b> krijgt de finale en de troostfinale, en is het doel van de veld-eerlijkheid hieronder.
+        <b>Ontzien</b> = alleen gebruiken als het niet anders kan (bijv. een blessuregevoelige ondergrond) —
+        bij volle rondes blijft elk veld nodig, maar zodra er ruimte is valt dit veld als eerste af.
+      </div>
+      <div class="sched-grid" id="sched-roles"></div>
+      <label style="display:flex; align-items:flex-start; gap:10px; margin-top:10px; cursor:pointer;">
+        <input type="checkbox" id="sched-fairness" style="margin-top:3px;" />
+        <span class="small" style="line-height:1.5;"><b>Veld-eerlijkheid.</b> Elk team speelt — waar mogelijk — minstens één poulewedstrijd op het hoofdveld.</span>
+      </label>
+
+      <div class="tcz-sub-label" style="margin-top:16px;">JVO Smart · knock-out</div>
+      <div class="section-sub" style="margin-bottom:8px;">
+        Twee schema-verbeteringen uit het onderzoek naar wachttijden bij een eerder toernooi. Beide staan standaard <b>uit</b>.
+      </div>
+      <label style="display:flex; align-items:flex-start; gap:10px; margin-top:4px; cursor:pointer;">
+        <input type="checkbox" id="sched-ko-block" style="margin-top:3px;" />
+        <span class="small" style="line-height:1.5;"><b>Knock-out in blokken.</b> Elke knock-out-ronde trapt gelijktijdig af over de velden, zodat winnaars niet ongelijk lang op hun volgende tegenstander wachten.</span>
+      </label>
+      <label style="display:block; margin-top:12px;">
+        <span class="small" style="line-height:1.5;"><b>Reserve vóór de knock-out.</b> Extra speling zodat uitloop van de poulefase wordt opgevangen en de tijden realistisch blijven.</span>
+        <span style="display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap;">
+          <select id="sched-ko-buffer" style="padding:8px 10px; border-radius:8px; background:var(--midnight-2,#122544); color:var(--ice,#E8F4FF); border:1px solid var(--line-strong,rgba(232,244,255,.22));">
+            <option value="0">Geen reserve</option>
+            <option value="1">1 ronde</option>
+            <option value="2">2 ronden</option>
+            <option value="3">3 ronden</option>
+          </select>
+          <span class="mono small muted" id="sched-ko-buffer-hint"></span>
+        </span>
+      </label>
+
+      <div class="tourn-actions" style="margin-top:12px; align-items:center;">
+        <button class="btn-sm primary" id="sched-save">Tijdschema opslaan</button>
+        <span class="mono small muted" id="sched-hint"></span>
+      </div>
+      <div class="small muted" style="margin-top:8px;">Opslaan plant het hele schema opnieuw in (slots + velden). Doe dit niet meer als er al wedstrijden gespeeld of bezig zijn.</div>
+      <div id="sched-ends" hidden style="margin-top:12px; padding:12px 16px; border-radius:12px; background:rgba(255,179,71,.08); border:1px solid rgba(255,179,71,.22); font-size:15px; color:var(--ice);"></div>
+      </div>
+    </details>
+
+    <!-- TIJDEN BIJSTUREN — handmatige verschuiving (heel schema + losse wedstrijd) -->
+    <details class="section fold" id="time-control-section" data-rg-hoofd>
+      <summary><h3>Tijden bijsturen</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Loopt het uit, of moet een wedstrijd bewust later? Schuif het hele resterende schema op, of zet één wedstrijd op een latere tijd —
+        de latere wedstrijden op hetzelfde veld schuiven mee. <b>De verwachte tijd schuift al automatisch mee</b> als een wedstrijd uitloopt; dit is voor wijzigingen die je zelf vooraf wilt instellen.
+      </div>
+      <div class="tcz-global">
+        <div>
+          <div class="tcz-lbl">Hele resterende schema</div>
+          <div class="tcz-shift" id="tcz-shift">Geen verschuiving</div>
+        </div>
+        <div class="tcz-btns">
+          <button type="button" class="btn-sm" data-shift="-5">−5 min</button>
+          <button type="button" class="btn-sm" data-shift="5">+5 min</button>
+          <button type="button" class="btn-sm" data-shift="10">+10 min</button>
+          <button type="button" class="btn-sm" data-shift="15">+15 min</button>
+          <button type="button" class="btn-sm" id="tcz-shift-reset">Herstel</button>
+        </div>
+      </div>
+      <label style="display:flex; align-items:flex-start; gap:10px; margin-top:12px; cursor:pointer;">
+        <input type="checkbox" id="tcz-auto-shift" style="margin-top:3px;" />
+        <span class="small" style="line-height:1.5;"><b>Stille autopilot voor uitloop.</b> Standaard <b>uit</b>: dan bewaakt JVO Smart de tijd zichtbaar — bij achterstand stelt hij voor het schema op te schuiven en doet dat na een korte bedenktijd (mét een seintje). Zet je dit <b>aan</b>, dan schuift het systeem elke 5 minuten stil vanzelf mee, zonder te vragen. Zo hoef je nooit handmatig tijd bij te tellen — per-veld-verschillen blijven via de <i>verwachte</i> tijden lopen.</span>
+      </label>
+      <div class="tcz-sub-label">Losse wedstrijd verschuiven</div>
+      <div id="tcz-list" class="tcz-list"><div class="tcz-empty">Genereer eerst een schema.</div></div>
+      </div>
+    </details>
+
+    <!-- WACHTTIJDEN PER TEAM — zichtbaar maken wat teams tussen wedstrijden wachten -->
+    <details class="section fold" id="wait-metrics-section" data-rg-hoofd>
+      <summary><h3>Wachttijden per team</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Het grootste gat tussen twee eigen wedstrijden, per team — <b>gepland</b> en (op de dag zelf) <b>verwacht</b>.
+        Les uit een eerder toernooi: groepswinnaars wachtten daar ruim anderhalf uur op de knock-out. Check dit ná het
+        genereren; zolang de poulestanden nog niet rond zijn zie je de open bracket-plekken als bandbreedte.
+      </div>
+      <div id="wm-body"><div class="tcz-empty">Genereer eerst een schema.</div></div>
+      </div>
+    </details>
+
+    <!-- SCHERMEN & PAGINA'S — alle overige schermen (live + bediening staan bovenaan) -->
+    <details class="section fold" id="tc-screens-fold">
+      <summary><h3>Schermen &amp; pagina's</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">Open het juiste scherm op het juiste apparaat: de TV, de omroeper, de print-backup en de kleedkamer-borden.</div>
+      <div class="tc-links">
+        <a class="tc-link" href="/sporten" target="_blank" rel="noopener">TV / scherm ↗</a>
+        <a class="tc-link" id="tc-omroep-link" href="/omroep.html" target="_blank" rel="noopener">Omroep-scherm ↗</a>
+        <a class="tc-link" id="tourn-print" href="/print.html" target="_blank" rel="noopener">Print-backup ↗</a>
+        <a class="tc-link" id="tourn-doors" href="/kleedkamer.html" target="_blank" rel="noopener">Kleedkamer-borden ↗</a>
+      </div>
+      </div>
+    </details>
+
+    <!-- TEAMLOGO'S — inzendingen van captains goedkeuren/afkeuren -->
+    <details class="section fold" id="tc-logos-fold">
+      <summary><h3>Teamlogo's</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Captains maken via hun persoonlijke link (knop "Mail logo-link" onder Mails &amp; exports) een badge of
+        uploaden een foto. <b>Pas na jouw goedkeuring</b> verschijnt het logo op het live-bord. Ververst bij openen.
+      </div>
+      <div id="lg-admin-list"><div class="tcz-empty">Nog geen inzendingen.</div></div>
+      </div>
+    </details>
+
+    <!-- MAILS & EXPORTS — alle verstuur- en downloadacties bij elkaar -->
+    <details class="section fold" id="tc-mails-fold">
+      <summary><h3>Mails &amp; exports</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">Alle mails naar captains en bezoekers (elke verstuurknop houdt zijn voorbeeld + 8-seconden-annuleren), plus de back-up-downloads.</div>
+      <p class="rg-eerlijk" id="rg-mail-noot" hidden></p>
+      <div class="tc-links">
+        <button class="tc-link" id="tourn-send">Mail schema's naar captains</button>
+        <button class="tc-link" id="tourn-program-mail">Mail programma &amp; tijdschema ↗</button>
+        <button class="tc-link" id="tourn-qr-mail">Mail alle team-QR's ↗</button>
+        <button class="tc-link" id="tourn-eventday-mail">Mail 'vandaag is de dag' ↗</button>
+        <!-- Sponsor-mail: alleen zichtbaar als er een sponsor is ingesteld (Overzicht →
+             Evenement). De server bepaalt de begintoestand; admin.js schakelt live mee. -->
+        
+        <button class="tc-link" id="tourn-prize" hidden>Mail sponsor &amp; prijzen ↗</button>
+        <button class="tc-link" id="tourn-feedback-mail">Mail bedankt &amp; feedback ↗</button>
+        <button class="tc-link" id="tourn-logo-mail">Mail logo-link naar captains ↗</button>
+        <button class="tc-link" id="tourn-export-backup">Download back-up (JSON)</button>
+        <button class="tc-link" id="tourn-export-results">Download resultaten-archief</button>
+      </div>
+      </div>
+    </details>
+
+    <!-- PUSH NOTIFICATIONS -->
+    <details class="section fold" id="push-prefs-section">
+      <summary><h3>Pushmeldingen</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Bezoekers en captains die in de toernooi-app een team <b>volgen</b> en de bel aanzetten, krijgen deze
+        meldingen op hun telefoon. Zet hieronder per soort aan of uit — de hoofdschakelaar pauzeert alles in één keer.
+        Deze ronde-updates vervangen de oude “volgende ronde”-e-mails.
+      </div>
+      <label style="display:flex; align-items:center; gap:10px; margin:8px 0 14px; font-weight:600; cursor:pointer;">
+        <input type="checkbox" id="pp-all" /> Alle pushmeldingen aan
+      </label>
+      <div id="pp-types" style="display:flex; flex-direction:column; gap:11px;">
+        <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;"><input type="checkbox" data-pp="upcoming" style="margin-top:3px;" /><span><b>Speelt zo</b> <span class="muted small">— “FC&nbsp;X speelt zo · over ~5 min tegen FC&nbsp;Y”</span></span></label>
+        <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;"><input type="checkbox" data-pp="tijdwijziging" style="margin-top:3px;" /><span><b>Tijdwijziging</b> <span class="muted small">— “FC&nbsp;X: andere tijd · nu verwacht 15:35 · veld 2” (bij ≥10 min verschuiving of ander veld)</span></span></label>
+        <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;"><input type="checkbox" data-pp="kickoff" style="margin-top:3px;" /><span><b>Aftrap</b> <span class="muted small">— “FC&nbsp;X begint nu · tegen FC&nbsp;Y”</span></span></label>
+        <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;"><input type="checkbox" data-pp="result" style="margin-top:3px;" /><span><b>Uitslag</b> <span class="muted small">— “FC&nbsp;X heeft gewonnen · 3–1”</span></span></label>
+        <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;"><input type="checkbox" data-pp="advance" style="margin-top:3px;" /><span><b>Door naar de volgende ronde</b> <span class="muted small">— play-off · kwartfinale · halve finale · finale</span></span></label>
+        <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;"><input type="checkbox" data-pp="placing" style="margin-top:3px;" /><span><b>Eindstand</b> <span class="muted small">— aan het eind krijgt elk team z’n eindstand (kampioen · 2e · 3e · 4e · of “in de poulefase”)</span></span></label>
+      </div>
+      <div class="mono small muted" id="pp-hint" style="margin-top:12px;"></div>
+      </div>
+    </details>
+
+    <!-- PUSH TEXTS (pick a ready-made option per category — no typing needed) -->
+    <details class="section fold" id="push-texts-section">
+      <summary><h3>Teksten van de meldingen</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        Kies per soort melding een kant-en-klare tekst — klik erop en het is <b>meteen opgeslagen</b>.
+        Onder elk soort zie je hoe de melding er op een telefoon uitziet. Wil je liever zelf
+        formuleren, dan kan dat onder “Eigen tekst”.
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0 2px;">
+        <span style="font-weight:600;">Alles op één stijl:</span>
+        <button class="btn-sm" data-ptall="standaard">Standaard</button>
+        <button class="btn-sm" data-ptall="enthousiast">Enthousiast</button>
+        <button class="btn-sm" data-ptall="neutraal">Neutraal</button>
+        <button class="btn-sm" data-ptall="kort">Kort</button>
+      </div>
+      <div id="pt-cats"></div>
+      <div class="mono small muted" id="pt-hint" style="margin-top:10px;"></div>
+      </div>
+    </details>
+
+    <details class="section fold" id="tc-status-fold" data-rg-hoofd>
+      <summary><h3>Toernooi-status &amp; meldingen</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+      <div class="section-sub">
+        <b style="color:var(--success);">De ronde-updates gaan via push, niet via e-mail.</b> Zodra een wedstrijd
+        wordt afgefloten, zet het systeem elk team op de juiste status en stuurt een <b>push-melding</b> naar de
+        volgers (zie Pushmeldingen hierboven). De automatische “volgende ronde”-mails staan uit. Hieronder kun je
+        de status handmatig corrigeren of — als je dat echt wilt — een statusmail los versturen.
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Captain</th>
+              <th>Toernooi-status</th>
+              <th style="width: 140px;">Statusmail <span class="muted small">(optioneel)</span></th>
+            </tr>
+          </thead>
+          <tbody id="tournament-tbody">
+            <tr><td colspan="4" class="empty-state">Nog geen goedgekeurde teams.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+    </details>
+
+    <!-- FEEDBACK-RESULTATEN: enquête-analyse (wat is hoe vaak genoemd) -->
+    <details class="section fold" id="fb-fold">
+      <summary><h3>Feedback-resultaten</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+      <div class="fold-body">
+        <div class="section-sub">De enquête van <code>/feedback</code>, geteld per categorie — zo zie je precies <b>wat het vaakst als verbeterpunt is aangevinkt</b>. Ververst bij openen.</div>
+        <div id="fb-results" class="small muted">Nog niet geladen…</div>
+        <div class="tourn-actions" style="margin-top:12px;">
+          <button class="btn-sm" id="fb-refresh">Ververs</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- TAB: PROGRAMMA — live knock-out bracket + standen (embeds the public live app) -->
+  <div class="tab-pane" id="tab-program" role="tabpanel" aria-labelledby="tabbtn-program">
+    <div class="program-wrap">
+      <div class="program-bar">
+        <div class="program-bar-info">
+          <div class="card-eyebrow">Live programma · knock-out &amp; standen</div>
+          <div class="program-url mono small muted">
+            Realtime mee met de wedstrijdbediening. Werkt het schema nog niet? Genereer het eerst op de <b>Toernooi</b>-tab.
+          </div>
+        </div>
+        <div class="program-bar-actions">
+          <a class="btn-sm primary" href="/sporten" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">Open live-pagina ↗</a>
+          <a class="btn-sm" href="/sporten" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">TV / scherm ↗</a>
+          <a class="btn-sm" href="/wedstrijd.html" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">Wedstrijdbediening ↗</a>
+        </div>
+      </div>
+      <div class="program-frame-wrap">
+        <iframe id="program-frame" src="/toernooi.html?pane=ko" title="Live toernooi-programma" loading="lazy" style="background: var(--midnight);"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: AANMELDINGEN -->
+  <div class="tab-pane" id="tab-signups" role="tabpanel" aria-labelledby="tabbtn-signups">
+
+    <!-- Quick info card explaining the two lists -->
+    <div class="info-cards">
+      <div class="info-card">
+        <div class="info-card-icon" style="background: rgba(232,244,255,0.1); color: var(--ice);">A</div>
+        <div class="info-card-body">
+          <h4>Aanmeldlijst</h4>
+          <div class="info-card-num"><span id="info-signups-count">—</span></div>
+          <p>Iedereen die zich heeft aangemeld voor <span data-ev="withArticle">de JVO Sportdag</span>. Bevestigingsmail al verstuurd. Alleen voor planning + ter bevestiging dat ze komen.</p>
+        </div>
+      </div>
+      <div class="info-card highlight">
+        <div class="info-card-icon" style="background: var(--gold); color: var(--midnight);">M</div>
+        <div class="info-card-body">
+          <h4>Mailinglijst (toekomst)</h4>
+          <div class="info-card-num"><span id="info-marketing-count">—</span></div>
+          <p>Subset: alleen mensen die het tweede vinkje aanvinkten ("ook benaderen voor toekomstige edities"). Gebruik deze lijst om mensen uit te nodigen voor een volgend evenement.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backup -->
+    <div class="section" style="margin-bottom: 14px;">
+      <div class="section-head">
+        <div>
+          <h3>Bewaren &amp; exporteren</h3>
+          <div class="section-sub">Download een complete backup als ZIP — alle aanmeldingen, teams, logboek en mailinglijst tegelijk. Het systeem maakt ook automatisch dagelijks een backup op de server. <b>Database-snapshot</b> is een kopie van de hele database — nodig om de noodserver op een laptop te starten als het internet op locatie uitvalt (zie LOCAL-FALLBACK.md).</div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="csv-btn" id="export-backup-btn"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup ZIP</button>
+          <button class="csv-btn ghost-csv" id="export-marketing-btn"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Mailinglijst CSV</button>
+          <button class="csv-btn ghost-csv" id="export-db-btn"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Database-snapshot</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sub-tabs: Aanmeldlijst | Mailinglijst -->
+    <div class="signups-subtabs" role="tablist" aria-label="Lijst-keuze">
+      <button class="subtab active" data-signups-tab="all" type="button" role="tab" aria-selected="true">
+        Aanmeldlijst <span class="subtab-count" id="subtab-count-all">—</span>
+      </button>
+      <button class="subtab" data-signups-tab="marketing" type="button" role="tab" aria-selected="false">
+        Mailinglijst <span class="subtab-count" id="subtab-count-marketing">—</span>
+      </button>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <h3 id="signups-list-heading">Volledige aanmeldlijst</h3>
+          <div class="section-sub" id="signups-list-sub">Alle aanmeldingen in chronologische volgorde. Klik op een naam voor details.</div>
+        </div>
+      </div>
+      <div class="field admin-search">
+        <input type="search" id="signup-search" placeholder="Zoek op naam of e-mail…" autocomplete="off" aria-label="Zoek aanmeldingen" />
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>Datum</th><th>Naam</th><th>E-mail</th><th style="width: 80px;">Toekomst</th></tr>
+          </thead>
+          <tbody id="signups-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LOGBOEK -->
+  <div class="tab-pane" id="tab-audit" role="tabpanel" aria-labelledby="tabbtn-audit">
+    <div class="section">
+      <h3>Logboek</h3>
+      <div class="section-sub">
+        Wie deed wat, wanneer. Code wordt gedeeld door het admin-team, dus log is gebaseerd op de naam die je bij het inloggen invulde.
+      </div>
+      <div class="audit-filters" role="tablist" aria-label="Logboek filter">
+        <button class="audit-filter-pill active" data-audit-filter="all" type="button" role="tab" aria-selected="true">Alles</button>
+        <button class="audit-filter-pill" data-audit-filter="checkin" type="button" role="tab" aria-selected="false">Check-ins</button>
+        <button class="audit-filter-pill" data-audit-filter="teams" type="button" role="tab" aria-selected="false">Team-beslissingen</button>
+        <button class="audit-filter-pill" data-audit-filter="mail" type="button" role="tab" aria-selected="false">Mails</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Tijd</th><th>Wie</th><th>Actie</th><th>Doelwit</th></tr></thead>
+          <tbody id="audit-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-backdrop" id="qr-modal">
+  <div class="modal">
+    <button class="modal-close" id="qr-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Check-in QR</div>
+    <h3 id="modal-team-name">—</h3>
+    <div class="modal-status">
+      <span class="pill approved">Goedgekeurd</span>
+      <span class="pill checked-in" id="modal-checkin-pill" style="display:none;">ingecheckt</span>
+    </div>
+    <div class="qr-display">
+      <canvas id="qr-canvas" width="240" height="240"></canvas>
+    </div>
+    <div class="card-eyebrow" style="font-size:10px; margin-bottom:6px;">Check-in URL</div>
+    <div class="url-box" id="modal-url"></div>
+    <div class="modal-status-info pending" id="modal-status-info">
+      <b id="modal-status-title">Nog niet ingecheckt</b>
+      <span id="modal-status-detail">Het team kan inchecken op de dag zelf met deze QR.</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm primary" id="btn-download-qr">PNG downloaden</button>
+      <button class="btn-sm" id="btn-resend-qr">Mail opnieuw</button>
+      <button class="btn-sm" id="btn-modal-close-2">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- PERSON DETAIL MODAL -->
+<div class="modal-backdrop" id="person-modal">
+  <div class="modal">
+    <button class="modal-close" id="person-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Aanmeldgegevens</div>
+    <h3 id="person-modal-name">—</h3>
+    <dl class="person-details">
+      <dt>E-mail</dt>
+      <dd id="person-modal-email">—</dd>
+      <dt>Aangemeld op</dt>
+      <dd id="person-modal-date">—</dd>
+      <dt>Op mailinglijst toekomst?</dt>
+      <dd id="person-modal-marketing">—</dd>
+      <dt>Captain van team?</dt>
+      <dd id="person-modal-team">—</dd>
+    </dl>
+    <div class="modal-actions" style="margin-top: 20px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <a class="btn-sm primary" id="person-modal-mailto" href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+          <polyline points="22,6 12,13 2,6"></polyline>
+        </svg>
+        Mail openen
+      </a>
+      <button class="btn-sm" id="person-modal-close-2">Sluiten</button>
+      <button class="btn-sm danger" id="person-modal-delete" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"></path>
+          <path d="M10 11v6M14 11v6"></path>
+        </svg>
+        Verwijderen
+      </button>
+    </div>
+    <div id="person-modal-blocked" style="display:none; margin-top: 14px; padding: 12px 14px; background: rgba(255,179,71,0.1); border: 1px solid rgba(255,179,71,0.3); border-radius: 6px; color: var(--gold); font-size: 13px; line-height: 1.5;"></div>
+  </div>
+</div>
+
+<!-- TEAM DETAIL MODAL — opens when you click a team/captain in the Teams tab -->
+<div class="modal-backdrop" id="team-modal">
+  <div class="modal">
+    <button class="modal-close" id="team-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Team</div>
+    <h3 id="team-modal-name">—</h3>
+    <div id="team-modal-status" class="team-modal-status"></div>
+    <dl class="person-details">
+      <dt>Captain</dt><dd id="team-modal-captain">—</dd>
+      <dt>E-mail</dt><dd id="team-modal-email">—</dd>
+      <dt>Spelers</dt><dd id="team-modal-players">—</dd>
+      <dt>Ingecheckt</dt><dd id="team-modal-checkin">—</dd>
+    </dl>
+    <!-- Alleen met meerdere sporten: team naar een andere sport verplaatsen -->
+    <div class="rg-team-sport" id="team-modal-sport-row" hidden>
+      <label for="team-modal-sport">Sport</label>
+      <select id="team-modal-sport"></select>
+      <span class="small" id="team-modal-sport-msg" role="status" aria-live="polite"></span>
+    </div>
+
+    <!-- Per-captain schedule (approved teams only) -->
+    <div id="team-modal-schema" class="team-modal-schema">
+      <div class="card-eyebrow" style="margin-bottom:6px;">Speelschema voor deze captain</div>
+      <p class="small muted" style="margin:0 0 12px;">Bekijk eerst hoe de mail eruitziet, of stuur 'm alleen naar deze captain.</p>
+      <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-sm" id="team-modal-schema-preview">Schema previewen ↗</button>
+        <button class="btn-sm primary" id="team-modal-schema-send">Mail schema naar deze captain →</button>
+      </div>
+      <div id="team-modal-schema-result" class="small" style="margin-top:11px; min-height:16px;"></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <a class="btn-sm" id="team-modal-mailto" href="#" style="text-decoration:none;">Mail captain</a>
+      <button class="btn-sm" id="team-modal-qr" style="display:none;">Check-in QR ↗</button>
+      <button class="btn-sm" id="team-modal-close-2" style="margin-left:auto;">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRAMMA & TIJDSCHEMA MODAL — preview + send, no popup dialogs -->
+<div class="modal-backdrop" id="program-modal">
+  <div class="modal" style="max-width: 520px;">
+    <button class="modal-close" id="program-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Programma &amp; tijdschema</div>
+    <h3>Mail naar de captains</h3>
+    <p id="program-modal-sub" style="color:var(--ice-muted); font-size:14px; margin:2px 0 14px; line-height:1.5;">Voorbeeld laden…</p>
+    <div id="program-modal-result" class="small" style="margin-bottom:14px; min-height:16px;"></div>
+    <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-sm" id="program-modal-preview" disabled>Voorbeeld bekijken ↗</button>
+      <button class="btn-sm primary" id="program-modal-send" disabled>Verstuur →</button>
+      <button class="btn-sm" id="program-modal-cancel" style="margin-left:auto;">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK MODAL — preview + send, no popup dialogs -->
+<div class="modal-backdrop" id="feedback-modal">
+  <div class="modal" style="max-width: 520px;">
+    <button class="modal-close" id="feedback-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Bedankt &amp; feedback</div>
+    <h3>Mail naar iedereen</h3>
+    <p id="feedback-modal-sub" style="color:var(--ice-muted); font-size:14px; margin:2px 0 14px; line-height:1.5;">Voorbeeld laden…</p>
+    <div id="feedback-modal-result" class="small" style="margin-bottom:14px; min-height:16px;"></div>
+    <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-sm" id="feedback-modal-preview" disabled>Voorbeeld teams ↗</button>
+      <button class="btn-sm" id="feedback-modal-preview-visitor" disabled>Voorbeeld bezoekers ↗</button>
+      <button class="btn-sm primary" id="feedback-modal-send" disabled>Verstuur →</button>
+      <button class="btn-sm" id="feedback-modal-cancel" style="margin-left:auto;">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- VANDAAG-IS-DE-DAG MODAL — preview + send, no popup dialogs -->
+<div class="modal-backdrop" id="eventday-modal">
+  <div class="modal" style="max-width: 520px;">
+    <button class="modal-close" id="eventday-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Vandaag is de dag</div>
+    <h3>Mail naar de captains</h3>
+    <p id="eventday-modal-sub" style="color:var(--ice-muted); font-size:14px; margin:2px 0 14px; line-height:1.5;">Voorbeeld laden…</p>
+    <div id="eventday-modal-result" class="small" style="margin-bottom:14px; min-height:16px;"></div>
+    <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-sm" id="eventday-modal-preview" disabled>Voorbeeld teams ↗</button>
+      <button class="btn-sm" id="eventday-modal-preview-visitor" disabled>Voorbeeld bezoekers ↗</button>
+      <button class="btn-sm primary" id="eventday-modal-send" disabled>Verstuur →</button>
+      <button class="btn-sm" id="eventday-modal-cancel" style="margin-left:auto;">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR-BULKMAIL MODAL — preview + send, no popup dialogs -->
+<div class="modal-backdrop" id="qrmail-modal">
+  <div class="modal" style="max-width: 520px;">
+    <button class="modal-close" id="qrmail-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Team-QR's &amp; teamcodes</div>
+    <h3>Mail naar de captains</h3>
+    <p id="qrmail-modal-sub" style="color:var(--ice-muted); font-size:14px; margin:2px 0 14px; line-height:1.5;">Voorbeeld laden…</p>
+    <div id="qrmail-modal-result" class="small" style="margin-bottom:14px; min-height:16px;"></div>
+    <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-sm" id="qrmail-modal-preview" disabled>Voorbeeld bekijken ↗</button>
+      <button class="btn-sm primary" id="qrmail-modal-send" disabled>Verstuur →</button>
+      <button class="btn-sm" id="qrmail-modal-cancel" style="margin-left:auto;">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPONSOR & PRIJZEN MODAL — preview + send, no popup dialogs. De sponsornaam
+     komt uit het evenement-profiel (server bij laden, admin.js na een wijziging). -->
+<div class="modal-backdrop" id="prize-modal">
+  <div class="modal" style="max-width: 520px;">
+    <button class="modal-close" id="prize-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow" id="prize-modal-eyebrow">Sponsor &amp; prijzen</div>
+    <h3>Mail naar de teams</h3>
+    <p id="prize-modal-sub" style="color:var(--ice-muted); font-size:14px; margin:2px 0 14px; line-height:1.5;">Voorbeeld laden…</p>
+    <div id="prize-modal-result" class="small" style="margin-bottom:14px; min-height:16px;"></div>
+    <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-sm" id="prize-modal-preview" disabled>Voorbeeld bekijken ↗</button>
+      <button class="btn-sm primary" id="prize-modal-send" disabled>Verstuur →</button>
+      <button class="btn-sm" id="prize-modal-cancel" style="margin-left:auto;">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEAMLOGO-UITNODIGING MODAL — preview + send, no popup dialogs -->
+<div class="modal-backdrop" id="logomail-modal">
+  <div class="modal" style="max-width: 520px;">
+    <button class="modal-close" id="logomail-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Teamlogo's · uitnodiging</div>
+    <h3>Mail logo-link naar captains</h3>
+    <p id="logomail-modal-sub" style="color:var(--ice-muted); font-size:14px; margin:2px 0 14px; line-height:1.5;">Voorbeeld laden…</p>
+    <div id="logomail-modal-result" class="small" style="margin-bottom:14px; min-height:16px;"></div>
+    <div class="modal-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="btn-sm" id="logomail-modal-preview" disabled>Voorbeeld bekijken ↗</button>
+      <button class="btn-sm primary" id="logomail-modal-send" disabled>Verstuur →</button>
+      <button class="btn-sm" id="logomail-modal-cancel" style="margin-left:auto;">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- REJECT MODAL -->
+<div class="modal-backdrop" id="reject-modal">
+  <div class="modal">
+    <div class="card-eyebrow">Team afwijzen</div>
+    <h3 id="reject-team-name">—</h3>
+    <p style="color: var(--ice-muted); font-size: 14px; margin-bottom: 18px;">De captain krijgt direct een mail. Beide velden zijn optioneel.</p>
+
+    <div class="field">
+      <label for="reject-reason">Korte reden (verschijnt prominent in de mail)</label>
+      <input type="text" id="reject-reason" placeholder="Bijv. Toernooi is vol — wachtlijst zat ook al" />
+    </div>
+
+    <div class="field">
+      <label for="reject-message">Persoonlijk bericht (optioneel — eigen tekst)</label>
+      <textarea id="reject-message" rows="4" placeholder="Bijv. Hoi Mark, jammer dat het niet lukt deze keer. We hopen je wel als bezoeker te zien — dat regelen we makkelijk!"></textarea>
+    </div>
+
+    <div class="modal-actions" style="margin-top: 20px;">
+      <button class="btn-sm danger" id="reject-confirm" style="background: rgba(255,100,100,0.15); color: #FF8484; border-color: rgba(255,100,100,0.4); font-weight: 600;">Versturen &amp; afwijzen</button>
+      <button class="btn-sm" id="reject-cancel">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME-INFO MODAL — shows exactly what the captain changed -->
+<div class="modal-backdrop" id="rename-modal">
+  <div class="modal">
+    <button class="modal-close" id="rename-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Teamnaam gewijzigd</div>
+    <h3 id="rename-modal-title">—</h3>
+    <p style="color: var(--ice-muted); font-size: 14px; margin: 6px 0 18px;">
+      De captain heeft de teamnaam zelf aangepast via de toegestuurde link.
+    </p>
+    <div id="rename-modal-list"></div>
+    <div class="modal-actions" style="margin-top: 20px;">
+      <button class="btn-sm" id="rename-modal-close-2">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADJUST MODAL — groups the self-service change actions for a team -->
+<div class="modal-backdrop" id="adjust-modal">
+  <div class="modal">
+    <button class="modal-close" id="adjust-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Captain laten aanpassen</div>
+    <h3 id="adjust-modal-title">—</h3>
+    <p style="color: var(--ice-muted); font-size: 14px; margin: 6px 0 18px; line-height: 1.5;">
+      Stuur de captain een persoonlijke link om dit zelf aan te passen. Je kunt het daarna nog 8 seconden ongedaan maken.
+    </p>
+    <div class="adjust-options">
+      <button class="adjust-option" id="adjust-rename">
+        <span class="adjust-option-title">Teamnaam wijzigen</span>
+        <span class="adjust-option-sub" id="adjust-rename-sub">Captain kiest zelf een nieuwe teamnaam</span>
+      </button>
+      <button class="adjust-option" id="adjust-count">
+        <span class="adjust-option-title">Aantal spelers wijzigen</span>
+        <span class="adjust-option-sub" id="adjust-count-sub">Captain past zelf het aantal spelers aan</span>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top: 18px;">
+      <button class="btn-sm" id="adjust-modal-close-2">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- WAITING-FOR-RENAME MODAL — holding state options -->
+<div class="modal-backdrop" id="waiting-modal">
+  <div class="modal">
+    <button class="modal-close" id="waiting-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Wacht op naamswijziging</div>
+    <h3 id="waiting-modal-title">—</h3>
+    <p style="color: var(--ice-muted); font-size: 14px; margin: 6px 0 18px; line-height: 1.5;" id="waiting-modal-text">—</p>
+    <div class="modal-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="btn-sm primary" id="waiting-modal-resend">Link opnieuw sturen</button>
+      <button class="btn-sm" id="waiting-modal-cancel">Stoppen met wachten</button>
+      <button class="btn-sm" id="waiting-modal-close-2" style="margin-left:auto;">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- HELP — context-uitleg per scherm (info-knop, altijd bereikbaar) -->
+<button id="admin-help-fab" aria-label="Uitleg over dit scherm" title="Uitleg over dit scherm"
+  style="position:fixed; right:16px; bottom:16px; z-index:90; width:48px; height:48px; border-radius:50%; border:none; background:linear-gradient(135deg,#FF6B1A,#FFB347); color:#0A1628; font-size:24px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.35);">?</button>
+<div class="modal-backdrop" id="help-modal">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" id="help-modal-close" aria-label="Sluiten">×</button>
+    <div class="card-eyebrow">Uitleg</div>
+    <h3 id="help-modal-title">Hulp</h3>
+    <div id="help-modal-body" style="color:var(--ice); font-size:14px; line-height:1.65; margin-top:8px;"></div>
+    <div class="modal-actions" style="margin-top:18px;"><button class="btn-sm" id="help-modal-close-2">Sluiten</button></div>
+  </div>
+</div>
+
+<!-- Vendored locally (was cdnjs) — verified against the original SRI hash. -->
+<script src="/vendor/qrcode.min.js"></script>
+<script src="/offline-ui.js"></script>
+<script src="/register-sw.js"></script>
+<script src="/fx.js"></script>
+<script src="/logo-render.js"></script>
+<script src="/admin.js"></script>
+<script src="/admin-competities.js"></script>
+<script src="/admin-regie.js"></script>
+</body>
+</html>

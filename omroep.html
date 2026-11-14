@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/megafoon-klein.webp');--werk-icoon-groot:url('/sport/werk/megafoon.webp')">
+<head>
+  <script src="/voorbeeld.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script src="/jvo-loader.js"></script>
+  <meta name="robots" content="noindex" />
+  <title>Omroep — JVO Sportdag</title>
+  <link rel="icon" type="image/png" href="/icons/favicon.png" />
+  <meta name="theme-color" content="#06193A" />
+  
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body.om { background: var(--midnight); }
+    .om-shell { max-width: 760px; margin: 0 auto; padding: 16px 14px 60px; }
+    .om-top { display: flex; align-items: center; gap: 12px; padding: 4px 2px 14px; }
+    /* het ECHTE JVO-logo als merkteken (tekst blijft als SR-label, visueel verborgen) */
+    .om-badge { width: 38px; height: 38px; border-radius: 50%; background: url('/jvo-logo.jpg') center/cover, var(--midnight); display: flex; align-items: center; justify-content: center; color: transparent; font-size: 0; flex: none; }
+    .om-top .t { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ice-muted); }
+    .om-top .t b { display: block; color: var(--ice); font-size: 13px; }
+    .om-clock { margin-left: auto; font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--gold-2); font-variant-numeric: tabular-nums; }
+    .om-updated { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ice-faint); text-align: right; margin: -8px 2px 12px; }
+
+    .om-h { display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ember); margin: 20px 2px 10px; }
+    .om-h .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); animation: ompulse 1.6s infinite; }
+    @keyframes ompulse { 50% { opacity: .45; } }
+    .om-h .n { margin-left: auto; font-size: 10px; color: var(--ice-faint); letter-spacing: .06em; }
+
+    /* NU BEZIG */
+    .om-live { display: flex; flex-direction: column; gap: 9px; }
+    .om-lv { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; background: rgba(108,227,160,.07); border: 1px solid rgba(108,227,160,.45); border-radius: 14px; padding: 13px 16px; }
+    .om-lv .veld { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--midnight); background: var(--success); border-radius: 8px; padding: 6px 10px; font-weight: 700; white-space: nowrap; }
+    .om-lv .wie { min-width: 0; font-size: 18px; font-weight: 700; color: var(--ice); line-height: 1.35; }
+    .om-lv .wie .sc { color: var(--gold-2); font-family: var(--display); font-weight: 900; font-size: 22px; margin: 0 8px; }
+    .om-lv .wie .waar { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ice-muted); font-weight: 400; margin-top: 3px; }
+    .om-lv .klok { font-family: var(--display); font-weight: 900; font-size: 24px; color: var(--success); font-variant-numeric: tabular-nums; }
+    .om-lv .klok.extra { color: var(--gold-2); }
+
+    /* ZO OMROEPEN — de call-wachtrij */
+    .om-queue { display: flex; flex-direction: column; gap: 10px; }
+    .om-q { position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
+      background: linear-gradient(160deg, #14294b, var(--midnight-2) 60%); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; transition: opacity .2s, border-color .2s; }
+    .om-q.eerst { border-color: rgba(255,179,71,.6); box-shadow: 0 10px 30px -14px rgba(255,140,40,.4); }
+    .om-q .when { text-align: center; min-width: 74px; }
+    .om-q .when .rel { font-family: var(--display); font-weight: 900; font-size: 21px; color: var(--gold-2); line-height: 1; white-space: nowrap; }
+    .om-q .when .rel.nu { color: var(--success); }
+    .om-q .when .abs { font-family: var(--mono); font-size: 10px; color: var(--ice-faint); margin-top: 4px; }
+    .om-q .wie { min-width: 0; }
+    .om-q .wie .teams { font-size: 19px; font-weight: 800; color: var(--ice); line-height: 1.3; }
+    .om-q .wie .teams i { font-style: normal; color: var(--ice-faint); font-family: var(--mono); font-size: 12px; margin: 0 7px; }
+    .om-q .wie .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+    .om-q .veldchip { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--midnight); background: linear-gradient(135deg, var(--ember), var(--gold)); border-radius: 7px; padding: 3px 9px; font-weight: 700; }
+    .om-q .waar { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-muted); }
+    .om-q .warn { font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; color: #FFD24D; background: rgba(255,210,77,.1); border: 1px solid rgba(255,210,77,.35); border-radius: 20px; padding: 2px 8px; }
+    .om-q .warn.bezig { color: var(--success); background: rgba(108,227,160,.1); border-color: rgba(108,227,160,.35); }
+    .om-q .ok { flex: none; background: var(--midnight-3); border: 1px solid var(--line-strong); color: var(--ice-muted); border-radius: 10px; padding: 10px 13px; font-family: var(--body); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .om-q .ok:hover { color: var(--ice); border-color: var(--ice-faint); }
+    .om-q.gedaan { opacity: .38; }
+    .om-q.gedaan .ok { background: rgba(108,227,160,.14); color: var(--success); border-color: rgba(108,227,160,.4); }
+
+    /* NET KLAAR */
+    .om-done { display: flex; flex-direction: column; gap: 7px; }
+    .om-d { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--midnight-2); border: 1px solid var(--line); border-radius: 11px; padding: 10px 15px; }
+    .om-d .wie { font-size: 15.5px; color: var(--ice); }
+    .om-d .wie .w { font-weight: 800; color: var(--gold-2); }
+    .om-d .wie .sc { font-family: var(--display); font-weight: 900; margin: 0 7px; color: var(--ice); }
+    .om-d .wie .np { font-family: var(--mono); font-size: 11px; color: var(--ice-muted); }
+    .om-d .waar { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-faint); white-space: nowrap; }
+
+    .om-empty { text-align: center; color: var(--ice-muted); padding: 26px 10px; font-size: 14px; background: var(--midnight-2); border: 1px dashed var(--line); border-radius: 12px; }
+    .om-hint { font-size: 12px; color: var(--ice-muted); margin: 6px 2px 0; }
+    @media (max-width: 560px) {
+      .om-q { grid-template-columns: auto 1fr; }
+      .om-q .ok { grid-column: 1 / -1; }
+      .om-lv .wie { font-size: 16px; }
+      .om-q .wie .teams { font-size: 17px; }
+    }
+
+    /* presentator-knop */
+    .om-tv-btn { margin-left: auto; background: transparent; color: var(--gold-2); border: 1px solid var(--line-strong); border-radius: 9px;
+      padding: 8px 12px; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; cursor: pointer; white-space: nowrap; }
+    .om-tv-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .om-top .om-clock { margin-left: 12px; }
+
+    /* LEES DIT VOOR — kant-en-klare omroep-zin */
+    .om-prompt { display: none; margin: 0 0 6px; background: linear-gradient(160deg, rgba(255,179,71,.14), var(--midnight-2) 70%);
+      border: 1px solid rgba(255,179,71,.4); border-left: 4px solid var(--gold); border-radius: 14px; padding: 14px 17px; }
+    .om-prompt.has { display: block; }
+    .om-prompt .om-prompt-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+    .om-prompt .om-prompt-txt { font-size: 20px; line-height: 1.4; color: var(--ice); font-weight: 500; }
+    .om-prompt .om-prompt-txt b { color: var(--gold-2); font-weight: 800; }
+
+    /* momenten-strook — roep dit meteen om */
+    .om-moments { display: none; flex-direction: column; gap: 7px; margin: 0 0 12px; }
+    .om-moments.has { display: flex; }
+    .om-moment { border-radius: 12px; padding: 12px 16px; font-size: 17px; font-weight: 700; line-height: 1.35; color: var(--ice);
+      background: var(--midnight-2); border: 1px solid var(--line-strong); border-left: 4px solid var(--ice-faint); }
+    .om-moment.headline { border-left-color: var(--gold); background: linear-gradient(160deg, rgba(255,179,71,.16), var(--midnight-2) 70%); color: var(--gold-2); }
+    .om-moment.result { border-left-color: var(--success); }
+    .om-moment.lead { border-left-color: var(--sb-pop, #2FD4C4); }
+    @media (prefers-reduced-motion: no-preference) {
+      .om-moment { animation: om-moment-in .34s cubic-bezier(.16,1,.3,1); }
+      @keyframes om-moment-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .om-h .dot { animation: none; }
+    }
+
+    /* ── hub-modus: alle sporten (alleen zichtbaar bij meer dan één sport) ── */
+    .om-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .om-filter[hidden], .om-pauze[hidden] { display: none; }
+    .om-chip { flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 15px; border-radius: 999px; background: var(--midnight-2); border: 1px solid var(--line-strong); color: var(--ice-muted); font-family: var(--body); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .om-chip img { width: 20px; height: 20px; object-fit: contain; }
+    .om-chip:hover { color: var(--ice); border-color: var(--ice-faint); }
+    .om-chip[aria-pressed="true"] { background: var(--gold-2); border-color: var(--gold-2); color: var(--midnight); }
+    .om-chip-stil { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 20px; padding: 1px 7px; }
+    .om-pauze { display: flex; flex-direction: column; gap: 7px; margin: 0 0 12px; }
+    .om-pauze-rij { display: flex; align-items: baseline; gap: 12px; background: rgba(255,210,77,.1); border: 1px solid rgba(255,210,77,.45); border-radius: 12px; padding: 12px 16px; font-size: 15.5px; line-height: 1.4; color: var(--ice); }
+    .om-pauze-rij b { font-weight: 800; }
+    .om-pauze-lbl { flex: none; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #FFD24D; }
+    .om-sp { color: var(--ice); font-weight: 700; }
+    .om-sets { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--ice-muted); white-space: nowrap; }
+    .om-q.stil { opacity: .6; }
+    .om-q.stil .when .rel { color: #FFD24D; }
+    body.om-hub .om-d { align-items: start; }
+    body.om-hub .om-d .waar { white-space: normal; text-align: right; }
+    @media (max-width: 560px) {
+      .om-filter { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px 14px; padding: 0 14px 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+      .om-filter::-webkit-scrollbar { display: none; }
+      .om-pauze-rij { flex-direction: column; gap: 4px; }
+    }
+    body.om-tv .om-chip { min-height: 52px; font-size: 17px; padding: 0 20px; }
+    body.om-tv .om-chip img { width: 26px; height: 26px; }
+    body.om-tv .om-pauze-rij { font-size: 22px; padding: 16px 20px; }
+    body.om-tv .om-pauze-lbl, body.om-tv .om-sets { font-size: 13px; }
+
+    /* presentator-modus: alles groter voor op afstand */
+    body.om-tv .om-shell { max-width: 1100px; }
+    body.om-tv .om-prompt .om-prompt-txt { font-size: 30px; }
+    body.om-tv .om-moment { font-size: 24px; padding: 16px 20px; }
+    body.om-tv .om-lv .wie { font-size: 26px; }
+    body.om-tv .om-lv .wie .sc { font-size: 32px; }
+    body.om-tv .om-lv .klok, body.om-tv .om-q .when .rel { font-size: 30px; }
+    body.om-tv .om-q .wie .teams { font-size: 26px; }
+    body.om-tv .om-d .wie { font-size: 20px; }
+    body.om-tv .om-h { font-size: 13px; }
+  </style>
+  <link rel="stylesheet" href="/thema-sporthub.css" />
+  <link rel="stylesheet" href="/thema-sporthub-beheer.css" />
+</head>
+<body class="om">
+  <div class="om-shell">
+    <div class="om-top">
+      <div class="om-badge">JVO</div>
+      <div class="t">Omroep · presentator<b>Wie roep je nu om?</b></div>
+      <button type="button" class="om-tv-btn" id="om-tv-btn">◲ Grote letters</button>
+      <div class="om-clock" id="om-clock">--:--</div>
+    </div>
+    <div class="om-updated" id="om-updated">Laden…</div>
+
+    <!-- hub-modus (meerdere sporten): sportfilter + sporten die stilliggen. Leeg en
+         verborgen bij één sport; omroep.js vult ze. -->
+    <div class="om-filter" id="om-filter" role="group" aria-label="Kies welke sporten je volgt" hidden></div>
+    <div class="om-pauze" id="om-pauze" aria-live="polite" hidden></div>
+
+    <!-- momenten-strook: roep dit meteen om (doelpunt, uitslag, kampioen …) -->
+    <div class="om-moments" id="om-moments" aria-live="polite"></div>
+
+    <!-- kant-en-klare omroep-zin voor de eerstvolgende wedstrijd -->
+    <div class="om-prompt" id="om-prompt" aria-live="polite"></div>
+
+    <div class="om-h"><span class="dot"></span>Nu bezig<span class="n" id="om-live-n"></span></div>
+    <div class="om-live" id="om-live"><div class="om-empty">Nog geen wedstrijden bezig.</div></div>
+
+    <div class="om-h">Zo omroepen<span class="n" id="om-queue-n">op verwachte aftrap — schuift mee met uitloop</span></div>
+    <div class="om-queue" id="om-queue"><div class="om-empty">Geen aankomende wedstrijden.</div></div>
+    <div class="om-hint">Tik <b>Omgeroepen ✓</b> als je een wedstrijd hebt omgeroepen — dan zie je altijd wat er nog moet. De omrande labels waarschuwen voor korte rust of een team dat nog bezig is.</div>
+
+    <div class="om-h">Net klaar — uitslag omroepen<span class="n" id="om-done-n"></span></div>
+    <div class="om-done" id="om-done"><div class="om-empty">Nog geen uitslagen.</div></div>
+  </div>
+
+  <script src="/offline-ui.js"></script>
+  <script src="/register-sw.js"></script>
+  <script src="/omroep.js"></script>
+</body>
+</html>

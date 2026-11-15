@@ -126,6 +126,9 @@
     }
     if (BEKEND.indexOf(k) < 0) return antwoord({ error: 'Dit is een voorbeeld om te bekijken: dit onderdeel (downloaden of een los voorbeeld) zit er niet in.' }, 403);
     if (k === 'admin_profielen_beheer') return alsJson(k, function (j) { j.pas_vragen = PAS.vragen; j.server_nu = nu; });
+    // Het plein telt 'zonder bediener' met de klok van nu; het crew-overzicht moet dat ook doen,
+    // anders springt het aantal zodra je een afdeling opent.
+    if (k === 'admin_crew-posts') return alsJson(k, function (j) { j.server_now = nu; });
     return bestand(k);
   }
 
@@ -212,19 +215,55 @@
   try { if (navigator.serviceWorker) { navigator.serviceWorker.register = function () { return new Promise(function () {}); };
     navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {}); } } catch (e) {}
 
-  // Een smalle balk bovenaan: dit is een voorbeeld.
+  // Een smalle balk bovenaan, op elke pagina: dit is een voorbeeld.
+  var WERK = /^\/(admin|wedstrijd|checkin|omroep|print|mijn)(\.html)?$/.test(location.pathname);
+  var ORANJE = 'background:#FF6B1A;color:#06193A;font:600 12px/1.35 system-ui,sans-serif;text-align:center';
   document.addEventListener('DOMContentLoaded', function () {
-    if (!/^\/(admin|wedstrijd|checkin|omroep|print|mijn)(\.html)?$/.test(location.pathname)) return;
     var balk = document.createElement('div');
     balk.id = 'kijk-balk';
     balk.setAttribute('role', 'note');
-    balk.setAttribute('style', 'position:sticky;top:0;z-index:2147483000;background:#FF6B1A;color:#06193A;font:600 12px/1.3 system-ui,sans-serif;padding:7px 12px;text-align:center');
-    balk.appendChild(document.createTextNode('Voorbeeld met testgegevens · wijzigen werkt hier niet'));
-    if (window.innerWidth >= 620) {
+    balk.setAttribute('style', 'position:sticky;top:0;z-index:2147483000;padding:7px 12px;' + ORANJE);
+    var smal = window.innerWidth < 620;
+    if (smal && !WERK) balk.style.fontSize = '11px';   // op de telefoon: één regel, mét de weg terug
+    balk.appendChild(document.createTextNode(WERK ? 'Voorbeeld met testgegevens · wijzigen werkt hier niet'
+      : smal ? 'Voorbeeld · niets wordt bewaard of gemaild' : 'Voorbeeld met testgegevens · er wordt niets bewaard of gemaild'));
+    // Werkschermen op de telefoon houden één regel; de openbare pagina's krijgen altijd de weg terug.
+    if (!WERK || !smal) {
       balk.appendChild(document.createTextNode(' · '));
-      var a = document.createElement('a'); a.href = '/alles'; a.textContent = 'alle schermen'; a.setAttribute('style', 'color:#06193A;text-decoration:underline');
+      var a = document.createElement('a'); a.href = '/alles'; a.textContent = 'alle schermen'; a.setAttribute('style', 'color:#06193A;text-decoration:underline;white-space:nowrap');
       balk.appendChild(a);
     }
     document.body.insertBefore(balk, document.body.firstChild);
+    aangemeld();
   });
+
+  // Aanmeldpagina: het scherm "Je bent aangemeld" mag niet zeggen dat er gemaild is.
+  function aangemeld() {
+    var vak = document.getElementById('success');
+    if (!vak || typeof MutationObserver !== 'function') return;
+    function zetTekst(el, t) { if (el && el.textContent !== t) el.textContent = t; }
+    function eerlijk() {
+      if (vak.style.display === 'none') return;
+      var msg = document.getElementById('success-msg'), mail = document.getElementById('success-mijn-mail'), extra = document.getElementById('success-extra');
+      if (!document.getElementById('kijk-aangemeld') && msg && msg.parentNode) {
+        var n = document.createElement('p');
+        n.id = 'kijk-aangemeld';
+        n.setAttribute('role', 'note');
+        n.setAttribute('style', 'margin:14px 0 0;padding:10px 12px;border-radius:12px;border:1.5px solid #FF6B1A;background:rgba(255,107,26,.12);font:600 14px/1.4 system-ui,sans-serif;text-align:center');
+        n.textContent = 'Dit is een voorbeeld: je aanmelding is niet bewaard en er is geen mail verstuurd.';
+        msg.parentNode.insertBefore(n, msg.nextSibling);
+      }
+      if (msg) zetTekst(msg, msg.textContent
+        .replace(/; het besluit krijg je ook per mail\./, '. In het echt krijg je het besluit ook per mail.')
+        .replace(/\s*Check je inbox voor een bevestiging\./, ' In het echt krijg je een bevestiging per mail.')
+        .replace(/\s*Je krijgt een bevestiging in je inbox\./, ' In het echt krijg je een bevestiging per mail.'));
+      if (mail) zetTekst(mail, mail.textContent
+        .replace(/We hebben je link ook gemaild naar [^\s]+\.(?=\s|$)/, 'In het echt krijg je je link ook per mail. Hier is niets verstuurd.')
+        .replace(/ of de link in je mail\./, '.')
+        .replace(/\s*De link staat ook in je mail\./, ''));
+      if (extra && extra.style.display !== 'none') extra.style.display = 'none';   // de zin over de spam-map
+    }
+    new MutationObserver(eerlijk).observe(vak, { attributes: true, attributeFilter: ['style', 'hidden'], childList: true, subtree: true, characterData: true });
+    eerlijk();
+  }
 })();

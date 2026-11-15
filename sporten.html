@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" data-theme="sporthub">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +9,19 @@
   <meta name="description" content="Alle sporten van de JVO Sportdag live: wat er nu gespeeld wordt, wat er straks komt en de standen." />
   <link rel="icon" type="image/png" href="/icons/favicon.png" />
   <meta name="theme-color" content="#06193A" />
+  <!-- Eén web-app voor de deelnemer: Mijn team (/mijn) en dit bord onder één icoon (zie /mijn.webmanifest in server.js). -->
+  <link rel="manifest" href="/mijn.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/jvo-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sportdag" />
   <link rel="stylesheet" href="/fonts.css" />
+  <!-- De ballen in de ring rechtsboven draaien (WebGL, sh-bal3d.js); dat script werkt alleen in de stijl sporthub.
+       Bewust: deze pagina staat NIET in THEMED_PAGES (server.js) — ze heeft eigen, page-scoped opmaak en mag
+       thema-sporthub.css niet laden. Daarom zet ze data-theme hierboven zelf (via de vlag themeSporthub);
+       sh-bal3d.js kijkt naar dat attribuut. data-sport en de sport-icoon-variabelen zijn hier niet nodig. -->
+  <script src="/sh-bal3d.js" defer></script>
   <!-- Sport-hub live-bord (stijl Sporthub): "Nu bezig" over alle sporten heen.
        Eigen, page-scoped opmaak. De kleuren en de ronde letter komen uit de
        --sh-*-tokens van thema-sporthub.css waar dat thema geladen is; de waarde
@@ -29,8 +42,18 @@
     a { color: inherit; }
     :focus-visible { outline: 3px solid #fff; outline-offset: 3px; border-radius: 6px; }
     .mono { font-family: var(--mono); letter-spacing: .16em; text-transform: uppercase; }
-    .wrap { position: relative; max-width: 560px; margin: 0 auto; padding: 18px 16px 48px; overflow: hidden; }
-    .deco { position: absolute; right: -80px; top: 6px; width: 230px; height: 230px; border-radius: 50%; border: 2px solid var(--rood); pointer-events: none; }
+    .wrap { position: relative; max-width: 560px; margin: 0 auto; padding: 18px 16px calc(48px + 74px + env(safe-area-inset-bottom)); overflow: hidden; }
+    /* kop: logo-regel, titel, telregel — met rechts de rode ring en daarin het icoon
+       (bij "Alles" wisselen de sporten elkaar rustig af, bij één sport het icoon van die sport).
+       De ring staat ónder de Live-pil en bóven de sportkiezer en past altijd helemaal in beeld. */
+    .hoofd { position: relative; min-height: calc(46px + var(--ring)); --ring: 104px; }
+    .ring { position: absolute; right: 0; top: 46px; width: var(--ring); height: var(--ring); border-radius: 50%; border: 2px solid var(--rood);
+      background: radial-gradient(circle at 50% 38%, var(--navy-2), var(--navy) 72%); pointer-events: none; }
+    .ring-in { position: absolute; inset: 15%; }
+    .ring-in[hidden] { display: none; }
+    .ring-in img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
+    .ring-in img.op { opacity: 1; }
+    @media (max-width: 359px) { .hoofd { --ring: 88px; } }
     .bar { position: relative; display: flex; align-items: center; gap: 10px; z-index: 2; }
     .bar img { width: 34px; height: 34px; border-radius: 50%; }
     .bar .nm { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.85); }
@@ -39,10 +62,10 @@
       padding: 6px 11px; border-radius: 999px; font-weight: 600; background: #fff; color: var(--navy); text-decoration: none; white-space: nowrap; }
     .pill.live { background: var(--oranje); color: var(--navy); }
     .pill[hidden] { display: none; }
-    h1 { position: relative; font-family: var(--rond); font-weight: 900; font-size: clamp(34px, 10vw, 44px); line-height: 1; letter-spacing: -.02em; margin-top: 34px; z-index: 2; }
+    h1 { position: relative; font-family: var(--rond); font-weight: 900; font-size: clamp(30px, 10vw, 44px); line-height: 1; letter-spacing: -.02em; margin-top: 34px; z-index: 2; margin-right: calc(var(--ring) + 8px); }
     h1 em, h2 em { font-style: normal; color: var(--oranje); }
-    .sub { font-size: 10px; color: rgba(255,255,255,.85); margin-top: 12px; }
-    .tabs { display: flex; gap: 8px; margin: 22px -16px 0; padding: 0 16px 4px; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 2; }
+    .sub { font-size: 10px; color: rgba(255,255,255,.85); margin-top: 12px; margin-right: calc(var(--ring) + 8px); line-height: 1.5; }
+    .tabs { display: flex; gap: 8px; margin: 16px -16px 0; padding: 0 16px 4px; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 2; }
     .tabs::-webkit-scrollbar { display: none; }
     .tab { display: flex; align-items: center; gap: 7px; border: 1.5px solid var(--rand); border-radius: 999px; padding: 5px 14px 5px 6px;
       font: 600 13px var(--body); white-space: nowrap; background: var(--navy-2); color: #fff; cursor: pointer; flex: none; min-height: 40px; }
@@ -80,7 +103,20 @@
     .sr i { font-style: normal; font-size: 9px; color: rgba(255,255,255,.85); }
     .leeg { border: 1.5px dashed var(--rand); border-radius: 16px; padding: 18px; font-size: 14px; color: rgba(255,255,255,.88); line-height: 1.5; }
     .stand { background: #fff; color: var(--navy); border-radius: 18px; padding: 12px 16px 8px; }
-    .stand + .stand { margin-top: 12px; }
+    .standen { display: grid; gap: 12px; }
+    /* poule-kiezer: "Alle poules" staat altijd vooraan, je zit nooit vast op één poule */
+    .poules { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+    .poules + .sportvlak .lbl:first-child, .poules + .sportvlak > section:first-child .lbl { margin-top: 18px; }
+    .pchip { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--rand); background: var(--navy-2); color: #fff; font: 600 13px var(--body); cursor: pointer; white-space: nowrap; }
+    .pchip[aria-pressed="true"] { background: #fff; color: var(--navy); border-color: #fff; }
+    /* "Sporten" op het overzicht: per sport hoeveel poules en deelnemers, en of er gespeeld wordt */
+    .sporten { display: grid; gap: 10px; }
+    .sportrij { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--navy-2); color: #fff;
+      border: 1.5px solid var(--rand); border-radius: 16px; padding: 10px 14px 10px 10px; cursor: pointer; font: inherit; min-height: 68px; }
+    .sportrij b { display: block; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sportrij i { display: block; font-style: normal; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.85); margin-top: 4px; line-height: 1.5; }
+    .sportrij em { font-style: normal; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; padding: 4px 9px; border-radius: 999px; white-space: nowrap; border: 1.5px solid var(--rand); color: #fff; }
+    .sportrij em.live { background: var(--oranje); border-color: var(--oranje); color: var(--navy); }
     .stand h3 { font-family: var(--rond); font-weight: 900; font-size: 15px; display: flex; justify-content: space-between; align-items: baseline; text-transform: uppercase; }
     .stand h3 i { font-style: normal; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--inkt-2); font-weight: 500; }
     .srow { display: grid; grid-template-columns: 22px 1fr 30px 38px 34px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(6,25,58,.14); font-size: 14px; font-weight: 600; }
@@ -129,13 +165,82 @@
     .knop[disabled] { opacity: .6; cursor: default; }
     .knop[hidden] { display: none; }
     .volg.wijs { box-shadow: 0 0 0 3px var(--oranje); }
+    /* teamlogo's (alleen goedgekeurde; logo-render.js): klein, vaste maat, netjes afgekapt. Geen logo = geen element. */
+    .jvo-logo { display: inline-flex; flex: none; line-height: 0; vertical-align: -3px; margin-right: 6px; }
+    .jvo-logo img { border-radius: 22%; object-fit: cover; display: block; }
+    .srow em .jvo-logo { vertical-align: -4px; }
+    /* de naam-vakken hierboven stijlen élke span erin; het logo blijft een klein blokje vóór de naam */
+    .tm .jvo-logo, .plek .jvo-logo, .sr .jvo-logo { display: inline-flex; overflow: visible; line-height: 0; }
+    /* vaste links onderaan: Mijn team · Live · Regels (zelfde balk als op /mijn) */
+    .onder { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--navy-2); border-top: 1.5px solid var(--rand); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+    .onder a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; border-radius: 14px; text-decoration: none; font: 600 11.5px var(--body); color: rgba(255,255,255,.88); }
+    .onder a svg { width: 21px; height: 21px; }
+    .onder a[aria-current="page"] { background: #fff; color: var(--navy); }
+    .onder a:focus-visible { outline-offset: -3px; }
+    .onder a[aria-current="page"]:focus-visible { outline-color: var(--navy); }
     .volg-melding:empty { display: none; }
-    @media (prefers-reduced-motion: no-preference) { .kaart { transition: transform .2s ease; } .volg { transition: box-shadow .3s ease; } }
+    @media (prefers-reduced-motion: no-preference) {
+      .kaart { transition: transform .2s ease; } .volg { transition: box-shadow .3s ease; }
+      .ring-in img { transition: opacity .7s ease; }
+      .ring-in { animation: ring-zweef 6s ease-in-out infinite; }
+      @keyframes ring-zweef { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-3px); } }
+    }
+
+    /* ── breder dan een telefoon ─────────────────────────────────────────────── */
+    @media (min-width: 700px) {
+      .wrap { max-width: 800px; padding: 24px 24px 130px; }
+      .onder { left: 50%; right: auto; bottom: 16px; width: 372px; transform: translateX(-50%); border: 1.5px solid var(--rand); border-radius: 22px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.4); }
+      .hoofd { --ring: 128px; }
+      .tabs { margin: 18px 0 0; padding: 0 0 4px; flex-wrap: wrap; overflow: visible; }
+      .volg { max-width: 560px; }
+      .list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+      .sporten { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sportvlak.veel .standen { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    }
+    /* ── laptop en groter: kolommen naast elkaar ─────────────────────────────── */
+    @media (min-width: 900px) {
+      .wrap { max-width: 1280px; padding: 28px 32px 130px; }
+      .hoofd { --ring: 156px; }
+      h1 { font-size: 60px; margin-top: 38px; }
+      .sub { font-size: 11px; margin-top: 14px; }
+      .lbl { font-size: 11px; }
+      .tab { font-size: 14px; }
+      /* overzicht: "Straks" in twee kolommen onder de wedstrijden (de zijkolom komt vanaf 1180px) */
+      .vlak > .v-zij .rijen, .sportvlak.veel .s-schema .rijen { column-count: 2; column-gap: 32px; }
+      .rijen .sr { break-inside: avoid; }
+      /* sportpagina: stand, schema en knock-out naast elkaar */
+      .sportvlak { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; align-items: start; }
+      .sportvlak > .s-ko, .sportvlak.veel > section, .sportvlak > section:only-child { grid-column: 1 / -1; }
+      .sportvlak.veel > .s-stand { order: -1; }
+    }
+    @media (min-width: 1180px) {
+      .hoofd { --ring: 168px; }
+      h1 { font-size: 68px; }
+      .list.breed { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      /* overzicht: links wat er nu speelt (raster) + de sporten, rechts "Straks" als zijkolom */
+      .vlak { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 0 40px; align-items: start; }
+      .vlak { grid-template-rows: auto 1fr; }
+      .vlak.solo { grid-template-columns: minmax(0, 1fr); }
+      .vlak > .v-zij { grid-column: 2; grid-row: 1 / span 2; }
+      .vlak > .v-zij > .lbl:first-child { margin-top: 26px; }
+      .vlak > .v-zij .rijen { column-count: auto; }
+      .sportvlak.veel .standen { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+      .sportvlak { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+      .sportvlak > .s-ko, .sportvlak > section:only-child { grid-column: auto; }
+      .sportvlak > .s-ko .list, .sportvlak > section .list { grid-template-columns: minmax(0, 1fr); }
+      /* veel poules: de stand over de volle breedte (poules naast elkaar), daaronder schema | knock-out */
+      .sportvlak.veel { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+      .sportvlak.veel > section { grid-column: auto; }
+      .sportvlak.veel > .s-stand, .sportvlak.veel:not(.m-schema) > .s-ko, .sportvlak.veel:not(.m-ko) > .s-schema { grid-column: 1 / -1; }
+      .sportvlak.veel.m-ko .s-schema .rijen { column-count: auto; }
+      .sportvlak.veel.m-schema > .s-ko .list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sportvlak.veel:not(.m-schema) > .s-ko .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <span class="deco" aria-hidden="true"></span>
+    <header class="hoofd">
     <div class="bar">
       <img src="/jvo-logo.jpg" alt="JVO" />
       <span class="nm"><b>JVO</b> · Sportdag</span>
@@ -143,6 +248,8 @@
     </div>
     <h1 id="kop">Nu bezig<em>.</em></h1>
     <div class="sub mono" id="sub" aria-live="polite">Laden…</div>
+    <span class="ring" id="ring" aria-hidden="true"></span>
+    </header>
     <div class="tabs" id="tabs" role="tablist" aria-label="Kies een sport"></div>
     <!-- Volg je team: opt-in. Meldingen gaan pas aan na een tik op de knop én
          toestemming in de browser; uitzetten kan hier altijd (zie /privacy). -->
@@ -163,7 +270,13 @@
     <main id="paneel" role="tabpanel" tabindex="-1"></main>
     <p class="voet" id="voet"></p>
   </div>
+  <nav class="onder" aria-label="Deelnemers-app">
+    <a href="/mijn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg>Mijn team</a>
+    <a href="/sporten" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>Live</a>
+    <a href="/spelregels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>Regels</a>
+  </nav>
   <script src="/register-sw.js"></script>
+  <script src="/logo-render.js"></script>
   <script src="/sporten.js"></script>
 </body>
 </html>

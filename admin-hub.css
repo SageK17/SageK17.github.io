@@ -1,0 +1,737 @@
+/* JVO Admin — ADMIN HUB (admin-hub.js). Het startscherm met het gebouw, de zes
+   afdelingen en de indeling binnen een afdeling.
+
+   ALLES hier staat onder body.ah-aan (of in #ah, dat zonder hub-modus leeg en
+   verborgen is). Met één toernooi doet dit bestand dus niets.
+
+   Opbouw
+     1. Aan/uit: de oude tabs weg, breedte, uitleg
+     2. Raamwerk: zijbalk (laptop) / onderbalk (telefoon)
+     3. Startscherm: kop, gebouw, "Wat moet je nu doen?", afdelingstegels
+     4. Afdeling: kruimel, kop, kerncijfers, tegels en subtabs
+     5. Onderwerp: verhuisde blokken, vaste vouwen, slot, sportschakelaar
+     6. Nieuwe kaarten: check-in, crew, omroep, toegang, systeem
+     7. Tabellen op brede schermen (teams, vanaf 1280px)
+     8. Stijl Sporthub (volle vormgeving)
+     9. Telefoon
+    10. Minder beweging
+
+   Kleuren komen uit de bestaande variabelen (--midnight, --ice, --gold, --line…),
+   zodat de hub onder elke stijl leesbaar is. De stijl Sporthub zet die variabelen
+   zelf al om (thema-sporthub.css); sectie 8 voegt alleen toe wat daar eigen is. */
+
+/* ── 1. Aan/uit ─────────────────────────────────────────────────────────── */
+/* Zinnen die naar een plek verwijzen: de ene versie voor de tabs, de andere voor de hub. */
+.ah-alleen-hub { display: none; }
+body.ah-aan .ah-alleen-hub { display: inline; }
+body.ah-aan .ah-niet-hub { display: none; }
+.help-body.ah-uitleg { display: none; }
+body.ah-aan .help-body.ah-uitleg { display: block; }
+body.ah-aan .help-body.ah-uitleg-oud { display: none; }
+body.ah-wacht .tabs, body.ah-wacht .tab-pane, body.ah-wacht #rg-bar { visibility: hidden; }
+body.ah-aan .tabs { display: none !important; }
+body.ah-aan .tab-pane { display: none !important; }
+body.ah-aan .admin-shell { max-width: 1400px; }
+body.ah-aan {
+  --ah-vlak: var(--midnight-2);
+  --ah-in: var(--midnight);
+  --ah-rand: var(--line-strong);
+  --ah-tekst: var(--ice);
+  --ah-tekst-2: var(--ice-muted);
+  --ah-actie: var(--gold);
+  --ah-op-actie: var(--midnight);
+  --ah-kop: var(--display);
+  --ah-r: 14px;
+}
+
+/* ── 2. Raamwerk ────────────────────────────────────────────────────────── */
+.ah { margin-top: 6px; }
+.ah [hidden] { display: none !important; }
+.ah-main { min-width: 0; }
+.ah-nav { display: flex; }
+.ah-nav-a {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 10px;
+  border-radius: 12px; border: 1px solid transparent; color: var(--ah-tekst-2);
+  font-size: 14.5px; font-weight: 600; text-decoration: none; line-height: 1.2;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.ah-nav-a:hover { color: var(--ah-tekst); background: var(--ah-vlak); }
+.ah-nav-a[aria-current="page"] { color: var(--ah-tekst); background: var(--ah-vlak); border-color: var(--ah-rand); font-weight: 700; }
+.ah-nav-i { position: relative; flex: none; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+.ah-nav-i img, .ah-tegel-beeld img, .ah-afd-beeld img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.ah-nav-t { flex: 1; min-width: 0; }
+.ah-nav-kort { display: none; }
+.ah-nav-n { flex: none; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--ah-actie); color: var(--ah-op-actie); font-family: var(--mono); font-size: 11.5px; font-weight: 700; line-height: 22px; text-align: center; }
+.ah-nav-n:empty { display: none; }
+
+@media (min-width: 1024px) {
+  body.ah-aan:not(.ah-thuis) .ah { display: grid; grid-template-columns: 212px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .ah-nav { position: sticky; top: 14px; flex-direction: column; gap: 4px; padding: 8px; border-radius: 16px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+  body.ah-thuis .ah-nav { display: none; }
+  .ah-nav-hub { margin-bottom: 6px; padding-bottom: 10px; border-bottom-color: var(--ah-rand); border-radius: 12px 12px 0 0; }
+  .ah-nav-hub[aria-current="page"], .ah-nav-hub:hover { border-radius: 12px; }
+}
+
+/* ── 3. Startscherm ─────────────────────────────────────────────────────── */
+.ah-home { overflow-x: clip; }
+.ah-home-kop { margin: 4px 0 8px; }
+.ah-titel:focus { outline: none; }
+body.ah-aan .ah-titel:focus-visible { outline: none !important; }
+.ah-home-raster { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 20px 36px; align-items: center; }
+.ah-gebouw-wrap { min-width: 0; }
+.ah-gebouw { position: relative; width: 100%; max-width: 860px; margin: 0 auto; user-select: none; }
+.ah-g-basis { display: block; width: 100%; height: auto; }
+.ah-g-laag { position: absolute; opacity: 0; pointer-events: none; transition: opacity .28s ease; }
+.ah-g-laag.is-aan { opacity: 1; }
+.ah-g-laag.is-let:not(.is-aan) { animation: ah-puls 2.6s ease-in-out infinite; }
+@keyframes ah-puls { 0%, 100% { opacity: 0; } 50% { opacity: .92; } }
+.ah-g-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ah-g-vlak { cursor: pointer; outline: none; }
+.ah-g-vlak polygon { fill: transparent; stroke: transparent; stroke-width: 5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ah-g-vlak:focus-visible polygon { stroke: #fff; stroke-dasharray: 2 0; }
+.ah-g-pad { fill: none; stroke: #FFE2CF; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 5 9; opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+.ah-g-pad.is-aan { opacity: .95; animation: ah-stroom 1.1s linear infinite; }
+@keyframes ah-stroom { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
+
+.ah-speld {
+  position: absolute; z-index: 2; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 7px 12px 8px; border-radius: 12px; background: #F6F7FB; color: #06193A; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .7);
+  transition: transform .18s ease, background .18s ease;
+}
+.ah-speld b { font-family: var(--ah-kop); font-size: 12.5px; font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
+.ah-speld span { font-size: 12px; font-weight: 600; line-height: 1.2; color: #2C3760; }
+.ah-speld.is-let { background: var(--ah-actie); color: var(--ah-op-actie); }
+.ah-speld.is-let span { color: var(--ah-op-actie); }
+.ah-speld.is-aan { transform: translateY(-4px); }
+
+.ah-nu { min-width: 0; }
+.ah-nu-titel { font-family: var(--ah-kop); font-size: 20px; font-weight: 800; line-height: 1.15; color: var(--ah-tekst); margin: 0 0 14px; }
+.ah-nu-lijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ah-actie { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 12px; padding: 14px 16px; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-vlak); }
+.ah-actie-n { grid-row: 1 / span 2; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-actie); color: var(--ah-op-actie); font-family: var(--mono); font-size: 14px; font-weight: 700; }
+.ah-actie-t b { display: block; font-size: 15.5px; line-height: 1.3; color: var(--ah-tekst); overflow-wrap: anywhere; }
+.ah-actie-t span { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.45; color: var(--ah-tekst-2); overflow-wrap: anywhere; }
+.ah-actie .ah-knop { grid-column: 2; justify-self: start; margin-top: 8px; }
+.ah-actie-rust .ah-actie-n { background: transparent; border: 1.5px solid var(--ah-rand); color: var(--ah-tekst); }
+.ah-knop { width: auto; min-height: 44px; text-decoration: none; }
+#ah-home-slot > .jvs { margin: 14px 0 0; }
+#ah-home-voet { margin-top: 22px; }
+
+.ah-tussenkop { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ah-tekst-2); margin: 26px 0 10px; }
+.ah-afdelingen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ah-tegel {
+  position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 76px; padding: 14px 16px;
+  border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-vlak); color: var(--ah-tekst);
+  text-decoration: none; transition: border-color .15s ease, transform .15s ease, background .15s ease;
+}
+.ah-tegel:hover { border-color: var(--ah-tekst); transform: translateY(-1px); }
+.ah-tegel-beeld { flex: none; width: 64px; height: 64px; display: block; }
+.ah-tegel-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ah-tegel-t b { font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; }
+.ah-tegel-rol { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ah-tekst-2); }
+.ah-tegel-s { font-size: 13.5px; line-height: 1.45; color: var(--ah-tekst-2); }
+.ah-tegel-afd b { font-family: var(--ah-kop); font-size: 16px; font-weight: 800; }
+.ah-stip { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ah-actie); vertical-align: 1px; }
+.ah-tegel.is-let { border-color: var(--ah-actie); }
+.ah-tegel-afd.is-let .ah-tegel-s { color: var(--ah-tekst); font-weight: 600; }
+
+/* Zonder gebouw (bestand ontbreekt of laadt niet): de tegels dragen het scherm. */
+.ah-geen-gebouw #ah-gebouw-plek { display: none; }
+.ah-geen-gebouw .ah-gebouw-wrap { display: none; }
+.ah-geen-gebouw .ah-home-raster { grid-template-columns: minmax(0, 1fr); }
+
+/* ── 4. Afdeling ────────────────────────────────────────────────────────── */
+.ah-kruimel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 32px; margin: 2px 0 12px; font-size: 13.5px; color: var(--ah-tekst-2); }
+.ah-kruimel a { color: var(--ah-tekst-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ah-rand); padding: 6px 0; }
+.ah-kruimel a:hover { color: var(--ah-tekst); text-decoration-color: currentColor; }
+.ah-kruimel [aria-current] { color: var(--ah-tekst); font-weight: 700; }
+.ah-kruimel svg { flex: none; opacity: .7; }
+/* De kop van een afdeling is de close-up van de wijk: daar komt de camera op uit. */
+.ah-afd-kopblok { display: grid; grid-template-columns: minmax(220px, 380px) minmax(0, 1fr); gap: 26px; align-items: center; margin: 0 0 18px; }
+.ah-afd-beeld { position: relative; display: block; width: 100%; aspect-ratio: 5 / 3; border-radius: 20px; overflow: hidden; background: var(--ah-in); border: 1px solid var(--ah-rand); }
+.ah-afd-beeld img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; }
+.ah-afd-beeld[data-soort="los"] img { object-fit: contain; padding: 8%; }
+.ah-afd-koptekst { min-width: 0; }
+.ah-cijfers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+.ah-cijfer { min-width: 0; padding: 14px 16px; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-vlak); }
+.ah-cijfer-v { font-family: var(--ah-kop); font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--ah-tekst); overflow-wrap: anywhere; }
+.ah-cijfer-v small { font-size: .55em; font-weight: 700; color: var(--ah-tekst-2); }
+.ah-cijfer.is-tekst .ah-cijfer-v { font-size: 20px; line-height: 1.6; }
+.ah-cijfer-k { margin-top: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ah-tekst-2); }
+.ah-cijfer.is-let { border-color: var(--ah-actie); }
+.ah-cijfer.is-let .ah-cijfer-k::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ah-actie); }
+.ah-cijfers-in { grid-template-columns: repeat(auto-fit, minmax(150px, 220px)); margin: 16px 0; }
+.ah-cijfers-in .ah-cijfer { background: var(--ah-in); }
+.ah-kopslot > .stats { margin-bottom: 14px; }
+.ah-kopslot > .attention { margin-bottom: 18px; }
+
+.ah-tegels { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.ah-onderwerpen .ah-tegel { align-items: flex-start; min-height: 104px; padding: 16px 44px 16px 16px; }
+.ah-onderwerpen .ah-tegel-t b { font-family: var(--ah-kop); font-size: 15.5px; font-weight: 800; }
+.ah-tegel-n { position: absolute; top: 14px; right: 14px; display: none; }
+.ah-onderwerpen .ah-tegel-n { position: static; display: inline-flex; align-items: center; flex: none; margin-left: auto; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--ah-rand); font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ah-tekst); white-space: nowrap; }
+.ah-tegel-n.is-let { border-color: var(--ah-actie); }
+.ah-tegel-p { position: absolute; right: 14px; bottom: 14px; color: var(--ah-tekst-2); }
+.ah-tegel:hover .ah-tegel-p { color: var(--ah-tekst); }
+.ah-hoofduit { margin-top: 16px; border-radius: var(--ah-r); border: 1px dashed var(--ah-rand); }
+.ah-hoofduit > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 48px; padding: 12px 16px; font-size: 14.5px; font-weight: 600; color: var(--ah-tekst-2); cursor: pointer; list-style: none; }
+.ah-hoofduit > summary::-webkit-details-marker { display: none; }
+.ah-hoofduit > summary::after { content: ''; width: 8px; height: 8px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); align-self: center; }
+.ah-hoofduit[open] > summary::after { transform: rotate(-135deg); }
+.ah-hoofduit > summary span { font-size: 13px; font-weight: 500; }
+.ah-hoofduit > .ah-eerlijk { margin: 0 16px 12px; }
+.ah-hoofduit > .ah-tegels { padding: 0 12px 12px; }
+.ah-eerlijk a, .ah-tekst a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Eén onderwerp open: de afdeling krimpt tot een kopregel + een strook subtabs. */
+.ah-open .ah-afd-kopblok { grid-template-columns: 116px minmax(0, 1fr); gap: 14px; margin-bottom: 12px; }
+.ah-open .ah-afd-beeld { border-radius: 12px; }
+.ah-open .ah-afd-kopblok .rg-sub, .ah-open .ah-afd-kopblok .card-eyebrow { display: none; }
+.ah-open .ah-cijfers:not(.ah-cijfers-in), .ah-open .ah-kopslot { display: none !important; }
+.ah-open .ah-onderwerpen { margin-bottom: 18px; }
+.ah-open .ah-tegels { display: flex; flex-wrap: wrap; gap: 8px; }
+.ah-open .ah-onderwerpen .ah-tegel { align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; gap: 8px; }
+.ah-open .ah-onderwerpen .ah-tegel:hover { transform: none; }
+.ah-open .ah-onderwerpen .ah-tegel-t b { font-family: var(--body); font-size: 14px; font-weight: 600; }
+.ah-open .ah-tegel-s, .ah-open .ah-tegel-p { display: none; }
+.ah-open .ah-onderwerpen .ah-tegel-n { padding: 0; border: 0; font-size: 11px; color: var(--ah-tekst-2); }
+.ah-open .ah-onderwerpen .ah-tegel-n:not(.is-let) { display: none; }
+.ah-open .ah-onderwerpen .ah-tegel[aria-current="page"] { background: var(--ah-tekst); color: var(--ah-in); border-color: var(--ah-tekst); }
+.ah-open .ah-onderwerpen .ah-tegel[aria-current="page"] .ah-tegel-n { color: var(--ah-in); }
+.ah-open .ah-tussenkop { margin: 14px 0 8px; }
+.ah-open .ah-hoofduit { margin-top: 10px; }
+
+/* ── 5. Onderwerp ───────────────────────────────────────────────────────── */
+.ah-topic { min-width: 0; }
+.ah-topic > .section, .ah-topic > details.section, .ah-slot-in > .section { margin-bottom: 16px; }
+.ah-topic > :last-child { margin-bottom: 0; }
+.ah-topic.ah-flits { animation: ah-flits 2.2s ease-out; border-radius: var(--ah-r); }
+@keyframes ah-flits { 0%, 35% { box-shadow: 0 0 0 3px var(--ah-actie); } 100% { box-shadow: 0 0 0 3px transparent; } }
+details.ah-vast > summary { cursor: default; pointer-events: none; }
+details.ah-vast > summary .fold-chev { display: none; }
+details.ah-vast > summary::after { content: none; }
+.ah-topic:not(.ah-breed):not(.ah-kol-2):not(.ah-kol-zij) { max-width: 900px; }
+@media (min-width: 1100px) {
+  .ah-topic.ah-kol-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .ah-topic.ah-kol-zij { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
+  .ah-topic.ah-kol-2 > *, .ah-topic.ah-kol-zij > * { margin-bottom: 0; }
+}
+.ah-leeg { margin: 0; padding: 18px; border-radius: var(--ah-r); border: 1px dashed var(--ah-rand); font-size: 14.5px; line-height: 1.5; color: var(--ah-tekst-2); }
+#ah-sportleeg { margin-bottom: 16px; }
+
+/* De sportschakelaar staat in de afdeling, niet meer als plakbalk boven alles. */
+.ah-sportslot > .rg-bar { position: static; margin: 0 0 16px; box-shadow: none; }
+.ah-sportslot.ah-sport-een .rg-chip[data-sport=""] { display: none; }
+/* Schema per sport toont één sport; het blok van het hoofdtoernooi staat bij "Stand en pauze". */
+body.ah-aan.rg-sport-los .ah-t-stand > * { display: none; }
+body.ah-aan .ah-t-teams > .rg-how { margin: 16px 0 0; }
+body.ah-aan .ah-t-programma .program-frame-wrap iframe { min-height: 70vh; }
+body.ah-aan .ah-t-klaar > #evc-checks-wrap { padding: 20px; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-vlak); }
+body.ah-aan .ah-t-afronden .rg-af { margin-top: 0; }
+body.ah-aan .ah-t-sporten > .rg-regie { margin-bottom: 0; }
+.rg-hoofd-uit { margin: 14px 0 0; padding: 4px 16px; border-radius: 12px; border: 1px dashed var(--line-strong); font-size: 14px; color: var(--ice-muted); }
+
+/* Slot: gevaarlijke acties pas na een bewuste tik. */
+.ah-slot { max-width: 620px; padding: 24px; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-vlak); }
+.ah-slot-i { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--ah-rand); color: var(--ah-tekst); }
+.ah-slot h3 { margin: 14px 0 6px; font-family: var(--ah-kop); font-size: 19px; font-weight: 800; color: var(--ah-tekst); }
+.ah-slot p { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ah-tekst-2); }
+.ah-slot-k { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+/* ── 6. Nieuwe kaarten ──────────────────────────────────────────────────── */
+.ah-kaart { margin: 0; }
+.ah-kaart-kop h3 { margin: 4px 0 0; }
+.ah-kaart-k { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.ah-tekst { margin: 10px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--ah-tekst-2); }
+.ah-tekst b { color: var(--ah-tekst); }
+.ah-tekst code { font-family: var(--mono); font-size: 13px; padding: 2px 6px; border-radius: 6px; background: var(--ah-in); color: var(--ah-tekst); }
+.ah-let-tekst { font-style: normal; font-weight: 700; color: var(--ah-tekst); }
+.ah-punten { margin: 14px 0 0; padding-left: 20px; font-size: 14.5px; line-height: 1.6; color: var(--ah-tekst-2); }
+.ah-toegang, .ah-systeem, .ah-namen, .ah-balken, .ah-plekken { list-style: none; margin: 16px 0 0; padding: 0; }
+.ah-toegang { display: grid; gap: 10px; }
+/* Schermen en pagina's: per scherm de naam, wat het is, het adres en drie knoppen. */
+.ah-schermen { list-style: none; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--ah-rand); }
+.ah-scherm { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 18px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--ah-rand); }
+.ah-scherm-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ah-scherm-t b { font-size: 15.5px; line-height: 1.3; color: var(--ah-tekst); }
+.ah-scherm-t span { font-size: 13.5px; line-height: 1.45; color: var(--ah-tekst-2); }
+.ah-scherm-t code { margin-top: 2px; padding: 0; border: 0; background: none; font-family: var(--mono); font-size: 12px; line-height: 1.4; color: var(--ah-tekst-2); overflow-wrap: anywhere; }
+.ah-scherm-k { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.ah-scherm-k .ah-knop { justify-content: center; gap: 6px; }
+.ah-scherm-qr { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding: 14px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-scherm-qr p { flex: 1 1 200px; margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ah-tekst-2); }
+.ah-scherm-qr p b { display: block; color: var(--ah-tekst); }
+.ah-qr { flex: none; width: 176px; height: 176px; border-radius: 10px; background: #fff; }
+.ah-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* Check-in: de knop naar het scanscherm staat bovenaan, groot. */
+.ah-scan { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 14px 0 2px; padding: 14px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-scan span { flex: 1 1 220px; font-size: 13.5px; line-height: 1.45; color: var(--ah-tekst-2); }
+.ah-knop-groot { min-height: 52px; padding-left: 22px; padding-right: 22px; font-size: 16px; }
+.ah-kaart-k-vast { margin-top: 0; }
+/* De oude vouw met tv, print en kleedkamer-borden hoort bij het hoofdtoernooi: staat dat uit, dan blijft alleen de kaart hierboven. */
+body.ah-aan.ah-hoofd-uit .ah-t-schermen > #tc-screens-fold { display: none; }
+body.ah-aan .ah-t-schermen > #tc-screens-fold { margin-top: 16px; }
+.ah-toegang li { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-toegang b { display: block; font-size: 15px; color: var(--ah-tekst); }
+.ah-toegang span { display: block; margin-top: 3px; font-size: 14px; line-height: 1.5; color: var(--ah-tekst-2); }
+.ah-systeem { display: grid; gap: 8px; }
+.ah-systeem li { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-sys-l { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ah-tekst-2); padding-top: 3px; }
+.ah-systeem .ah-stip { background: transparent; border: 1.5px solid var(--ah-tekst-2); }
+.ah-systeem .is-ok .ah-stip { background: var(--success, #6CE3A0); border-color: transparent; }
+.ah-systeem :is(.is-let, .is-fout) .ah-stip { background: var(--ah-actie); border-color: transparent; }
+.ah-systeem :is(.is-let, .is-fout) { border-color: var(--ah-actie); }
+.ah-systeem :is(.is-let, .is-fout) .ah-sys-l { color: var(--ah-tekst); font-weight: 700; }
+.ah-systeem b { display: block; font-size: 14.5px; color: var(--ah-tekst); }
+.ah-systeem div span { display: block; margin-top: 2px; font-size: 14px; line-height: 1.5; color: var(--ah-tekst-2); overflow-wrap: anywhere; }
+.ah-systeem em { display: block; margin-top: 4px; font-style: normal; font-size: 13px; line-height: 1.45; color: var(--ah-tekst); }
+.ah-balken { display: grid; gap: 8px; }
+.ah-balken li { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) 56px; gap: 12px; align-items: center; font-size: 14px; color: var(--ah-tekst); }
+.ah-balk-n { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ah-balk-n img { flex: none; width: 22px; height: 22px; object-fit: contain; }
+.ah-balk { height: 8px; border-radius: 4px; background: var(--ah-in); border: 1px solid var(--ah-rand); overflow: hidden; }
+.ah-balk i { display: block; height: 100%; background: var(--ah-actie); }
+.ah-balken b { font-family: var(--mono); font-size: 13px; text-align: right; }
+.ah-namen { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 0; }
+.ah-namen li { min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-namen b { display: block; font-size: 14.5px; color: var(--ah-tekst); overflow-wrap: anywhere; }
+.ah-namen span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ah-tekst-2); overflow-wrap: anywhere; }
+
+.ah-crew-let { margin: 0 0 18px; padding: 16px; border-radius: var(--ah-r); border: 1.5px solid var(--ah-actie); background: var(--ah-in); }
+.ah-crew-let h4 { margin: 0 0 8px; font-size: 15.5px; color: var(--ah-tekst); }
+.ah-crew-let ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.ah-crew-let li b { display: block; font-size: 14.5px; color: var(--ah-tekst); }
+.ah-crew-let li span { font-size: 13px; color: var(--ah-tekst-2); }
+.ah-crew-sport { margin-top: 20px; }
+.ah-crew-sport h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-family: var(--ah-kop); font-size: 15px; font-weight: 800; color: var(--ah-tekst); }
+.ah-crew-sport h4 img { width: 26px; height: 26px; object-fit: contain; }
+.ah-plekken { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top: 0; }
+.ah-plek { min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-plek-kop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
+.ah-plek-kop b { font-size: 14.5px; color: var(--ah-tekst); }
+.ah-plek-crew { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.ah-crewlid { padding: 3px 10px; border-radius: 999px; background: var(--ah-tekst); color: var(--ah-in); font-size: 12.5px; font-weight: 700; }
+.ah-plek-niemand { font-size: 12.5px; color: var(--ah-tekst-2); }
+.ah-plek-w { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 0 0; border-top: 1px solid var(--ah-rand); margin-top: 8px; font-size: 13.5px; color: var(--ah-tekst-2); }
+.ah-plek-wn { flex: 1 1 150px; min-width: 0; color: var(--ah-tekst); font-weight: 600; overflow-wrap: anywhere; }
+.ah-plek-op { font-size: 12.5px; }
+.ah-plek-op.is-let { color: var(--ah-tekst); font-weight: 700; }
+.ah-plek-op.is-let::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ah-actie); }
+.ah-live, .ah-tijd { flex: none; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ah-tekst); }
+.ah-live { padding: 2px 8px; border-radius: 999px; background: var(--ah-actie); color: var(--ah-op-actie); }
+.ah-vs { opacity: .6; }
+.ah-mini { min-height: 36px; font-size: 13px; }
+.ah-plek-rust { font-style: normal; }
+
+/* ── 7. Tabellen op laptop ──────────────────────────────────────────────── */
+/* Teams: op telefoon kaartjes, op laptop rijen met vaste kolommen. De kaartjes
+   blijven dezelfde knopen; alleen de opmaak verandert. */
+/* Pas vanaf 1280px: daaronder (laptop met zijbalk) is er te weinig breedte voor vier
+   kolommen en blijven het kaartjes. De teamnaam breekt binnen zijn eigen kolom en het
+   statuslabel staat altijd onder de naam, zodat een lange naam nergens overheen loopt. */
+@media (min-width: 1280px) {
+  body.ah-aan .ah-t-teams .tm-cards { display: flex; flex-direction: column; gap: 0; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); overflow: hidden; }
+  body.ah-aan .ah-t-teams .tm-card {
+    display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, .9fr) 336px;
+    gap: 6px 18px; align-items: center; padding: 10px 16px; border-radius: 0; border-width: 0 0 1px; box-shadow: none; transform: none;
+  }
+  body.ah-aan .ah-t-teams .tm-card:last-child { border-bottom-width: 0; }
+  body.ah-aan .ah-t-teams .tm-card:hover { transform: none; box-shadow: none; }
+  body.ah-aan .ah-t-teams .tm-card > * { margin: 0; min-width: 0; }
+  body.ah-aan .ah-t-teams .tm-card-head { flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; }
+  body.ah-aan .ah-t-teams .tm-card-head .tm-card-name { flex: 1 1 60%; min-width: 0; overflow-wrap: anywhere; word-break: normal; hyphens: auto; }
+  body.ah-aan .ah-t-teams .tm-card-head .pill { order: 3; margin-right: auto; }
+  body.ah-aan .ah-t-teams .tm-card-head .tm-logo + .tm-card-name { flex-basis: calc(100% - 44px); }
+  body.ah-aan .ah-t-teams .tm-card-head .tm-card-name:first-child { flex-basis: 100%; }
+  body.ah-aan .ah-t-teams .tm-card-cap { display: flex; flex-direction: column; gap: 1px; }
+  body.ah-aan .ah-t-teams .tm-card-cap :is(.nm, .em) { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  body.ah-aan .ah-t-teams .tm-card-tags .tm-tag { white-space: nowrap; }
+  body.ah-aan .ah-t-teams .tm-card-actions { justify-content: flex-end; border-top: 0; padding-top: 0; }
+  body.ah-aan .ah-teamkop {
+    display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, .9fr) 336px;
+    gap: 18px; padding: 0 17px 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ah-tekst-2);
+  }
+  body.ah-aan .ah-teamkop span:last-child { text-align: right; }
+}
+/* Kaartjes (alles onder 1280px): ook daar mag een lange naam of een lang adres nergens overheen lopen. */
+body.ah-aan .ah-t-teams .tm-card-head .tm-card-name { overflow-wrap: anywhere; }
+.ah-teamkop { display: none; }
+
+/* ── 8. Stijl Sporthub ──────────────────────────────────────────────────── */
+html[data-theme="sporthub"] body.ah-aan {
+  --ah-vlak: var(--adm-vlak, #0D2550);
+  --ah-in: var(--adm-vlak-in, #06193A);
+  --ah-rand: var(--adm-rand, rgba(246, 247, 251, .2));
+  --ah-tekst: #F6F7FB;
+  --ah-tekst-2: rgba(246, 247, 251, .84);
+  --ah-actie: #FF6B1A;
+  --ah-op-actie: #06193A;
+  --ah-kop: var(--sh-rond);
+  --ah-r: 18px;
+}
+html[data-theme="sporthub"] body.ah-aan .ah-home-kop .rg-titel { font-size: clamp(26px, 3.2vw, 40px); line-height: 1.05; }
+html[data-theme="sporthub"] body.ah-aan .ah-nav-a { border-radius: 999px; padding-left: 8px; }
+html[data-theme="sporthub"] body.ah-aan .ah-nav-a[aria-current="page"] { background: #F6F7FB; color: #06193A; border-color: #F6F7FB; }
+html[data-theme="sporthub"] body.ah-aan .ah-nav-hub { border-bottom-color: transparent; margin-bottom: 2px; padding-bottom: 6px; }
+html[data-theme="sporthub"] body.ah-aan .ah-nav-hub .ah-nav-i { border-radius: 50%; border: 1.5px solid #C4382E; width: 34px; height: 34px; margin: 2px; }
+html[data-theme="sporthub"] body.ah-aan .ah-tussenkop { position: relative; padding-left: 32px; }
+html[data-theme="sporthub"] body.ah-aan .ah-tussenkop::before { content: ''; position: absolute; left: 0; top: 50%; width: 22px; height: 1.5px; background: #F0685E; }
+html[data-theme="sporthub"] body.ah-aan .ah-actie-rust .ah-actie-n { border-color: #C4382E; }
+html[data-theme="sporthub"] body.ah-aan .ah-afd-beeld { border-radius: 22px; }
+html[data-theme="sporthub"] body.ah-aan .ah-open .ah-afd-beeld { border-radius: 14px; }
+html[data-theme="sporthub"] body.ah-aan .ah-slot-i { border-color: #C4382E; }
+html[data-theme="sporthub"] body.ah-aan .ah-knop-let { background: #fff; color: #A32A21; border: 1.5px solid #C4382E; }
+html[data-theme="sporthub"] body.ah-aan .ah-knop-let:hover { background: #FFF1EF; border-color: #A32A21; }
+html[data-theme="sporthub"] body.ah-aan .ah-systeem .is-ok .ah-stip { background: #F6F7FB; }
+html[data-theme="sporthub"] body.ah-aan .rg-hoofd-uit { border-radius: 999px; }
+
+/* ── 9. Telefoon en tablet ──────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  body.ah-aan { padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+  .ah-nav {
+    position: fixed; z-index: 70; left: 0; right: 0; bottom: 0; gap: 0; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    background: var(--ah-in); border-top: 1px solid var(--ah-rand); box-shadow: 0 -10px 24px -16px rgba(0, 0, 0, .8);
+  }
+  .ah-nav-a { position: relative; flex: 1 1 0; min-width: 0; min-height: 58px; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 1px; border-radius: 12px; font-size: 11px; font-weight: 600; letter-spacing: -.01em; text-align: center; }
+  .ah-nav-i { width: 30px; height: 30px; }
+  .ah-nav-t { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ah-nav-lang { display: none; }
+  .ah-nav-kort { display: inline; }
+  .ah-nav-n { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; line-height: 18px; }
+  html[data-theme="sporthub"] body.ah-aan .ah-nav-a { border-radius: 14px; padding-left: 1px; }
+  html[data-theme="sporthub"] body.ah-aan .ah-nav-hub .ah-nav-i { width: 28px; height: 28px; margin: 1px; }
+  /* Alleen de zwevende hulpknop schuift boven de onderbalk. Staat hij vast in de regel
+     "Ingelogd als" (.adm-help-vast, position: relative), dan zou `bottom` hem omhoog duwen,
+     over de knop Uitloggen heen. */
+  body.ah-aan #admin-help-fab:not(.adm-help-vast) { bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important; }
+  body.ah-aan .toast-host { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+
+  .ah-home-raster { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .ah-afdelingen { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ah-cijfers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ah-afd-kopblok { grid-template-columns: minmax(180px, 300px) minmax(0, 1fr); gap: 18px; }
+}
+@media (min-width: 700px) and (max-width: 1023px) {
+  .ah-afdelingen { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ah-cijfers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ah-nav-a { font-size: 12px; }
+}
+@media (max-width: 699px) {
+  /* Het gebouw over de hele breedte; de speld toont alleen de naam (het getal staat in de tegel eronder). */
+  /* Boven en onder de stad is een strook waar de spelden staan (met een lijntje naar hun wijk):
+     zo blijft de stad zelf vrij om op te tikken. Elke speld heeft een tikvlak van 44 px hoog. */
+  .ah-gebouw { --ah-band: 42px; --ah-band-onder: 12px; margin-top: 48px; margin-bottom: 20px; }
+  .ah-speld { min-height: 34px; padding: 0 11px; justify-content: center; border-radius: 10px; }
+  .ah-speld::before { content: ''; position: absolute; inset: -5px -2px; }
+  .ah-speld b { font-size: 12px; }
+  .ah-speld span { display: none; }
+  .ah-speld.is-let::after { content: ''; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: #06193A; border: 2px solid var(--ah-actie); }
+  /* De close-up over de hele breedte, de naam eronder. Met een onderwerp open krimpt hij tot een plaatje naast de naam. */
+  .ah-afd-kopblok { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ah-afd-beeld { aspect-ratio: 2 / 1; border-radius: 16px; }
+  .ah-open .ah-afd-kopblok { grid-template-columns: 96px minmax(0, 1fr); }
+  .ah-open .ah-afd-beeld { aspect-ratio: 5 / 3; }
+  .ah-tegel-afd { flex-direction: column; align-items: flex-start; gap: 6px; min-height: 0; padding: 12px; }
+  .ah-tegel-afd .ah-tegel-beeld { width: 48px; height: 48px; }
+  /* De naam van een afdeling blijft één woord: de letter krimpt mee met het scherm in plaats van midden in het woord te breken. */
+  .ah-tegel-afd b { font-size: clamp(11px, 3.5vw, 16px); overflow-wrap: normal; word-break: normal; }
+  .ah-tegel-rol { display: none; }
+  .ah-nu-titel { font-size: 18px; }
+  .ah-actie { padding: 12px; }
+  .ah-actie .ah-knop { justify-self: stretch; width: 100%; }
+  .ah-tegels { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .ah-onderwerpen .ah-tegel { min-height: 0; padding: 14px 40px 14px 14px; flex-wrap: wrap; }
+  .ah-tegel-s { font-size: 13px; }
+  .ah-open .ah-tegels { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 2px 14px 6px; scrollbar-width: none; }
+  .ah-open .ah-tegels::-webkit-scrollbar { display: none; }
+  .ah-open .ah-onderwerpen .ah-tegel { flex: none; flex-wrap: nowrap; padding: 6px 14px; }
+  .ah-open .ah-onderwerpen .ah-tegel-t b { white-space: nowrap; }
+  .ah-open .ah-hoofduit .ah-tegels { margin: 0; padding: 0 12px 12px; }
+  .ah-cijfer-v { font-size: 24px; }
+  .ah-cijfer.is-tekst .ah-cijfer-v { font-size: 17px; }
+  .ah-systeem li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .ah-scherm { grid-template-columns: minmax(0, 1fr); }
+  .ah-scherm-k { justify-content: flex-start; }
+  .ah-scherm-k .ah-knop { flex: 1 1 auto; }
+  .ah-scan .ah-knop { width: 100%; justify-content: center; }
+  .ah-qr { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; margin: 0 auto; }
+  .ah-balken li { grid-template-columns: minmax(0, 1fr) 56px; }
+  .ah-balken .ah-balk { grid-column: 1 / -1; grid-row: 2; }
+  .ah-slot { padding: 18px; }
+  .ah-slot-k .ah-knop { width: 100%; }
+  .ah-kaart-k .ah-knop { width: 100%; }
+  body.ah-aan .ah-kopslot > .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* ── 10. Minder beweging ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ah-g-laag, .ah-speld, .ah-tegel, .ah-g-pad { transition: none; }
+  .ah-g-laag.is-let:not(.is-aan) { animation: none; opacity: .9; }
+  .ah-g-pad.is-aan { animation: none; }
+  .ah-topic.ah-flits { animation: none; box-shadow: 0 0 0 3px var(--ah-actie); }
+  .ah-tegel:hover, .ah-speld.is-aan { transform: none; }
+}
+
+/* ── 11. Regie-blokken binnen de hub ────────────────────────────────────── */
+/* Naast de zijbalk is er minder breedte dan op de oude volle pagina: de lijsten
+   breken daarom op inhoud, niet op schermbreedte. */
+@media (min-width: 700px) {
+  body.ah-aan .ah-topic .rg-kolommen { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  /* Wedstrijddag: drie kolommen naast de zijbalk maakten de namen te smal. Onder 1280px
+     staan de lijsten onder elkaar; daarboven "Nu bezig" naast "Straks", uitslagen eronder. */
+  body.ah-aan .ah-t-wedstrijddag .rg-kolommen { grid-template-columns: minmax(0, 1fr); }
+  body.ah-aan .ah-t-wedstrijddag #rg-uit { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+}
+@media (min-width: 1280px) {
+  body.ah-aan .ah-t-wedstrijddag .rg-kolommen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.ah-aan .ah-t-wedstrijddag .rg-kolommen > section:nth-child(3) { grid-column: 1 / -1; }
+}
+
+/* Telefoon: gebouw, dan meteen de afdelingstegels (de betrouwbare weg), dan de acties. */
+@media (max-width: 699px) {
+  .ah-home { display: flex; flex-direction: column; }
+  .ah-home-raster { display: contents; }
+  .ah-home-kop { order: 0; }
+  .ah-gebouw-wrap { order: 1; }
+  #ah-afd-kop { order: 2; margin-top: 14px; }
+  .ah-afdelingen { order: 3; }
+  .ah-nu { order: 4; margin-top: 26px; }
+  #ah-home-voet { order: 5; }
+}
+
+/* Logboek en aanmeldlijst: de tijd op één regel; de zin over "de tab Logboek" klopt in de hub niet. */
+body.ah-aan .ah-t-logboek > details .section-sub { display: none; }
+@media (min-width: 1024px) {
+  body.ah-aan :is(.ah-t-logboek, .ah-t-aanmeldingen) td:first-child { white-space: nowrap; }
+}
+
+/* Het bouwdeel zelf krijgt de focusrand (de veelhoek), niet de rechthoek eromheen. */
+body.ah-aan .ah-g-vlak:focus-visible { outline: none !important; }
+
+
+/* ── 12. Camera: inzoomen op een wijk ───────────────────────────────────── */
+/* Een vaste laag over de pagina. Alleen de stad-laag beweegt (transform + opacity): in
+   de pagina zelf verschuift niets. De maten komen uit gebouw.json (admin-hub.js). */
+body.ah-aan { --poort-dicht: #F0685E; --poort-open: #3DDC84; }
+html[data-theme="sporthub"] body.ah-aan { --poort-open: #FF6B1A; }
+.ah-komt .ah-main { visibility: hidden; }
+.ah-cam { position: fixed; inset: 0; z-index: 1100; overflow: hidden; touch-action: none; }
+.ah-cam[hidden] { display: none; }
+.ah-cam-achter { position: absolute; inset: 0; background: var(--ah-in, #06193A); opacity: 0; transition: opacity .26s ease; }
+.ah-cam.is-zicht .ah-cam-achter { opacity: 1; }
+.ah-cam-stad { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform, opacity; }
+.ah-cam-stad img { position: absolute; display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
+.ah-cam-basis { left: 0; top: 0; }
+.ah-cam-dichtbij, .ah-cam-aan, .ah-cam-dicht { opacity: 0; transition: opacity .34s ease; }
+/* De scherpe close-up ligt precies op zijn kader in de stad en komt op terwijl de camera nadert.
+   Tegelijk zakt de rest van de stad iets weg: de wijk staat in het licht. De randen van de
+   close-up lopen zacht uit, zodat er geen rechthoek in de stad te zien is. */
+.ah-cam-dichtbij {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent), linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent), linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+.ah-cam-basis { transition: opacity .4s ease; }
+.ah-cam.heeft-dichtbij.is-poort .ah-cam-basis { opacity: .58; transition-delay: .2s; }
+.ah-cam.is-poort .ah-cam-dichtbij { opacity: 1; transition-delay: .28s; }
+.ah-cam.is-snel :is(.ah-cam-dichtbij, .ah-cam-basis) { transition: none; }
+.ah-cam.is-dicht .ah-cam-dicht { opacity: 1; transition-delay: .2s; }
+/* Poort open: de wijk licht op (slagboom), daarna zoomt de camera door en lost de laag op. */
+.ah-cam.is-open .ah-cam-aan { opacity: 1; transition-duration: .22s; }
+.ah-cam.is-door .ah-cam-dichtbij { opacity: 1; transition: opacity calc(var(--cam-ms, 700ms) * .25) ease; }
+.ah-cam.is-door .ah-cam-aan { opacity: 0; transition: opacity calc(var(--cam-ms, 700ms) * .45) ease calc(var(--cam-ms, 700ms) * .15); }
+.ah-cam.is-door .ah-cam-achter { opacity: 0; transition: opacity calc(var(--cam-ms, 700ms) * .5) ease calc(var(--cam-ms, 700ms) * .35); }
+/* Brede schermen: de camera gaat dóór de poort (verder inzoomen) en lost dan op; de wijk blijft verlicht. */
+.ah-cam.is-doorheen .ah-cam-aan { opacity: 1; transition: none; }
+.ah-cam.is-uit { opacity: 0; transition: opacity .18s ease; }
+.ah-cam-lamp, .ah-g-lamp {
+  position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--poort-dicht); pointer-events: none;
+  box-shadow: 0 0 0 3px #F6F7FB, 0 0 16px 5px color-mix(in srgb, var(--poort-dicht) 75%, transparent);
+  transition: background .2s ease, box-shadow .2s ease;
+}
+:is(.ah-cam-lamp, .ah-g-lamp)[data-staat="open"] { background: var(--poort-open); box-shadow: 0 0 0 3px #F6F7FB, 0 0 26px 10px color-mix(in srgb, var(--poort-open) 85%, transparent); }
+:is(.ah-cam-lamp, .ah-g-lamp)[data-staat="geen"] { background: #8A93AC; box-shadow: 0 0 0 3px #F6F7FB; }
+
+/* ── 13. Plein: lampjes, dichte wijken, wie is waar ─────────────────────── */
+.ah-g-lamp { z-index: 1; width: 8px; height: 8px; margin: -4px 0 0 -4px; box-shadow: 0 0 0 1.5px #F6F7FB, 0 0 8px 2px color-mix(in srgb, var(--poort-dicht) 65%, transparent); }
+.ah-g-lamp[data-staat="open"] { width: 12px; height: 12px; margin: -6px 0 0 -6px; box-shadow: 0 0 0 2px #F6F7FB, 0 0 14px 5px color-mix(in srgb, var(--poort-open) 85%, transparent); animation: ah-lamp 2.2s ease-in-out infinite; }
+.ah-g-lamp[data-staat="geen"] { box-shadow: 0 0 0 1.5px #F6F7FB; }
+@keyframes ah-lamp { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
+.ah-g-lus { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity .7s ease; }
+.ah-g-lus.is-aan { opacity: 1; }
+.ah-g-dicht { position: absolute; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+.ah-g-dicht.is-zicht { opacity: 1; }
+.ah-g-laag.is-geen { display: none; }
+.ah-speld.is-geen { background: #C9CFDF; color: #06193A; }
+.ah-speld.is-geen span { color: #2C3760; }
+.ah-g-wie { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.ah-g-rond { position: absolute; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #F6F7FB, 0 4px 10px rgba(0, 0, 0, .55); pointer-events: auto; cursor: default; }
+.ah-g-rond.is-nieuw { animation: ah-rond-in .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes ah-rond-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.4); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.ah-g-meer { background: #06193A; color: #F6F7FB; font-family: var(--mono); }
+.ah-lampje { flex: none; display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--poort-dicht); box-shadow: 0 0 0 3px color-mix(in srgb, var(--poort-dicht) 28%, transparent); }
+.ah-lampje[data-staat="open"] { background: var(--poort-open); box-shadow: 0 0 0 3px color-mix(in srgb, var(--poort-open) 30%, transparent); }
+.ah-slotje { display: inline-flex; margin-right: 6px; vertical-align: -1px; }
+.ah-tegel.is-dicht { border-style: dashed; }
+.ah-tegel.is-dicht .ah-tegel-beeld, .ah-nav-a.is-dicht .ah-nav-i img { filter: grayscale(1); opacity: .5; }
+.ah-tegel-open { display: inline-flex; align-items: center; gap: 8px; margin-top: 2px; font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ah-tekst); }
+.ah-nav-slot { position: absolute; right: -4px; bottom: -3px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ah-in); border: 1.5px solid var(--ah-rand); color: var(--ah-tekst); font-style: normal; }
+
+.ah-wie { margin: 14px 0 0; padding: 14px 16px; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-vlak); }
+.ah-wie-titel { margin: 0 0 10px; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ah-tekst-2); }
+.ah-wie-lijst { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 22px; }
+.ah-wie-lijst li { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ah-wie-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ah-wie-t b { font-size: 14px; line-height: 1.25; color: var(--ah-tekst); overflow-wrap: anywhere; }
+.ah-wie-t b i { font-style: normal; font-weight: 500; color: var(--ah-tekst-2); }
+.ah-wie-t span { font-size: 12.5px; line-height: 1.3; color: var(--ah-tekst-2); overflow-wrap: anywhere; }
+.ah-wie-p { flex: none; text-align: right; font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--ah-tekst); }
+.ah-wie-p small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ah-tekst-2); }
+.ah-wie-leeg, .ah-wie-noot { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ah-tekst-2); }
+.ah-wie-noot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ah-rand); font-size: 12.5px; }
+.ah-pstart { display: grid; gap: 10px; margin-top: 10px; padding: 14px 16px; border-radius: var(--ah-r); border: 1px dashed var(--ah-rand); }
+.ah-pstart .ah-knop { justify-self: start; }
+
+/* ── 14. Afdeling: poortbalk en profielbeheer ───────────────────────────── */
+.ah-poortbalk { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; padding: 12px 16px; border-radius: var(--ah-r); border: 1.5px solid var(--ah-rand); background: var(--ah-vlak); font-size: 14px; line-height: 1.45; color: var(--ah-tekst-2); }
+.ah-poortbalk > span { flex: 1 1 260px; min-width: 0; }
+.ah-poortbalk b { color: var(--ah-tekst); }
+.ah-pb-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 16px 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); font-size: 13.5px; line-height: 1.45; color: var(--ah-tekst-2); }
+.ah-pb-top > span { flex: 1 1 260px; }
+.ah-pb-schakel { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 999px; border: 1.5px solid var(--ah-rand); background: transparent; color: var(--ah-tekst); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ah-pb-schakel:disabled { cursor: not-allowed; border-style: dashed; }
+.ah-pb-schakel:disabled .ah-pb-schuif { opacity: .45; }
+.ah-pb-schuif { position: relative; flex: none; width: 40px; height: 24px; border-radius: 12px; border: 1.5px solid var(--ah-tekst-2); transition: background .15s ease, border-color .15s ease; }
+.ah-pb-schuif::after { content: ''; position: absolute; top: 2.5px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--ah-tekst-2); transition: transform .15s ease, background .15s ease; }
+.ah-pb-schakel[aria-checked="true"] .ah-pb-schuif { background: var(--ah-actie); border-color: var(--ah-actie); }
+.ah-pb-schakel[aria-checked="true"] .ah-pb-schuif::after { transform: translateX(15px); background: var(--ah-op-actie); }
+.ah-pb-uitleg { font-size: 12.5px; font-weight: 400; color: var(--ah-tekst-2); }
+.ah-pb-lijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ah-pb { min-width: 0; padding: 14px 16px; border-radius: var(--ah-r); border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-pb-kop { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.ah-pb-wie { flex: 1 1 160px; min-width: 0; }
+.ah-pb-wie b { display: block; font-family: var(--ah-kop); font-size: 15.5px; font-weight: 800; line-height: 1.25; color: var(--ah-tekst); overflow-wrap: anywhere; }
+.ah-pb-wie span { font-size: 13.5px; color: var(--ah-tekst-2); overflow-wrap: anywhere; }
+.ah-pb-labels { display: flex; flex-wrap: wrap; gap: 6px; }
+.ah-pb-l { padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--ah-rand); font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.5; color: var(--ah-tekst); }
+.ah-pb-l.is-eig { background: var(--ah-tekst); border-color: var(--ah-tekst); color: var(--ah-in); }
+.ah-pb-l.is-let { border-color: var(--ah-actie); }
+.ah-pb-l.is-stil { border-style: dashed; font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ah-tekst-2); }
+.ah-pb-wijken { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ah-pb-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px 0 8px; border-radius: 999px; border: 1.5px dashed var(--ah-rand); background: transparent; color: var(--ah-tekst-2); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.ah-pb-vink { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--ah-tekst-2); }
+.ah-pb-vink svg { width: 12px; height: 12px; }
+.ah-pb-chip[aria-pressed="true"] { border-style: solid; border-color: var(--ah-tekst); background: var(--ah-vlak); color: var(--ah-tekst); }
+.ah-pb-chip[aria-pressed="true"] .ah-pb-vink { background: var(--ah-tekst); border-color: var(--ah-tekst); color: var(--ah-in); }
+.ah-pb-chip:hover:not(:disabled) { border-color: var(--ah-tekst); color: var(--ah-tekst); }
+.ah-pb-chip:disabled { cursor: default; opacity: .8; }
+.ah-pb-noot { margin: 10px 0 0; font-size: 13px; color: var(--ah-tekst-2); }
+.ah-pb-k { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ah-rand); }
+.ah-pb-k:empty { display: none; }
+.ah-mini-weg { margin-left: auto; border-color: var(--poort-dicht) !important; }
+.ah-pb-velden { display: grid; gap: 12px; max-width: 440px; margin-top: 14px; }
+.ah-pb-velden label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--ah-tekst); }
+.ah-pb-velden input { width: 100%; min-height: 46px; padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--adm-rand-2, var(--line-strong)); background: var(--ah-in); color: var(--ah-tekst); font: inherit; font-size: 16px; }
+.ah-pb-velden input:focus-visible { outline: 3px solid var(--ah-tekst); outline-offset: 1px; }
+.ah-pb-fout { margin: 10px 0 0; font-size: 14px; font-weight: 600; color: #FFB7B7; }
+.ah-pb-fout:empty { display: none; }
+:is(.ah-pb-chip, .ah-pb-schakel):focus-visible { outline: 3px solid var(--ah-tekst); outline-offset: 2px; }
+@media (max-width: 699px) {
+  .ah-wie-lijst { grid-template-columns: minmax(0, 1fr); }
+  .ah-mini-weg { margin-left: 0; }
+  .ah-poortbalk .ah-knop { width: 100%; }
+}
+
+/* Minder beweging: geen schalen of schuiven; de camera-laag en de pagina wisselen met een korte overgang. */
+@media (prefers-reduced-motion: reduce) {
+  .ah-cam-stad { transition: none !important; }
+  .ah-cam-dichtbij, .ah-cam-aan, .ah-cam-dicht, .ah-cam-achter, .ah-cam-basis { transition-duration: .15s !important; transition-delay: 0s !important; }
+  .ah-g-rond.is-nieuw, .ah-g-lamp[data-staat="open"] { animation: none; }
+  .ah-g-lus { display: none; }
+  body.ah-aan .ah-home:not([hidden]), body.ah-aan .ah-afd:not([hidden]) { animation: ah-wissel .15s ease; }
+}
+@keyframes ah-wissel { from { opacity: 0; } to { opacity: 1; } }
+
+/* Servernamen (noodherstel) staan ingeklapt: alleen voor wie bij de hosting kan. */
+.ah-pb-hosting { margin: 12px 0 0; border: 1px solid var(--ah-rand, rgba(246, 247, 251, .22)); border-radius: 12px; padding: 0 14px; }
+.ah-pb-hosting > summary { cursor: pointer; padding: 12px 0; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.ah-pb-hosting[open] { padding-bottom: 12px; }
+.ah-pb-hosting > summary { list-style: none; }
+.ah-pb-hosting > summary::-webkit-details-marker { display: none; }
+.ah-pb-hosting > summary::after { content: '+'; margin-left: auto; font-size: 20px; line-height: 1; }
+.ah-pb-hosting[open] > summary::after { content: '–'; }
+
+
+/* ── 12. Praktijk: de stad groter, lijntjes, de bewegende lagen ─────────── */
+/* De stad krijgt de ruimte. Op een breed scherm staat "Wat moet je nu doen?" als smalle kolom
+   ernaast; daaronder (tablet, kleine laptop) staat de stad over de volle breedte met de acties
+   als rij eronder. De hoogte van het scherm begrenst hem, zodat hij nooit onder de vouw zakt. */
+.ah-home-raster { grid-template-columns: minmax(0, 1fr); gap: 18px 28px; align-items: start; }
+.ah-gebouw { max-width: min(100%, max(520px, calc((100vh - 200px) * var(--ah-verh, 1.667)))); }
+@media (min-width: 1240px) {
+  .ah-home-raster { grid-template-columns: minmax(0, 1fr) minmax(300px, 348px); }
+  .ah-wie-lijst { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 700px) and (max-width: 1239px) {
+  .ah-nu-lijst { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+}
+.ah-actie .ah-knop { justify-self: stretch; justify-content: center; }
+@media (min-width: 700px) and (max-width: 1239px) { .ah-actie .ah-knop { justify-self: start; } }
+/* Het lijntje van een uitgeweken speld naar zijn wijk. */
+.ah-g-lijnen { pointer-events: none; }
+.ah-g-lijn { stroke: #F6F7FB; stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .92; }
+.ah-g-stip { fill: #F6F7FB; }
+.ah-g-lijn.is-let { stroke: var(--ah-actie); }
+.ah-g-stip.is-let { fill: var(--ah-actie); }
+.ah-g-lijn.is-geen { stroke: #C9CFDF; }
+.ah-g-stip.is-geen { fill: #C9CFDF; }
+/* De bewegende lagen (vlaggen, lopers, baken) liggen over het stilstaande beeld. */
+.ah-g-luslaag { position: absolute; opacity: 0; pointer-events: none; transition: opacity .7s ease; }
+.ah-g-luslaag.is-aan { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .ah-g-luslaag { display: none; } }
+
+/* ── 13. Praktijk: de bovenbalk in hub-modus ────────────────────────────── */
+/* Alleen het logo, de naam, je pasje en het vraagteken. De regel "Ingelogd als …" schuift de
+   bovenbalk in (admin-hub.js: bovenbalk); de oude links staan bij hun afdeling. Zonder pasje
+   (geen profielen) blijft alleen "Uitloggen" staan. Zonder hub-modus verandert er niets. */
+.brand-text-hub { display: none; }
+body.ah-aan #dash > .topbar { flex-wrap: nowrap; align-items: center; gap: 10px; }
+body.ah-aan #dash > .topbar .brand-badge { flex: 1 1 auto; min-width: 0; }
+body.ah-aan #dash > .topbar > nav { order: 6; flex: none; width: auto; }
+body.ah-aan #dash > .topbar > nav a:not(#logout-btn) { display: none; }
+body.ah-aan #dash > .topbar:has(#pf-pasje) > nav { display: none; }
+body.ah-aan #dash > .topbar > .who { order: 5; position: relative; flex: none; flex-wrap: nowrap; gap: 8px; margin: 0 0 0 auto; white-space: nowrap; }
+body.ah-aan #dash > .topbar > .who > #live-status,
+body.ah-aan #dash > .topbar > .who > .refresh-btn { display: none; }
+body.ah-aan #dash > .topbar > .who > .pf-pasje { order: 9; margin: 0; }
+body.ah-aan #dash > .topbar > .who > .pf-kaart { white-space: normal; }
+body.ah-aan #dash > .topbar > .who > #admin-help-fab.adm-help-vast { order: 10; margin: 0 !important; width: 44px; height: 44px; }
+@media (max-width: 759px) {
+  body.ah-aan #dash > .topbar .brand-text-long, body.ah-aan #dash > .topbar .brand-text-short { display: none; }
+  body.ah-aan #dash > .topbar .brand-text-hub { display: inline-block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+  body.ah-aan #dash > .topbar > .who > .pf-wie { display: none; }
+  /* Het pasje klapt uit over de volle breedte, net onder de bovenbalk. */
+  body.ah-aan #dash > .topbar .pf-kaart { position: fixed; top: 64px; left: 12px; right: 12px; width: auto; max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); overflow-y: auto; }
+}
+
+/* ── 14. Praktijk: Veiligheid, "Pas vragen" ─────────────────────────────── */
+.ah-pb-pas { margin: 16px 0 0; padding: 12px 14px 14px; border-radius: 12px; border: 1px solid var(--ah-rand); background: var(--ah-in); }
+.ah-pb-pas .ah-tussenkop { margin: 0 0 10px; }
+.ah-pb-pas .ah-tekst { margin: 10px 0 0; font-size: 13.5px; }
+.ah-pb-keuze { display: flex; flex-wrap: wrap; gap: 8px; }
+.ah-pb-optie { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--ah-rand); background: transparent; color: var(--ah-tekst); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ah-pb-optie[aria-pressed="true"] { background: var(--ah-actie); border-color: var(--ah-actie); color: var(--ah-op-actie); }
+.ah-pb-optie:focus-visible { outline: 3px solid var(--ah-tekst); outline-offset: 2px; }
+.ah-pb-tel { margin: 0 0 8px; font-size: 13.5px; line-height: 1.4; color: var(--ah-tekst-2); }
+.ah-pb-tel b { color: var(--ah-tekst); }
+.ah-mini-let { border-color: var(--ah-actie) !important; }
+@media (max-width: 699px) { .ah-pb-optie { flex: 1 1 100%; } }
+
+/* Het systeemoverzicht staat in hub-modus onder de hulp (admin.js: hulpVoet). */
+.ah-hulp-voet { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-strong, rgba(255, 255, 255, .2)); font-size: 13.5px; line-height: 1.45; }
+.ah-hulp-voet span { flex: 1 1 220px; }
+.ah-hulp-link { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 700; text-decoration: none; color: inherit; }
+
+/* In de hub is "Terug naar de hub" op de wedstrijddag dubbel: de zijbalk en de onderbalk doen dat al. */
+body.ah-aan [data-rg="dag-uit"] { display: none; }

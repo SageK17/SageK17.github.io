@@ -1172,6 +1172,14 @@
 
   $('wd-help-fab') && $('wd-help-fab').addEventListener('click', openHelp);
   $('wd-help-inline') && $('wd-help-inline').addEventListener('click', openHelp);
+  // Staat de balk "Hoe werkt dit?" in beeld, dan is de zwevende i-knop dubbel en ligt hij
+  // alleen maar over de wedstrijdregels. De stijl mag hem dan verbergen (klasse op <body>);
+  // scrol je de balk uit beeld, dan is de knop er weer.
+  if ($('wd-help-inline') && 'IntersectionObserver' in window) {
+    new IntersectionObserver((es) => {
+      document.body.classList.toggle('wd-help-in-beeld', es[es.length - 1].isIntersecting);
+    }).observe($('wd-help-inline'));
+  }
   $('wd-sheet-x') && $('wd-sheet-x').addEventListener('click', closeSheet);
   $('wd-sheet-bd') && $('wd-sheet-bd').addEventListener('click', closeSheet);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });

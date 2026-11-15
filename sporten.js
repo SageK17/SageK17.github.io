@@ -4,17 +4,53 @@
 // terug op de gewone stream) → /api/hub ophalen op een willekeurig moment 0–1,5 s
 // later (niet alle telefoons tegelijk), snelle seintjes samengevoegd, nooit vaker
 // dan eens per seconde. Valt de stream weg, dan elke 20 s.
+// Indeling: telefoon = één kolom; vanaf 700px kaartjes in twee kolommen; vanaf 900px
+// kolommen naast elkaar (zie de @media-blokken in sporten.html). Een sport met meerdere
+// poules toont ze allemaal, met een kiezer "Alle poules / Poule A / B …" erboven.
 // Directe link naar één sport: /sporten?sport=<id> of /sporten#sport-<id>.
 // Volg je team: opt-in push via de bestaande /api/team-follow/*-routes (zelfde als
 // het bord van het hoofdtoernooi); eigen opslag, zodat de twee borden elkaars
 // volglijst niet opschonen. ?volg=<id>[,<id>]&push=1 (uit een mail) zet het team
-// klaar en wijst de knop aan — aanzetten gebeurt nooit vanzelf.
+// klaar en wijst de knop aan — aanzetten gebeurt nooit vanzelf. Een persoonlijke
+// sleutel achter de # (#team=<sleutel> uit een captain-mail) hoort bij Mijn team:
+// hij wordt op dit toestel bewaard (jvo_mijn, zelfde opslag als mijn.js) en de eigen
+// goedgekeurde teams komen in de volglijst; de # verdwijnt meteen uit de adresbalk.
+// Teamlogo's: /api/hub geeft per sport `teams: [{id,name,logo?}]` (alle goedgekeurde
+// teams, ook vóór het schema) → logo's in stand, kaartjes en knock-out via
+// logo-render.js, en dezelfde lijst vult "Volg je team".
 // Regels: elke naam/tekst van de server gaat door esc() vóór innerHTML; geen
 // sportnamen in deze code — alles komt uit de competitie-instellingen.
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const safeIcon = (u) => (/^\/sport\/[a-z]+(-klein)?\.webp$/.test(String(u || '')) ? u : '/sport/beker-klein.webp');
+  // Persoonlijke sleutel uit de link: meteen uit de adresbalk, vóór elk netwerkverzoek.
+  const isJwt = (k) => typeof k === 'string' && k.length < 2000 && /^[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/.test(k);
+  let eigenSleutel = '';
+  try {
+    const h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    const k = h.get('team') || h.get('k') || '';
+    if (k) { if (isJwt(k)) eigenSleutel = k; history.replaceState(null, '', location.pathname + location.search); }
+  } catch {}
+  // De service worker bewaart een geopende pagina onder haar volledige adres, dus mét de
+  // sleutel achter de #. Die regels horen niet op het toestel te blijven: weghalen (ook als
+  // de sleutel al uit de adresbalk is) en een schone kopie van de pagina terugzetten.
+  async function veegLinkCache() {
+    if (!('caches' in window)) return;
+    try {
+      let weg = false;
+      for (const naam of await caches.keys()) {
+        const c = await caches.open(naam);
+        for (const req of await c.keys()) {
+          let u; try { u = new URL(req.url); } catch { continue; }
+          if (u.origin !== location.origin || !u.hash || !/^\/(sporten|mijn|toernooi)(\.html)?$/.test(u.pathname)) continue;
+          if (/(^#|&)(team|k|c)=/.test(u.hash)) { await c.delete(req); weg = true; }
+        }
+      }
+      if (weg && navigator.serviceWorker && navigator.serviceWorker.controller) fetch(location.pathname, { headers: { Accept: 'text/html' } }).catch(() => {});
+    } catch {}
+  }
+  veegLinkCache(); setTimeout(veegLinkCache, 4000);
   let data = null;
   let tab = 'alles';
   let skew = 0;   // server_now - Date.now(), voor de live-minuut
@@ -44,6 +80,21 @@
   const tsMs = (s) => (s ? Date.parse(String(s).replace(' ', 'T') + 'Z') : null);
   const setsLine = (sets) => (Array.isArray(sets) && sets.length ? sets.map(s => `${s[0]}–${s[1]}`).join(' · ') : '');
   const compOf = (id) => (data ? data.competitions.find(c => c.id === id) : null);
+  // Teamlogo's (alleen goedgekeurde, nooit bij een solo-sport): opzoeken op id, of op
+  // naam binnen de sport (de kaartjes "nu/straks" dragen alleen namen). Geen logo = ''.
+  let logoIdx = { src: null, id: new Map(), naam: new Map() };
+  function logoVan(compId, id, name, px) {
+    if (!data || !window.jvoLogo) return '';
+    if (logoIdx.src !== data) {
+      logoIdx = { src: data, id: new Map(), naam: new Map() };
+      for (const c of data.competitions) for (const t of (Array.isArray(c.teams) ? c.teams : [])) {
+        if (!t || !t.logo) continue;
+        logoIdx.id.set(t.id, t.logo); logoIdx.naam.set(`${c.id}|${t.name}`, t.logo);
+      }
+    }
+    const logo = (id != null && logoIdx.id.get(id)) || (name ? logoIdx.naam.get(`${compId}|${name}`) : null);
+    return logo ? window.jvoLogo.html(logo, px) : '';
+  }
 
   function liveLabel(c) {
     if (c.status === 'done') return '<em class="klaar">Klaar</em>';
@@ -65,8 +116,8 @@
     return `<article class="kaart" aria-label="${esc(c.a || '?')} tegen ${esc(c.b || '?')}">
       <div class="l">
         <div class="k mono">${liveLabel(c)} ${where}${mijn ? ' <em class="mijn">Jouw team</em>' : ''}</div>
-        <div class="tm${winA ? ' win' : ''}"><span>${esc(c.a || 'Nog onbekend')}</span><b>${esc(sa)}</b></div>
-        <div class="tm${winB ? ' win' : ''}"><span>${esc(c.b || 'Nog onbekend')}</span><b>${esc(sb)}</b></div>
+        <div class="tm${winA ? ' win' : ''}"><span>${logoVan(c.comp_id, c.a_id, c.a, 16)}${esc(c.a || 'Nog onbekend')}</span><b>${esc(sa)}</b></div>
+        <div class="tm${winB ? ' win' : ''}"><span>${logoVan(c.comp_id, c.b_id, c.b, 16)}${esc(c.b || 'Nog onbekend')}</span><b>${esc(sb)}</b></div>
         ${extra ? `<div class="sets">${esc(extra)}</div>` : ''}
       </div>
       <div class="r"><span class="badge"><img src="${esc(safeIcon(c.icon_small))}" alt="" /></span><span class="mono">${plek}</span></div>
@@ -75,31 +126,59 @@
 
   function straks(list) {
     if (!list.length) return '';
-    return `<div class="lbl mono">Straks</div>` + list.map(c => `
+    return `<div class="lbl mono">Straks</div><div class="rijen">` + list.map(c => `
       <div class="sr${isMine(c.comp_id, c.a) || isMine(c.comp_id, c.b) ? ' mijn' : ''}"><b>${esc(c.expected || '')}</b><img src="${esc(safeIcon(c.icon_small))}" alt="${esc(c.comp_name)}" />
-        <span>${esc(c.a || 'Nog onbekend')} – ${esc(c.b || 'Nog onbekend')}</span>
-        <i class="mono">${c.field ? `${esc(c.place_noun)} ${esc(c.field)}` : ''}</i></div>`).join('');
+        <span>${logoVan(c.comp_id, c.a_id, c.a, 16)}${esc(c.a || 'Nog onbekend')} – ${logoVan(c.comp_id, c.b_id, c.b, 16)}${esc(c.b || 'Nog onbekend')}</span>
+        <i class="mono">${c.field ? `${esc(c.place_noun)} ${esc(c.field)}` : ''}</i></div>`).join('') + `</div>`;
+  }
+  // Het eerstvolgende stuk schema van één sport (uit comp.upcoming; een ouder antwoord uit
+  // de offline-cache heeft dat veld nog niet → dan uit de gedeelde "straks"-lijst).
+  function schemaVan(comp, poule) {
+    const eigen = Array.isArray(comp.upcoming)
+      ? comp.upcoming.map(u => ({ ...u, comp_id: comp.id, comp_name: comp.name, icon_small: comp.icon_small, place_noun: comp.place_noun }))
+      : data.next.filter(c => c.comp_id === comp.id);
+    const ps = pouleNamen(comp);
+    // Zolang er poulewedstrijden op het schema staan, horen de knock-outwedstrijden alleen in hun eigen blok.
+    const groep = eigen.filter(c => c.phase === 'group');
+    let list = groep.length ? groep : eigen;
+    if (poule && ps.length > 1) list = list.filter(c => (c.poule ? c.poule === poule : c.where === `Poule ${poule}`));
+    return list.slice(0, 8);
+  }
+  const pouleNamen = (comp) => Object.keys(comp.poules || {}).sort();
+  // Gekozen poule per sport ('' = alle poules; dat is ook altijd de beginstand).
+  const pouleKeuze = new Map();
+  function gekozenPoule(comp) {
+    const p = pouleKeuze.get(comp.id) || '';
+    return p && pouleNamen(comp).includes(p) ? p : '';
+  }
+  function pouleKiezer(comp) {
+    const ps = pouleNamen(comp);
+    if (ps.length < 2) return '';
+    const nu = gekozenPoule(comp);
+    const knop = (p, label) => `<button type="button" class="pchip" data-poule="${esc(p)}" aria-pressed="${p === nu ? 'true' : 'false'}">${esc(label)}</button>`;
+    return `<div class="poules" role="group" aria-label="Kies een poule">${knop('', `Alle ${ps.length} poules`)}${ps.map(p => knop(p, `Poule ${p}`)).join('')}</div>`;
   }
 
-  function standen(comp) {
-    const ps = Object.keys(comp.poules || {}).sort();
+  function standen(comp, poule) {
+    const alle = pouleNamen(comp);
+    const ps = poule ? alle.filter(p => p === poule) : alle;
     if (!ps.length) return '';
     const sets = comp.result_model === 'sets';
-    return `<div class="lbl mono">Stand</div>` + ps.map(p => {
+    return `<div class="lbl mono">Stand</div><div class="standen">` + ps.map(p => {
       const rows = comp.poules[p].standings || [];
       return `<section class="stand" aria-label="Stand poule ${esc(p)}">
-        <h3>${ps.length > 1 ? `Poule ${esc(p)}` : 'Poule'}<i>${sets ? 'gs · pnt · sets' : 'gs · pnt · saldo'}</i></h3>
+        <h3>${alle.length > 1 ? `Poule ${esc(p)}` : 'Poule'}<i>${sets ? 'gs · pnt · sets' : 'gs · pnt · saldo'}</i></h3>
         <div class="srow kop" aria-hidden="true"><span>#</span><span>Naam</span><span class="n">Gs</span><span class="n">Pnt</span><span class="n">±</span></div>
-        ${rows.map(s => `<div class="srow${myIds().has(s.id) ? ' mijn' : ''}"><span>${esc(s.pos)}</span><em>${esc(s.name)}</em><span class="n">${esc(s.gp)}</span><b>${esc(s.pts)}</b><span class="n">${s.gd > 0 ? '+' : ''}${esc(s.gd)}</span></div>`).join('')}
+        ${rows.map(s => `<div class="srow${myIds().has(s.id) ? ' mijn' : ''}"><span>${esc(s.pos)}</span><em>${logoVan(comp.id, s.id, s.name, 18)}${esc(s.name)}</em><span class="n">${esc(s.gp)}</span><b>${esc(s.pts)}</b><span class="n">${s.gd > 0 ? '+' : ''}${esc(s.gd)}</span></div>`).join('')}
       </section>`;
-    }).join('');
+    }).join('') + `</div>`;
   }
 
   function eindstand(comp) {
     const fs = comp.final_standing;
     if (!Array.isArray(fs) || !fs.length) return '';
     return `<div class="lbl mono">Eindstand</div><div class="podium">` + fs.slice(0, 4).map(t =>
-      `<div class="plek p${esc(t.pos)}"><b>${esc(t.pos)}</b><span>${esc(t.name)}</span></div>`).join('') + `</div>`;
+      `<div class="plek p${esc(t.pos)}"><b>${esc(t.pos)}</b><span>${logoVan(comp.id, t.id, t.name, 18)}${esc(t.name)}</span></div>`).join('') + `</div>`;
   }
 
   function knockout(comp) {
@@ -108,10 +187,28 @@
     const cards = ko.map(k => ({
       comp_id: comp.id, comp_name: '', icon_small: comp.icon_small, place_noun: comp.place_noun, model: comp.result_model,
       where: k.where, a: k.a ? (k.a.name || k.a.placeholder) : null, b: k.b ? (k.b.name || k.b.placeholder) : null,
+      a_id: k.a && k.a.id != null ? k.a.id : null, b_id: k.b && k.b.id != null ? k.b.id : null,
       score_a: k.score_a, score_b: k.score_b, pens_a: k.pens_a, pens_b: k.pens_b, sets: k.sets, status: k.status,
       field: k.field, expected: k.expected, started_at: null,
     }));
     return `<div class="lbl mono">Knock-out</div><div class="list">${cards.map(kaart).join('')}</div>`;
+  }
+
+  // Overzicht "Alles": per sport één regel — hoeveel poules en deelnemers, en of er gespeeld
+  // wordt. Een tik opent de sport (zelfde als het tabblad erboven).
+  function sportenLijst() {
+    const comps = data.competitions;
+    if (comps.length < 2) return '';
+    return `<div class="lbl mono">Sporten</div><div class="sporten">` + comps.map(c => {
+      const np = pouleNamen(c).length;
+      const live = data.now.filter(x => x.comp_id === c.id).length;
+      const klaar = Array.isArray(c.final_standing) && c.final_standing.length;
+      const eerst = Array.isArray(c.upcoming) && c.upcoming[0] ? c.upcoming[0].expected : '';
+      const meta = [np ? `${np} ${np === 1 ? 'poule' : 'poules'}` : '', c.approved ? `${c.approved} ${c.unit || ''}`.trim() : ''].filter(Boolean).join(' · ');
+      const chip = live ? `<em class="live">${live} live</em>` : (klaar ? '<em>Klaar</em>' : (c.paused ? '<em>Pauze</em>' : (eerst ? `<em>${esc(eerst)}</em>` : (c.configured ? '' : '<em>Schema volgt</em>'))));
+      return `<button type="button" class="sportrij" data-tab="${esc(c.id)}"><span class="badge"><img src="${esc(safeIcon(c.icon_small))}" alt="" /></span>
+        <span><b>${esc(c.name)}</b><i>${esc(meta)}</i></span>${chip}</button>`;
+    }).join('') + `</div>`;
   }
 
   function leeg(text) { return `<p class="leeg">${esc(text)}</p>`; }
@@ -167,26 +264,43 @@
       // De reden is er één voor het hele evenement: één keer tonen.
       if (stil.length) html += pauze(stil.length === 1 ? `${stil[0].name} ligt even stil.` : `Even pauze bij ${stil.map(c => c.name).join(', ')}.`,
         (stil.find(c => c.pause_message) || {}).pause_message || '');
-      html += live.length ? `<div class="list" style="margin-top:22px">${live.map(kaart).join('')}</div>`
-        : `<div style="margin-top:22px">${leeg(data.next.length ? 'Er wordt nu even niets gespeeld. Hieronder zie je wat er straks komt.' : 'Er wordt nu niets gespeeld.')}</div>`;
-      html += straks(data.next.slice(0, 8));
+      // Breed scherm: links wat er nu speelt + de sporten, rechts "Straks" (en de kampioenen).
+      let links = live.length ? `<div class="list" style="margin-top:22px">${live.map(kaart).join('')}</div>`
+        : `<div style="margin-top:22px">${leeg(data.next.length ? 'Er wordt nu even niets gespeeld. Je ziet hier ook wat er straks komt.' : 'Er wordt nu niets gespeeld.')}</div>`;
+      let zij = straks(data.next.slice(0, 8));
       const done = data.competitions.filter(c => Array.isArray(c.final_standing) && c.final_standing.length);
       if (done.length) {
-        html += `<div class="lbl mono">Kampioenen</div>` + done.map(c => `<div class="sr"><b>1</b><img src="${esc(safeIcon(c.icon_small))}" alt="${esc(c.name)}" /><span>${esc(c.final_standing[0].name)}</span><i class="mono">${esc(c.name)}</i></div>`).join('');
+        zij += `<div class="lbl mono">Kampioenen</div><div class="rijen">` + done.map(c => `<div class="sr"><b>1</b><img src="${esc(safeIcon(c.icon_small))}" alt="${esc(c.name)}" /><span>${logoVan(c.id, c.final_standing[0].id, c.final_standing[0].name, 16)}${esc(c.final_standing[0].name)}</span><i class="mono">${esc(c.name)}</i></div>`).join('') + `</div>`;
       }
+      // Op een telefoon staat "Straks" vóór de sportenlijst (order), op een breed scherm ernaast.
+      html += `<div class="vlak${zij ? '' : ' solo'}"><div class="v-nu">${links}</div>${zij ? `<aside class="v-zij">${zij}</aside>` : ''}<div class="v-sporten">${sportenLijst()}</div></div>`;
     } else {
       const comp = compOf(Number(tab));
       if (!comp) return;
       if (comp.paused) html += pauze(`${comp.name} ligt even stil.`, comp.pause_message || '');
-      html += live.length ? `<div class="list" style="margin-top:22px">${live.map(kaart).join('')}</div>`
+      html += live.length ? `<div class="list breed" style="margin-top:22px">${live.map(kaart).join('')}</div>`
         : `<div style="margin-top:22px">${leeg(comp.configured ? `Bij ${comp.name} wordt nu niets gespeeld.` : `Het schema van ${comp.name} komt hier zodra het klaar is.`)}</div>`;
-      html += straks(data.next.filter(c => c.comp_id === comp.id).slice(0, 6));
       html += eindstand(comp);
-      html += standen(comp);
-      html += knockout(comp);
+      // Stand, schema en knock-out: op een telefoon onder elkaar, op een breed scherm naast
+      // elkaar. Met meer dan twee poules tegelijk in beeld krijgt de stand de volle breedte.
+      const poule = gekozenPoule(comp);
+      const np = pouleNamen(comp).length;
+      const sStand = standen(comp, poule), sSchema = straks(schemaVan(comp, poule)), sKo = knockout(comp);
+      html += pouleKiezer(comp);
+      if (sStand || sSchema || sKo) {
+        html += `<div class="sportvlak${!poule && np > 2 ? ' veel' : ''}${sSchema ? ' m-schema' : ''}${sKo ? ' m-ko' : ''}">`
+          + (sSchema ? `<section class="s-schema" aria-label="Straks">${sSchema}</section>` : '')
+          + (sStand ? `<section class="s-stand" aria-label="Stand">${sStand}</section>` : '')
+          + (sKo ? `<section class="s-ko" aria-label="Knock-out">${sKo}</section>` : '') + `</div>`;
+      }
       if (comp.is_default) html += `<a class="meer" href="/toernooi.html">Het volledige bord van ${esc(comp.name)} →</a>`;
     }
+    // Focus op een poule-knop of sportregel overleeft het verversen.
+    const fc = document.activeElement, fp = fc && fc.closest ? fc.closest('#paneel [data-poule], #paneel [data-tab]') : null;
+    const fsel = fp ? (fp.hasAttribute('data-poule') ? `[data-poule="${fp.dataset.poule}"]` : `[data-tab="${fp.dataset.tab}"]`) : '';
     $('paneel').innerHTML = html;
+    if (fsel) { const el = $('paneel').querySelector(fsel); if (el) el.focus({ preventScroll: true }); }
+    renderRing();
     $('voet').textContent = stale ? 'Geen verbinding — dit is de laatst bekende stand.'
       : (data.multi ? `${data.competitions.length} sporten · ververst vanzelf` : 'Ververst vanzelf');
     renderVolg();
@@ -200,6 +314,78 @@
     rememberTab();
     render();
   });
+  // In het paneel: een poule kiezen (sportpagina) of een sport openen (overzicht).
+  $('paneel').addEventListener('click', (e) => {
+    const p = e.target.closest('[data-poule]');
+    if (p) { const comp = compOf(Number(tab)); if (comp) { pouleKeuze.set(comp.id, p.dataset.poule); render(); } return; }
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    tab = b.dataset.tab;
+    rememberTab();
+    render();
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
+    $('tab-' + tab)?.focus({ preventScroll: true });
+  });
+
+  // ── De ring rechtsboven ────────────────────────────────────────────────────
+  // "Alles": de iconen van de sporten wisselen elkaar rustig af (bij "minder beweging"
+  // staat de beker stil). Eén sport: het icoon van die sport; een bal draait om zijn as
+  // als sh-bal3d.js dat kan en mag. Elk beeld wordt één keer gebouwd en daarna alleen
+  // getoond/verborgen, zodat een draaiende bal zijn canvas houdt.
+  const grootIcon = (u) => (/^\/sport\/[a-z]+\.webp$/.test(String(u || '')) ? u : '/sport/beker.webp');
+  const minderBeweging = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+  const ringBeelden = new Map();
+  let ringSig = '', ringTimer = null;
+  function ringBeeld(key, bouw) {
+    let el = ringBeelden.get(key);
+    if (!el) { el = document.createElement('span'); el.className = 'ring-in'; el.hidden = true; bouw(el); $('ring').appendChild(el); ringBeelden.set(key, el); }
+    return el;
+  }
+  function ringImg(src) { const i = new Image(); i.alt = ''; i.decoding = 'async'; i.src = src; return i; }
+  function renderRing() {
+    const ring = $('ring');
+    if (!ring || !data) return;
+    const comps = data.competitions;
+    const comp = tab === 'alles' ? (comps.length === 1 ? comps[0] : null) : compOf(Number(tab));
+    const stil = minderBeweging();
+    const iconen = comps.map(c => grootIcon(c.icon));
+    const sig = comp ? `s|${comp.sport}|${grootIcon(comp.icon)}` : (stil || iconen.length < 2 ? 'beker' : `a|${iconen.join(',')}`);
+    if (sig === ringSig) return;
+    ringSig = sig;
+    clearInterval(ringTimer); ringTimer = null;
+    const el = ringBeeld(sig, (doos) => {
+      if (comp) {
+        const img = ringImg(grootIcon(comp.icon)); img.className = 'op'; doos.appendChild(img);
+        // Welke sporten een draaiende bal hebben weet alleen sh-bal3d.js (één bron):
+        // maak() doet niets en geeft false als het de sport niet kent of niet mag draaien.
+        const naam = String(comp.sport || '');
+        const go = () => { if (window.shBal3d && img.isConnected) window.shBal3d.maak(img, naam, { groot: true }); };
+        if (window.shBal3d || document.readyState === 'complete') setTimeout(go, 0);
+        else window.addEventListener('load', go, { once: true });
+      } else if (sig === 'beker') {
+        const img = ringImg('/sport/beker.webp'); img.className = 'op'; doos.appendChild(img);
+      } else {
+        const a = ringImg(iconen[0]), b = ringImg(iconen[1]); a.className = 'op';
+        doos.appendChild(a); doos.appendChild(b);
+        doos._lijst = iconen; doos._i = 0;
+      }
+    });
+    for (const x of ringBeelden.values()) x.hidden = x !== el;
+    if (el._lijst) {
+      ringTimer = setInterval(() => {
+        if (document.hidden) return;
+        const [a, b] = el.children;
+        const voor = a.classList.contains('op') ? a : b, achter = voor === a ? b : a;
+        el._i = (el._i + 1) % el._lijst.length;
+        const src = el._lijst[el._i];
+        const wissel = () => { achter.classList.add('op'); voor.classList.remove('op'); };
+        if (achter.getAttribute('src') === src && achter.complete) wissel();
+        else { achter.onload = wissel; achter.src = src; }
+      }, 3600);
+    }
+  }
+  try { window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => { if (data) renderRing(); }); } catch {}
+
   window.addEventListener('hashchange', () => { const v = tabFromUrl(); if (v && v !== tab) { tab = v; render(); } });
   $('tabs').addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
@@ -226,9 +412,12 @@
   const pushOn = () => ls.get(PUSH_KEY) === '1';
   function myIds() { return new Set(mine.map(t => t.id)); }
   function isMine(compId, name) { return !!name && mine.some(t => t.comp === compId && t.name === name); }
+  // Alle goedgekeurde teams per sport (comp.teams), dus ook wie nog niet in een schema
+  // staat. Een ouder antwoord uit de offline-cache kent dat veld niet → dan de standen.
   function allTeams() {
     const out = [];
     for (const c of (data ? data.competitions : [])) {
+      if (Array.isArray(c.teams)) { for (const t of c.teams) if (t && Number.isInteger(t.id)) out.push({ id: t.id, name: t.name, comp: c.id, comp_name: c.name }); continue; }
       for (const p of Object.keys(c.poules || {}).sort()) for (const t of (c.poules[p].standings || [])) out.push({ id: t.id, name: t.name, comp: c.id, comp_name: c.name });
     }
     return out;
@@ -294,7 +483,7 @@
   }
   async function enablePush() {
     if (!mine.length) return;
-    if (!pushSupported()) { volgMsg('Dit toestel ondersteunt geen meldingen. Tip: op een iPhone zet je de site eerst op je beginscherm.'); return; }
+    if (!pushSupported()) { volgMsg('Dit toestel ondersteunt hier geen meldingen. Op een iPhone: tik op de deelknop (vierkant met pijl), kies ‘Zet op beginscherm’ en open de app daarna vanaf je beginscherm.'); return; }
     const btn = $('volg-aan'); btn.disabled = true;
     try {
       const perm = await Notification.requestPermission();
@@ -403,6 +592,39 @@
     }
   }
 
+  // Persoonlijke link uit een mail (#team=<sleutel>): de sleutel bewaren voor Mijn team en
+  // de eigen goedgekeurde teams klaarzetten (alleen markeren; abonneren pas na een tik).
+  function bewaarSleutel(k, j) {
+    try {
+      const o = JSON.parse(ls.get('jvo_mijn') || 'null');
+      const keys = o && Array.isArray(o.keys) ? o.keys.filter(x => x && x.k !== k && x.k !== eigenOud) : [];
+      keys.unshift({
+        k, kind: j ? (j.kind === 'view' ? 'view' : 'own') : null, scope: j ? (j.scope === 'address' ? 'address' : 'team') : null, since: Date.now(),
+        teams: j && Array.isArray(j.cards) ? j.cards.map(c => c && c.team_id).filter(Number.isInteger).slice(0, 12) : [],
+      });
+      ls.set('jvo_mijn', JSON.stringify({ v: 1, keys: keys.slice(0, 6) }));
+    } catch {}
+  }
+  let eigenOud = '';
+  async function eigenTeams() {
+    if (!eigenSleutel || !data) return;
+    const k = eigenSleutel; eigenSleutel = '';
+    bewaarSleutel(k, null);
+    try {
+      const r = await fetch('/api/mijn', { headers: { Authorization: 'Bearer ' + k }, cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!j || !Array.isArray(j.cards)) return;
+      eigenOud = k;
+      bewaarSleutel(isJwt(j.renew) ? j.renew : k, j);
+      const voor = mine.length;
+      for (const c of j.cards) {
+        if (c && c.status === 'approved' && c.follow && Number.isInteger(c.follow.id) && c.board && c.board.kind === 'sporten') await addFollow(c.follow.id, { subscribe: false });
+      }
+      if (mine.length > voor) { const box = $('volg'); box.classList.add('wijs'); setTimeout(() => box.classList.remove('wijs'), 6000); }
+    } catch { /* geen verbinding: de sleutel staat bewaard, Mijn team pakt hem later op */ }
+  }
+
   let busy = false, again = false, lastLoad = 0;
   async function load() {
     if (busy) { again = true; return; }
@@ -417,6 +639,7 @@
           if (!stale && data.server_now) skew = data.server_now - Date.now();
           render();
           invite();
+          eigenTeams();
         }
       }
     } catch { /* offline: laatst getoonde stand blijft staan */ }

@@ -1,5 +1,10 @@
 // JVO Admin — REGIE-LAAG voor een dag met meerdere sporten (branch sport-hub).
 //
+// Sinds de ADMIN HUB (admin-hub.js) levert dit bestand de GEGEVENS en de losse
+// blokken (sportkaarten, sportschakelaar, wedstrijddag, sportpaneel, afronden);
+// de hub bepaalt waar ze staan. `HN()` is waar zodra de hub de indeling doet.
+// Laadt admin-hub.js niet, dan werkt alles hieronder zoals voorheen.
+//
 // Een extra laag bovenop de bestaande admin; er verdwijnt niets. Vier onderdelen:
 //   1. Regie-startscherm (Overzicht): per sport de stappen + één volgende actie.
 //   2. Sportschakelaar (onder de tabs): Teams en Toernooi volgen de gekozen sport.
@@ -24,6 +29,9 @@
   if (!bar || !regie || !dag || !paneel) return;
   const esc = A.escape;
   const HUB = () => window.JVO_HUB || null;
+  // De Admin Hub (admin-hub.js) doet de indeling: afdelingen i.p.v. tabs.
+  const NAV = () => window.JVO_ADMIN_HUB || null;
+  const HN = () => { const n = NAV(); return !!(n && n.actief()); };
   const isIcon = (u) => /^\/sport\/[a-z]+(-klein)?\.webp$/.test(String(u || ''));
   const icon = (c, cls = 'rg-icoon') => (isIcon(c.icon_small) ? `<img class="${cls}" src="${esc(c.icon_small)}" alt="" width="40" height="40" />` : `<span class="${cls} rg-icoon-leeg" aria-hidden="true"></span>`);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -60,6 +68,10 @@
   const compById = (id) => comps().find(c => c.id === id) || null;
   const mainComp = () => comps().find(c => c.is_default) || null;
   const actives = () => comps().filter(c => c.active);
+  // Het hoofdtoernooi (competitie 1) dat op inactief staat is geen sport: het hoort
+  // niet tussen de sportkaarten en niet in de sportschakelaar.
+  const hoofdUit = () => { const m = mainComp(); return m && !m.active ? m : null; };
+  const zichtbaar = () => comps().filter(c => !(c.is_default && !c.active));
 
   // innerHTML alleen vervangen als er echt iets veranderd is: zo verliest een knop
   // niet elke 10 seconden zijn focus en flikkert er niets.
@@ -151,6 +163,7 @@
       [bar, regie, dag, paneel].forEach(el => { el.hidden = true; });
       $('tab-overview')?.classList.remove('rg-dag-aan');
       $('tab-tournament')?.classList.remove('rg-andere-sport');
+      document.body.classList.remove('rg-sport-los');
       const how = $('rg-how'); if (how) how.open = true;
       const noot = $('rg-mail-noot'); if (noot) noot.hidden = true;
       const om = $('tc-omroep-link'); if (om) om.style.display = '';
@@ -180,6 +193,7 @@
     paintRegie();
     paintPaneel();
     paintNotes();
+    if (HN()) NAV().teken();   // de hub rekent met dezelfde, net ververste gegevens
   }
 
   // ── 2. Sportschakelaar ───────────────────────────────────────────────────
@@ -187,7 +201,7 @@
     bar.hidden = false;
     const sel = A.selSport;
     const chip = (id, label, extra = '') => `<button type="button" role="tab" class="rg-chip" data-sport="${id == null ? '' : esc(id)}" aria-selected="${sel === id ? 'true' : 'false'}" tabindex="${sel === id ? '0' : '-1'}">${label}${extra}</button>`;
-    const chips = [chip(null, '<span class="rg-chip-t">Alle sporten</span>')].concat(comps().map(c => {
+    const chips = [chip(null, '<span class="rg-chip-t">Alle sporten</span>')].concat(zichtbaar().map(c => {
       const n = c.teams.pending;
       return chip(c.id,
         `${isIcon(c.icon_small) ? `<img src="${esc(c.icon_small)}" alt="" width="22" height="22" />` : ''}<span class="rg-chip-t">${esc(c.name)}</span>`,
@@ -197,9 +211,9 @@
     const live = R.totals.live;
     setHtml(bar, `
       <div class="rg-chips" role="tablist" aria-label="Kies een sport">${chips.join('')}</div>
-      <button type="button" class="rg-dagknop" id="rg-dagknop" aria-pressed="${dagAan && $('tab-overview').classList.contains('active') ? 'true' : 'false'}" title="Het scherm voor de dag zelf: pauzeren, uitloop en uitslagen">
+      ${HN() ? '' : `<button type="button" class="rg-dagknop" id="rg-dagknop" aria-pressed="${dagAan && $('tab-overview').classList.contains('active') ? 'true' : 'false'}" title="Het scherm voor de dag zelf: pauzeren, uitloop en uitslagen">
         ${IC.flag}<span>Wedstrijddag</span>${live > 0 ? `<span class="rg-live-n" aria-label="${esc(plural(live, 'wedstrijd', 'wedstrijden'))} live">${live} live</span>` : ''}
-      </button>`);
+      </button>`}`);
     // De gekozen sport hoort in beeld te staan, ook als de keuze van elders kwam
     // (een Regie-knop). Alleen de strook zelf schuift, nooit de pagina.
     if (bar.__sel !== sel) {
@@ -233,6 +247,8 @@
 
   // ── 3. Wedstrijddag-modus ────────────────────────────────────────────────
   function setDag(v) {
+    // In de Admin Hub is de wedstrijddag een eigen plek (Toernooien › Wedstrijddag).
+    if (HN()) { if (v) NAV().ga('toernooi', 'wedstrijddag'); else NAV().ga(null); return; }
     dagAan = !!v; dagHand = dagAan;
     try { sessionStorage.setItem('jvo_admin_dag', dagAan ? '1' : '0'); } catch {}
     if (!$('tab-overview').classList.contains('active')) go('overview');
@@ -294,7 +310,7 @@
           <h3 class="rg-titel" id="rg-dag-titel">—</h3>
           <p class="rg-sub" id="rg-dag-sub" aria-live="polite"></p>
         </div>
-        <button type="button" class="rg-knop rg-knop-rustig" data-rg="dag-uit">Terug naar Regie</button>
+        <button type="button" class="rg-knop rg-knop-rustig" data-rg="dag-uit">Terug naar de hub</button>
       </div>
       <div class="rg-nood" id="rg-nood">
         <div class="rg-nood-veld" id="rg-nood-veld">
@@ -313,14 +329,18 @@
           <p class="rg-eerlijk" id="rg-uit-noot" hidden></p></section>
       </div>
       <nav class="rg-snel" id="rg-snel" aria-label="Snelkoppelingen"></nav>
-      <p class="rg-eerlijk">Opnieuw genereren, resetten en wissen staan hier bewust niet. Die vind je op de tab Toernooi.</p>`;
+      <p class="rg-eerlijk" id="rg-dag-eerlijk"></p>`;
   }
 
   function paintDag() {
-    $('tab-overview').classList.toggle('rg-dag-aan', dagAan);
-    dag.hidden = !dagAan;
-    if (!dagAan) return;
+    const hn = HN();
+    $('tab-overview').classList.toggle('rg-dag-aan', dagAan && !hn);
+    dag.hidden = !dagAan && !hn;
+    if (dag.hidden) return;
     dagSkeleton();
+    const eerlijk = hn ? 'Opnieuw genereren en resetten staan hier bewust niet. Die vind je bij Toernooien, onder Schema per sport.'
+      : 'Opnieuw genereren, resetten en wissen staan hier bewust niet. Die vind je op de tab Toernooi.';
+    if ($('rg-dag-eerlijk').textContent !== eerlijk) $('rg-dag-eerlijk').textContent = eerlijk;
     const act = actives();
     const multi = act.length > 1;
     const t = R.totals;
@@ -330,10 +350,10 @@
       : t.live > 0 ? `${t.live} live · ${t.done}/${t.total} gespeeld` : `${t.done}/${t.total} gespeeld`;
     const late = act.filter(c => c.delay_min >= 3 && !c.finished);   // een minuutje is geen nieuws
     const paused = act.filter(c => c.paused);
-    subTekst($('rg-dag-sub'), t.total === 0 ? 'Maak eerst een schema in de Regie. Daarna stuur je de dag vanaf hier.'
+    subTekst($('rg-dag-sub'), t.total === 0 ? (hn ? 'Maak eerst een schema bij Schema per sport. Daarna stuur je de dag vanaf hier.' : 'Maak eerst een schema in de Admin Hub. Daarna stuur je de dag vanaf hier.')
       : R.paused_all ? 'Alles staat op pauze. Niemand kan een wedstrijd starten.'
       : paused.length ? `${paused.map(c => c.name).join(', ')} ${paused.length === 1 ? 'staat' : 'staan'} op pauze.`
-      : allDone ? 'Tijd om af te ronden. Dat doe je in de Regie.'
+      : allDone ? (hn ? 'Tijd om af te ronden. Dat doe je bij Evenement, onder Afronden.' : 'Tijd om af te ronden. Dat doe je in de Admin Hub.')
       : late.length ? `${late.map(c => `${c.name} loopt ${c.delay_min} min uit`).join(' · ')}.`.replace(/^./, m => m.toUpperCase())
       : t.live > 0 ? 'Alles loopt. Niks te doen.' : 'Er is nu niets bezig.');
 
@@ -397,7 +417,9 @@
     // Hier staan alleen de laatste paar. Oudere uitslagen zijn ook te corrigeren: zeg waar.
     const uitNoot = $('rg-uit-noot');
     uitNoot.hidden = t.done <= recent.length;
-    if (!uitNoot.textContent) uitNoot.textContent = 'Een oudere uitslag corrigeren? Kies de sport op de tab Toernooi en open "Alle uitslagen". Het kan ook in de Bediening, onder Klaar.';
+    const uitTekst = hn ? 'Een oudere uitslag corrigeren? Open Schema per sport, kies de sport en open "Alle uitslagen". Het kan ook in de Bediening, onder Klaar.'
+      : 'Een oudere uitslag corrigeren? Kies de sport op de tab Toernooi en open "Alle uitslagen". Het kan ook in de Bediening, onder Klaar.';
+    if (uitNoot.textContent !== uitTekst) uitNoot.textContent = uitTekst;
     // Telefoon: de drie lijsten staan onder alle sportrijen. Eén tik brengt je erheen.
     setHtml($('rg-spring'), t.total === 0 ? '' : [['rg-h-nu', 'Nu bezig', now.length], ['rg-h-straks', 'Straks', null], ['rg-h-uit', 'Uitslagen', t.done]]
       .map(([doel, label, n]) => `<button type="button" class="rg-mini" data-rg="spring" data-doel="${doel}">${label}${n ? ` <span class="rg-spring-n">${n}</span>` : ''}</button>`).join(''));
@@ -411,7 +433,7 @@
     setHtml($('rg-snel'), `
       <a class="rg-snel-a" href="/wedstrijd" target="_blank" rel="noopener">Bediening ↗</a>
       <a class="rg-snel-a" href="${multiAct ? '/sporten' : '/toernooi'}" target="_blank" rel="noopener">Bord ↗</a>
-      <a class="rg-snel-a" href="${multiAct ? '/sporten?screen=1' : '/toernooi?screen=1'}" target="_blank" rel="noopener">TV ↗</a>
+      ${multiAct ? '' : '<a class="rg-snel-a" href="/toernooi?screen=1" target="_blank" rel="noopener">TV ↗</a>'}
       ${omroep ? `<a class="rg-snel-a" href="/omroep" target="_blank" rel="noopener">${multi ? `Omroep ${esc(hoofd.name)}` : 'Omroep'} ↗</a>` : ''}
       ${prints}`);
   }
@@ -743,7 +765,7 @@
     regie.__klaar = true;
     regie.innerHTML = `
       <div class="rg-kop">
-        <div class="card-eyebrow">Regie</div>
+        <div class="card-eyebrow" id="rg-regie-oog">Admin Hub</div>
         <h3 class="rg-titel" id="rg-regie-titel">Wat moet je nu doen?</h3>
         <p class="rg-sub" id="rg-regie-sub"></p>
       </div>
@@ -755,14 +777,20 @@
         <div class="rg-presets" id="rg-presets" role="group" aria-labelledby="rg-nieuw-titel"></div>
       </div>
       <div class="rg-form-wrap" id="rg-form-wrap"></div>
+      <p class="rg-hoofd-uit" id="rg-hoofd-uit" hidden></p>
       <div id="rg-af"></div>`;
   }
 
   function paintRegie() {
-    regie.hidden = dagAan;
-    if (dagAan) return;
+    const hn = HN();
+    regie.hidden = dagAan && !hn;
+    if (regie.hidden) return;
     regieSkeleton();
-    const list = comps();
+    // In de hub is dit blok de afdeling Sport; "Wat moet je nu doen?" staat op het startscherm.
+    const oog = hn ? 'Sport' : 'Admin Hub', kop = hn ? 'Jouw sporten' : 'Wat moet je nu doen?';
+    if ($('rg-regie-oog').textContent !== oog) $('rg-regie-oog').textContent = oog;
+    if ($('rg-regie-titel').textContent !== kop) $('rg-regie-titel').textContent = kop;
+    const list = zichtbaar();
     const pend = R.totals.waiting != null ? list.reduce((s, c) => s + c.teams.pending, 0) : 0;
     const noSchema = list.filter(c => c.active && stateOf(c).key === 'maak-schema').length;
     const bits = [];
@@ -784,7 +812,7 @@
 
     const fout = open.filter(c => c.level === 'fout').length;
     const ev = R.event || {};
-    setHtml($('rg-ev'), `<button type="button" class="rg-ev${open.length ? (fout ? ' is-fout' : ' is-let') : ' is-ok'}" data-rg="evenement">
+    setHtml($('rg-ev'), hn ? '' : `<button type="button" class="rg-ev${open.length ? (fout ? ' is-fout' : ' is-let') : ' is-ok'}" data-rg="evenement">
         <span class="rg-ev-m" aria-hidden="true">${open.length ? open.length : IC.check}</span>
         <span class="rg-ev-t"><b>${esc(ev.name || 'Evenement')}</b><span>${[ev.dateText || 'Datum volgt', ev.location].filter(Boolean).map(esc).join(' · ')}</span></span>
         <span class="rg-ev-s">${open.length ? `${plural(open.length, 'ding', 'dingen')} nog regelen` : 'Klaar'}</span>${IC.chev}
@@ -792,6 +820,11 @@
 
     setHtml($('rg-kaarten'), list.map(card).join('')
       + `<button type="button" class="rg-kaart rg-kaart-nieuw" data-rg="nieuw" aria-expanded="${nieuwOpen ? 'true' : 'false'}" aria-controls="rg-nieuw">${IC.plus}<b>Sport toevoegen</b><span>Met een voorinstelling per sport</span></button>`);
+
+    // Het hoofdtoernooi dat uit staat: geen sportkaart, alleen een rustige regel.
+    const hu = hoofdUit(), huEl = $('rg-hoofd-uit');
+    huEl.hidden = !hu;
+    setHtml(huEl, hu ? `Het hoofdtoernooi staat uit. <button type="button" class="rg-link" data-rg="bewerk" data-id="${esc(hu.id)}">Aanzetten</button>` : '');
 
     // Voorinstellingen
     $('rg-nieuw').hidden = !nieuwOpen;
@@ -824,7 +857,7 @@
             <button type="button" class="rg-knop rg-knop-rustig" data-rg="af-download">Download resultaten</button></li>
           <li><span class="rg-af-n" aria-hidden="true">2</span><div><b>Bedank iedereen en vraag feedback</b><span>Je ziet eerst een voorbeeld met het aantal ontvangers. Er gaat niets weg tot jij op versturen tikt.</span></div>
             <div class="rg-af-k"><button type="button" class="rg-knop rg-knop-rustig" data-rg="af-mail">Mail bedankt &amp; feedback</button><button type="button" class="rg-link" data-rg="af-feedback">Bekijk de feedback</button></div></li>
-          <li><span class="rg-af-n" aria-hidden="true">3</span><div><b>Schone start</b><span>Pas als je alles hebt bewaard. Wist aanmeldingen, teams en uitslagen; je instellingen en sporten blijven staan.</span></div>
+          <li><span class="rg-af-n" aria-hidden="true">3</span><div><b>Schone start</b><span>Pas als je alles hebt bewaard. Wist aanmeldingen, teams en uitslagen; je instellingen en sporten blijven staan.${HN() ? ' Het wis-paneel zit achter een slot: tik daar eerst op “Ik weet wat ik doe, laat zien”.' : ''}</span></div>
             <button type="button" class="rg-knop rg-knop-rustig" data-rg="af-wis">Open het wis-paneel</button></li>
         </ol>
       </section>`);
@@ -832,11 +865,15 @@
 
   function openFold(el) {
     if (!el) return;
+    if (HN()) NAV().toon(el);   // eerst naar de afdeling waar dit blok staat
     if (el.tagName === 'DETAILS') el.open = true;
     requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
-  regie.addEventListener('click', async (e) => {
+  // "Afronden" (#rg-af) kan door de hub buiten dit blok staan: zelfde afhandeling.
+  document.addEventListener('click', (e) => { if (!regie.contains(e.target) && e.target.closest('#rg-af')) regieKlik(e); });
+  regie.addEventListener('click', regieKlik);
+  async function regieKlik(e) {
     const b = e.target.closest('[data-rg]');
     if (!b) return;
     const act = b.dataset.rg;
@@ -861,9 +898,9 @@
     }
     if (act === 'af-download') return $('tourn-export-results')?.click();
     if (act === 'af-mail') return $('tourn-feedback-mail')?.click();
-    if (act === 'af-feedback') { A.selSport = null; go('tournament'); return setTimeout(() => openFold($('fb-fold')), 250); }
+    if (act === 'af-feedback') { A.selSport = null; if (!HN()) go('tournament'); return setTimeout(() => openFold($('fb-fold')), HN() ? 0 : 250); }
     if (act === 'af-wis') {
-      const panel = document.querySelector('#tab-overview .danger-zone');
+      const panel = document.querySelector('.danger-zone');
       const d = panel && panel.querySelector('details.danger-collapse');
       if (d) d.open = true;
       return openFold(panel);
@@ -889,7 +926,7 @@
     }
     if (act === 'maak-schema') return makeSchedule(c, b);
     if (act === 'eindstand') return toggleEindstand(c);
-  });
+  }
 
   // Formulier (nieuw of bewerken) in het Regie-scherm en in het sportpaneel.
   async function onFormSubmit(e) {
@@ -927,8 +964,8 @@
   async function makeSchedule(c, btn, format) {
     if (c.is_default) {
       A.selSport = c.id;
-      go('tournament');
-      return setTimeout(() => openFold($('tc-setup-fold')), 250);
+      if (!HN()) go('tournament');
+      return setTimeout(() => openFold($('tc-setup-fold')), HN() ? 0 : 250);
     }
     const h = HUB(); if (!h) return;
     if (btn) btn.disabled = true;
@@ -962,6 +999,7 @@
     const c = compById(A.selSport);
     const show = !!(c && !c.is_default);
     $('tab-tournament').classList.toggle('rg-andere-sport', show);
+    document.body.classList.toggle('rg-sport-los', show);
     paneel.hidden = !show;
     if (!show) { paneel.__id = null; return; }
     const main = mainComp();
@@ -1051,7 +1089,9 @@
     setHtml($('rg-p-links'), `<a class="tc-link primary" href="/wedstrijd" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
       <a class="tc-link" href="/sporten?sport=${id}" target="_blank" rel="noopener">Bord van ${esc(c.name)} ↗</a>
       <a class="tc-link" href="/print?competition=${id}" target="_blank" rel="noopener">Print-backup ↗</a>`);
-    $('rg-p-eerlijk').textContent = `Losse wedstrijden verzetten, wachttijden en de ronde-meldingen zijn er alleen voor ${main ? main.name : 'het hoofdtoernooi'}. Kies die sport of "Alle sporten" om die blokken weer te zien.`;
+    const eerlijk = HN() ? 'Losse wedstrijden verzetten, wachttijden en de ronde-meldingen zijn er alleen voor het hoofdtoernooi.'
+      : `Losse wedstrijden verzetten, wachttijden en de ronde-meldingen zijn er alleen voor ${main ? main.name : 'het hoofdtoernooi'}. Kies die sport of "Alle sporten" om die blokken weer te zien.`;
+    if ($('rg-p-eerlijk').textContent !== eerlijk) $('rg-p-eerlijk').textContent = eerlijk;
   }
   function paintStand(c) {
     const d = detail[c.id];
@@ -1159,6 +1199,8 @@
   });
   window.JVO_REGIE = {
     refresh, isOn: () => aan,
+    // Voor admin-hub.js: de gegevens en een paar rekenregels, zodat er één bron is.
+    data: () => R, comps, zichtbaar, mainComp, stateOf, losVan, afrondenNu, weg, herteken: () => { if (aan && R) paint(); },
     // Voor admin.js: de 10 s-ronde liep zonder renderAll (geen verbinding, of je zat in
     // een veld). Dan loopt deze laag niet vanzelf mee; zo merkt hij het toch.
     tik: () => load(false),

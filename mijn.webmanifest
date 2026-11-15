@@ -1,0 +1,32 @@
+{
+  "id": "/mijn",
+  "name": "JVO · Sportdag",
+  "short_name": "Sportdag",
+  "description": "Mijn team en het live-bord van de JVO Sportdag",
+  "start_url": "/mijn",
+  "scope": "/",
+  "display": "standalone",
+  "lang": "nl",
+  "background_color": "#06193A",
+  "theme_color": "#06193A",
+  "icons": [
+    {
+      "src": "/icons/jvo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/jvo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/jvo-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

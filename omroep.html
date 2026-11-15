@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/megafoon-klein.webp');--werk-icoon-groot:url('/sport/werk/megafoon.webp')">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -164,6 +165,8 @@
     <div class="om-filter" id="om-filter" role="group" aria-label="Kies welke sporten je volgt" hidden></div>
     <div class="om-pauze" id="om-pauze" aria-live="polite" hidden></div>
 
+    <!-- .om-cols/.om-col: op een laptop (stijl 'sporthub') twee kolommen; verder zonder effect (display: contents). -->
+    <div class="om-cols" style="display:contents"><div class="om-col" style="display:contents">
     <!-- momenten-strook: roep dit meteen om (doelpunt, uitslag, kampioen …) -->
     <div class="om-moments" id="om-moments" aria-live="polite"></div>
 
@@ -173,12 +176,14 @@
     <div class="om-h"><span class="dot"></span>Nu bezig<span class="n" id="om-live-n"></span></div>
     <div class="om-live" id="om-live"><div class="om-empty">Nog geen wedstrijden bezig.</div></div>
 
+    </div><div class="om-col" style="display:contents">
     <div class="om-h">Zo omroepen<span class="n" id="om-queue-n">op verwachte aftrap — schuift mee met uitloop</span></div>
     <div class="om-queue" id="om-queue"><div class="om-empty">Geen aankomende wedstrijden.</div></div>
     <div class="om-hint">Tik <b>Omgeroepen ✓</b> als je een wedstrijd hebt omgeroepen — dan zie je altijd wat er nog moet. De omrande labels waarschuwen voor korte rust of een team dat nog bezig is.</div>
 
     <div class="om-h">Net klaar — uitslag omroepen<span class="n" id="om-done-n"></span></div>
     <div class="om-done" id="om-done"><div class="om-empty">Nog geen uitslagen.</div></div>
+    </div></div>
   </div>
 
   <script src="/offline-ui.js"></script>

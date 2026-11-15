@@ -13,6 +13,26 @@ const resultEl = document.getElementById('result');
 const SCAN_PLACEHOLDER = '<jvo-empty title="Nog geen scan" hint="Het resultaat verschijnt hier zodra je een QR scant."></jvo-empty>';
 resultEl.innerHTML = SCAN_PLACEHOLDER;
 
+// Lijst "gescand op dit toestel" (naast de scanner op een laptop). Alleen in deze
+// tab bewaard (sessionStorage); alle tekst via escapeHtml.
+const RECENT_KEY = 'jvo_checkin_recent';
+const recentEl = document.getElementById('recent');
+function loadRecent() { try { const l = JSON.parse(sessionStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(l) ? l : []; } catch { return []; } }
+function renderRecent() {
+  if (!recentEl) return;
+  const list = loadRecent();
+  const tijd = (t) => { try { return new Date(t).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+  recentEl.innerHTML = `<h2 class="ci-recent-h">Gescand op dit toestel</h2>` + (list.length
+    ? `<ul class="ci-recent-l">${list.map(x => `<li class="${x.kind === 'ok' ? 'ok' : (x.kind === 'error' ? 'error' : 'warn')}"><span class="tm">${escapeHtml(tijd(x.t))}</span><b>${escapeHtml(x.name)}</b><small>${escapeHtml(x.note)}</small></li>`).join('')}</ul>`
+    : `<p class="ci-recent-leeg">Nog niets gescand. Elk team dat je incheckt komt hier te staan.</p>`);
+}
+function logScan(kind, name, note) {
+  const list = loadRecent();
+  list.unshift({ t: Date.now(), kind, name: String(name || ''), note: String(note || '') });
+  try { sessionStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 12))); } catch {}
+  renderRecent();
+}
+
 let qrScanner = null;
 let scanCooldown = false;
 
@@ -154,7 +174,7 @@ document.getElementById('manual-submit')?.addEventListener('click', async () => 
   // 2.5s of a scan loses the typed token with zero feedback. Do arm the cooldown
   // so the camera can't double-fire right after.
   scanCooldown = true;
-  // Voorkeur: de teamcode; anders de geplakte link/het token.
+  // Voorkeur: de check-in-code; anders de geplakte link/het token.
   await processToken(raw.length === 6 ? 'C:' + raw : extractToken(link));
   setTimeout(() => { scanCooldown = false; }, 2500);
 });
@@ -253,7 +273,7 @@ function saveQueue(q) {
 
 window.addEventListener('online', flushOfflineQueue);
 
-// Queue entries are either a raw QR token, or 'C:XXXXXX' for a typed teamcode.
+// Queue entries are either a raw QR token, or 'C:XXXXXX' for a typed check-in-code.
 function checkinBody(entry) {
   return String(entry).startsWith('C:') ? { code: entry.slice(2) } : { token: entry };
 }
@@ -341,6 +361,7 @@ async function processToken(token) {
       <p>Geen internet. De check-in wordt pas <b>gecontroleerd en bevestigd</b> zodra
       de verbinding terug is. (${q.length} in wachtrij)</p>
     </div>`;
+    logScan('warn', 'Offline bewaard', 'Wordt gecontroleerd zodra er verbinding is');
     beep(true);
     return;
   }
@@ -356,12 +377,14 @@ async function processToken(token) {
         <h3>Geweigerd</h3>
         <p>${escapeHtml(json.error || 'Onbekende fout')}</p>
       </div>`;
+      logScan('error', 'Geweigerd', json.error || 'Onbekende fout');
       beep(false);
       return;
     }
     const t = json.team;
     const cls = json.already_checked_in ? 'warn' : 'success';
     const head = json.already_checked_in ? 'Al ingecheckt' : 'Welkom!';
+    logScan(json.already_checked_in ? 'warn' : 'ok', t.name, json.already_checked_in ? 'Was al ingecheckt' : 'Ingecheckt');
     resultEl.innerHTML = `<div class="checkin-result ${cls}">
       <h3>${head}</h3>
       <h2 class="h-display" style="font-size:48px; margin-bottom:16px;">${escapeHtml(t.name)}</h2>
@@ -420,6 +443,7 @@ function formatDate(s) {
   return d.toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'medium' });
 }
 
+renderRecent();
 if (getToken() && getName()) {
   showScanner();
   // Validate the stored session in the background: a 12h-old token would

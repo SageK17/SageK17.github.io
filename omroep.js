@@ -178,7 +178,7 @@
     $('om-live').innerHTML = live.map(m => `
       <div class="om-lv">
         <span class="veld">${plekNaam} ${esc(String(m.field || '?'))}</span>
-        <div class="wie">${esc(m.a || '—')}<span class="sc">${m.score_a ?? 0}–${m.score_b ?? 0}</span>${esc(m.b || '—')}${(m.pens_a != null && m.pens_b != null) ? ` <span style="color:var(--success);font-family:var(--mono);font-size:13px;">n.p. ${m.pens_a}–${m.pens_b}</span>` : ''}
+        <div class="wie"><span class="om-vs"><span class="na">${esc(m.a || '—')}</span><span class="sc">${m.score_a ?? 0}–${m.score_b ?? 0}</span><span class="nb">${esc(m.b || '—')}</span></span>${(m.pens_a != null && m.pens_b != null) ? ` <span style="color:var(--success);font-family:var(--mono);font-size:13px;">n.p. ${m.pens_a}–${m.pens_b}</span>` : ''}
           <span class="waar">${esc(m.where)}</span></div>
         <span class="klok clk" data-start="${esc(m.started_at || '')}">--:--</span>
       </div>`).join('') || '<div class="om-empty">Nog geen wedstrijden bezig.</div>';
@@ -519,7 +519,7 @@
       return `
       <div class="om-lv">
         <span class="veld">${esc(plekVan(m) || m.comp_name || '')}</span>
-        <div class="wie">${esc(m.a || '—')}<span class="sc">${m.score_a ?? 0}–${m.score_b ?? 0}</span>${esc(m.b || '—')}${sets || np ? ` <span class="om-sets">${esc(sets || np)}</span>` : ''}
+        <div class="wie"><span class="om-vs"><span class="na">${esc(m.a || '—')}</span><span class="sc">${m.score_a ?? 0}–${m.score_b ?? 0}</span><span class="nb">${esc(m.b || '—')}</span></span>${sets || np ? ` <span class="om-sets">${esc(sets || np)}</span>` : ''}
           <span class="waar">${waar(m)}</span></div>
         <span class="klok clk" data-start="${esc(m.started_at || '')}" data-min="${esc(m.mins)}">--:--</span>
       </div>`;

@@ -319,17 +319,98 @@
       // A small celebratory burst — the only confetti left outside your followed
       // team, and toned down. (Goals/wins now fire only for the team you follow.)
       window.JVOFX?.confetti({ y: 0.4, count: 50, power: 12 });
-      const msg = (path === 'team' && chosenSport && chosenSport.solo)
-        ? `Je aanmelding voor ${String(chosenSport.name).toLowerCase()} is ontvangen. Je krijgt apart bericht zodra die is beoordeeld.`
+      // Team of speler: de server geeft de persoonlijke sleutel mee → je zit direct in Mijn team.
+      const solo = !!(path === 'team' && chosenSport && chosenSport.solo);
+      const inMijn = path === 'team' && showMijn(json, data, solo);
+      const msg = solo
+        ? `Je aanmelding voor ${String(chosenSport.name).toLowerCase()} is ontvangen. ${inMijn ? 'De status zie je vanaf nu bij je aanmelding in de app; het besluit krijg je ook per mail.' : 'Je krijgt apart bericht zodra die is beoordeeld.'}`
         : (path === 'team')
-        ? `Je aanmelding én teamaanvraag voor "${data.team_name}" zijn ontvangen. Je krijgt apart bericht zodra het team is beoordeeld.`
+        ? `Je aanmelding én teamaanvraag voor "${data.team_name}" zijn ontvangen. ${inMijn ? 'De status zie je vanaf nu in Mijn team; het besluit krijg je ook per mail.' : 'Je krijgt apart bericht zodra het team is beoordeeld.'}`
         : `Je aanmelding${eventWithArticle ? ' voor ' + eventWithArticle : ''} is ontvangen. Check je inbox voor een bevestiging.`;
       setText($('success-msg'), msg);
+      setText($('success-heading'), inMijn ? 'Je bent aangemeld.' : SUCCESS_HEADING);
+      // Een bezoeker heeft geen Mijn team (geen kaart, geen code, geen link): de ingang
+      // daarheen hoort dan niet onder "Tot dan!" te staan, tenzij dit toestel al een sleutel heeft.
+      const ingang = $('mijn-ingang');
+      if (ingang) ingang.hidden = path !== 'team' && !heeftSleutel();
     } catch (err) {
       showError('Netwerkfout. Probeer opnieuw.');
       resetSubmit();
     }
   });
+
+  // --- Mijn team ---------------------------------------------------------------
+  // Na een team-/spelersaanmelding geeft POST /api/register `mijn: { key, team_code }` terug.
+  // Het toestel onthoudt de sleutel (zelfde opslag als mijn.js: jvo_mijn), het scherm toont de
+  // knop "Open Mijn team" en de code. De sleutel komt nooit als tekst in beeld; hij reist alleen
+  // achter de # van de knop mee als dit toestel niets kan bewaren.
+  const SUCCESS_HEADING = $('success-heading') ? $('success-heading').textContent : '';
+  const isKey = (k) => typeof k === 'string' && k.length < 2000 && /^[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/.test(k);
+  function rememberMijn(key, teamId) {
+    try {
+      const o = JSON.parse(localStorage.getItem('jvo_mijn') || 'null');
+      const keys = o && Array.isArray(o.keys) ? o.keys.filter(x => x && x.k !== key) : [];
+      keys.unshift({ k: key, kind: 'own', scope: 'team', since: Date.now(), teams: Number.isInteger(teamId) ? [teamId] : [] });
+      localStorage.setItem('jvo_mijn', JSON.stringify({ v: 1, keys: keys.slice(0, 6) }));
+      return true;
+    } catch { return false; }
+  }
+  let mijnLink = '';
+  function showMijn(json, data, solo) {
+    const box = $('success-mijn');
+    const m = json && json.mijn;
+    if (!box || !m || !isKey(m.key)) return false;
+    const teamId = Number.isInteger(json.team_id) ? json.team_id : null;
+    const kept = rememberMijn(m.key, teamId);
+    if (solo) soloNet = true; else heeftTeamNet = true;
+    // De sleutel staat al op dit toestel: dan hoort hij niet óók in het adres (en zo in de
+    // browsergeschiedenis). Alleen als bewaren niet lukte reist hij achter de # mee.
+    const pad = '/mijn' + (teamId != null ? '?team=' + teamId : '') + (kept ? '' : '#k=' + m.key);
+    mijnLink = window.location.origin + '/mijn#k=' + m.key;
+    const open = $('success-mijn-open');
+    if (open) { open.href = pad; open.textContent = solo ? 'Open mijn aanmelding →' : 'Open Mijn team →'; }
+    setText($('success-mijn-lbl'), solo ? 'Jouw code' : 'Jullie teamcode');
+    const code = $('success-mijn-code');
+    if (code) code.textContent = hasText(m.team_code) ? String(m.team_code) : '';
+    const codeBox = code ? code.closest('.mijn-code') : null;
+    if (codeBox) codeBox.hidden = !hasText(m.team_code);
+    setText($('success-mijn-tip'), solo
+      ? 'Maak een schermafbeelding van deze code. Daarmee open je je aanmelding op elk toestel.'
+      : 'Maak een schermafbeelding van deze code. Daarmee open je Mijn team op elk toestel, en je teamgenoten kunnen ermee meekijken.');
+    setText($('success-mijn-app'), `Tip: ${solo ? 'bij je aanmelding' : 'in Mijn team'} lees je hoe je de app op je beginscherm zet.`);
+    const mail = $('success-mijn-mail');
+    if (mail) mail.textContent = `We hebben je link ook gemaild naar ${data.email}.` + (kept ? '' : ' Dit toestel kan niets bewaren: gebruik de knop hierboven of de link in je mail.');
+    box.hidden = false;
+    refreshIngang();
+    return true;
+  }
+  const copyBtn = $('success-mijn-kopieer');
+  if (copyBtn) copyBtn.addEventListener('click', async () => {
+    const mail = $('success-mijn-mail');
+    if (!mijnLink) return;
+    try {
+      await navigator.clipboard.writeText(mijnLink);
+      if (mail) mail.textContent = 'Je link is gekopieerd. Bewaar hem voor jezelf: wie de link heeft, ziet je aanmelding.';
+    } catch {
+      if (mail) mail.textContent = 'Kopiëren lukte niet op dit toestel. De link staat ook in je mail.';
+    }
+  });
+  // De voordeur: staat er al een sleutel op dit toestel, dan zeggen we dat ook.
+  function heeftSleutel() {
+    try { const o = JSON.parse(localStorage.getItem('jvo_mijn') || 'null'); return !!(o && Array.isArray(o.keys) && o.keys.length); } catch { return false; }
+  }
+  function refreshIngang() {
+    if (!heeftSleutel()) return;
+    setText($('mijn-ingang-tekst'), 'Je aanmelding staat op dit toestel.');
+    // Alleen 1-tegen-1-aanmeldingen op dit toestel: dan heet het geen "team".
+    let solo = false;
+    try { const o = JSON.parse(localStorage.getItem('jvo_mijn_kaarten') || 'null'); solo = !!(o && Array.isArray(o.cards) && o.cards.length && o.cards.every(c => c && c.solo)); } catch {}
+    if (!solo && soloNet) solo = !heeftTeamNet;
+    const a = $('mijn-ingang-link');
+    if (a) a.textContent = solo ? 'Open mijn aanmelding →' : 'Open Mijn team →';
+  }
+  let soloNet = false, heeftTeamNet = false;   // wat er in dit bezoek is aangemeld
+  refreshIngang();
 
   // "Nog iemand aanmelden" — reset form in-place, no page reload
   // (page reload causes a 30-60s wait if the Render free-tier service was sleeping)
@@ -339,6 +420,11 @@
       form.reset();
       clearAlert();
       if (successBox) successBox.style.display = 'none';
+      const mijnBox = $('success-mijn');
+      if (mijnBox) mijnBox.hidden = true;
+      const ingang = $('mijn-ingang');
+      if (ingang) ingang.hidden = false;
+      mijnLink = '';
       form.style.display = 'block';
       resetSubmit();
       // Clear email-validation icon

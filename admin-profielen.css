@@ -1,0 +1,364 @@
+/* JVO Admin — PROFIELEN, PAS EN POORTJES (admin-profielen.js).
+
+   Alles hier begint met .pf- en bestaat alleen als de server profielen heeft (of als
+   de eerste eigenaar ze start). Zonder profielen verandert dit bestand niets.
+
+   Opbouw
+     1. Kleuren (per stijl) en het rondje met initialen
+     2. Inlogkaart: uitleg, kiezer
+     3. Lagen en het cijferpaneel
+     4. Nieuw profiel
+     5. Eigen pasje (knop + kaart) en de balk bovenin
+     6. Telefoon
+     7. Minder beweging
+
+   Kleuren: de kaarten gebruiken --pf-*; in de stijl Sporthub zijn dat witte kaarten met
+   logo-blauwe tekst en een oranje knop met blauwe tekst (nooit wit op oranje). */
+
+/* ── 1. Kleuren en rondje ───────────────────────────────────────────────── */
+.pf-laag, .pf-kiezer, .pf-kaart, .pf-pasje, .pf-balk, .pf-login-uitleg {
+  --pf-kaart: var(--midnight-2, #10203F);
+  --pf-kaart-in: var(--midnight, #0A1730);
+  --pf-kt: var(--ice, #F6F7FB);
+  --pf-kt2: var(--ice-muted, rgba(246, 247, 251, .78));
+  --pf-krand: var(--line-strong, rgba(255, 255, 255, .22));
+  --pf-krand2: rgba(255, 255, 255, .5);
+  --pf-actie: var(--gold, #FFB347);
+  --pf-op-actie: var(--midnight, #0A1730);
+  --pf-foutkleur: #FFB7B7;
+  --pf-kop: var(--display, inherit);
+  --pf-druk: rgba(255, 255, 255, .14);
+  --pf-vink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A1730' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  --poort-dicht: #F0685E;
+  --poort-open: #3DDC84;
+}
+html[data-theme="sporthub"] :is(.pf-laag, .pf-kiezer, .pf-kaart, .pf-login-uitleg) {
+  --pf-kaart: #FFFFFF;
+  --pf-kaart-in: #F6F7FB;
+  --pf-kt: #06193A;
+  --pf-kt2: #4A4F72;
+  --pf-krand: rgba(6, 25, 58, .16);
+  --pf-krand2: rgba(6, 25, 58, .5);
+  --pf-actie: #FF6B1A;
+  --pf-op-actie: #06193A;
+  --pf-foutkleur: #A32A21;
+  --pf-kop: 'Unbounded', 'Geist', system-ui, sans-serif;
+  --pf-druk: rgba(6, 25, 58, .08);
+  --pf-vink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  --poort-dicht: #C4382E;
+  --poort-open: #FF6B1A;
+}
+html[data-theme="sporthub"] :is(.pf-pasje, .pf-balk) {
+  --pf-kt: #F6F7FB; --pf-kt2: rgba(246, 247, 251, .84); --pf-krand2: rgba(246, 247, 251, .46);
+  --pf-kop: 'Unbounded', 'Geist', system-ui, sans-serif;
+}
+.pf-sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.pf-laag [hidden], .pf-kiezer[hidden], .pf-kaart [hidden] { display: none !important; }
+
+/* Rondje: acht vaste kleuren, elk met een tekstkleur die AA haalt. */
+.pf-rond {
+  --r: 28px;
+  flex: none; display: inline-grid; place-items: center; width: var(--r); height: var(--r); border-radius: 50%;
+  background: #DDE2EE; color: #06193A; font-family: var(--pf-kop, inherit); font-size: calc(var(--r) * .36); font-weight: 800;
+  line-height: 1; letter-spacing: -.02em; text-transform: uppercase; user-select: none; overflow: hidden;
+}
+.pf-rond-m { --r: 44px; }
+.pf-rond-g { --r: 64px; }
+.pf-k-blauw { background: #2459D6; color: #FFFFFF; }
+.pf-k-oranje { background: #FF6B1A; color: #06193A; }
+.pf-k-groen { background: #17783F; color: #FFFFFF; }
+.pf-k-paars { background: #7A3FD1; color: #FFFFFF; }
+.pf-k-turkoois { background: #0B6F78; color: #FFFFFF; }
+.pf-k-geel { background: #FFD23F; color: #06193A; }
+.pf-k-roze { background: #FF9BB8; color: #06193A; }
+.pf-k-grijs { background: #DDE2EE; color: #06193A; }
+
+/* ── 2. Inlogkaart ──────────────────────────────────────────────────────── */
+.pf-login-uitleg { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--pf-kt2); }
+.login-card.pf-kiest { max-width: 520px; }
+.login-card.pf-kiest > :is(h2, #login-form) { display: none; }
+.pf-kiezer { margin-top: 6px; color: var(--pf-kt); }
+.pf-k-kop { margin: 0; font-family: var(--pf-kop); font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -.015em; color: var(--pf-kt); text-transform: none; }
+.pf-k-kop:focus { outline: none; }
+.pf-k-sub { margin: 8px 0 16px; font-size: 14.5px; line-height: 1.5; color: var(--pf-kt2); }
+.pf-k-lijst { list-style: none; margin: 0; padding: 2px; display: grid; gap: 8px; max-height: min(52vh, 430px); overflow-y: auto; overscroll-behavior: contain; }
+.pf-k-knop {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 68px; padding: 10px 14px; text-align: left; cursor: pointer;
+  border-radius: 16px; border: 1.5px solid var(--pf-krand); background: var(--pf-kaart-in); color: var(--pf-kt); font: inherit;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.pf-k-knop:hover { border-color: var(--pf-kt); transform: translateY(-1px); }
+.pf-k-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pf-k-t b { font-family: var(--pf-kop); font-size: 16px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.pf-k-t span { font-size: 13.5px; line-height: 1.35; color: var(--pf-kt2); overflow-wrap: anywhere; }
+.pf-k-t .pf-k-verder { font-family: var(--mono, monospace); font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.pf-k-p { flex: none; color: var(--pf-kt2); }
+.pf-k-leeg, .pf-k-dicht { margin: 0; padding: 14px; border-radius: 14px; border: 1px dashed var(--pf-krand2); font-size: 14px; line-height: 1.5; color: var(--pf-kt2); }
+.pf-k-dicht { margin-top: 12px; }
+.pf-k-nieuw, .pf-k-terug {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 12px; padding: 8px 14px; cursor: pointer;
+  border-radius: 999px; border: 1.5px dashed var(--pf-krand2); background: transparent; color: var(--pf-kt); font: inherit; font-size: 14.5px; font-weight: 700;
+}
+.pf-k-nieuw:hover { border-style: solid; background: var(--pf-druk); }
+.pf-k-terug { min-height: 44px; margin-top: 6px; border: 0; font-weight: 500; font-size: 13.5px; color: var(--pf-kt2); }
+.pf-k-terug:hover { color: var(--pf-kt); text-decoration: underline; text-underline-offset: 3px; }
+:is(.pf-k-knop, .pf-k-nieuw, .pf-k-terug):focus-visible { outline: 3px solid var(--pf-kt); outline-offset: 2px; }
+
+/* ── 3. Lagen en het cijferpaneel ───────────────────────────────────────── */
+.pf-laag {
+  position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 20px 16px;
+  background: rgba(3, 10, 26, .74); opacity: 0; transition: opacity .18s ease; overflow-y: auto; overscroll-behavior: contain;
+}
+.pf-laag.is-in { opacity: 1; }
+.pf-laag.is-weg { opacity: 0; pointer-events: none; }
+/* Bij het poortje is de ingezoomde stad de achtergrond: het paneel staat ernaast (laptop) of eronder (telefoon). */
+.pf-laag.pf-plaats-poort { background: transparent; pointer-events: none; place-items: center end; padding: 24px clamp(20px, 4vw, 56px); }
+.pf-laag.pf-plaats-poort .pf-paneel { pointer-events: auto; box-shadow: 0 28px 70px -22px rgba(0, 0, 0, .85); }
+
+.pf-paneel {
+  position: relative; width: min(372px, 100%); padding: 22px 22px 20px; border-radius: 24px; text-align: center;
+  background: var(--pf-kaart); color: var(--pf-kt); border: 1px solid var(--pf-krand); box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .8);
+  transform: translateY(14px) scale(.985); transition: transform .26s cubic-bezier(.2, .7, .2, 1), border-color .2s ease;
+}
+.pf-laag.is-in .pf-paneel { transform: none; }
+.pf-p-top { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pf-lamp {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px 0 10px; border-radius: 999px; border: 1.5px solid var(--pf-krand2);
+  font-family: var(--mono, monospace); font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pf-kt);
+}
+.pf-lamp i { width: 12px; height: 12px; border-radius: 50%; background: var(--poort-dicht); box-shadow: 0 0 0 3px color-mix(in srgb, var(--poort-dicht) 26%, transparent); transition: background .2s ease, box-shadow .2s ease; }
+.pf-lamp[data-staat="open"] i { background: var(--poort-open); box-shadow: 0 0 0 3px color-mix(in srgb, var(--poort-open) 30%, transparent), 0 0 16px 2px color-mix(in srgb, var(--poort-open) 70%, transparent); }
+.pf-p-slot { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--poort-dicht); color: var(--pf-kt); }
+.pf-p-slot svg { width: 22px; height: 22px; }
+.pf-p-kop { margin: 4px 0 0; font-family: var(--pf-kop); font-size: 21px; font-weight: 800; line-height: 1.15; letter-spacing: -.015em; color: var(--pf-kt); text-transform: none; overflow-wrap: anywhere; }
+.pf-p-kop:focus { outline: none; }
+.pf-p-regel { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--pf-kt2); }
+.pf-p-groot { margin: 6px 0 2px; padding: 10px 18px 10px 26px; border-radius: 16px; border: 1.5px solid var(--pf-krand2); background: var(--pf-kaart-in); font-family: var(--pf-kop); font-size: 40px; font-weight: 800; letter-spacing: .2em; line-height: 1.1; color: var(--pf-kt); font-variant-numeric: tabular-nums; }
+
+.pf-vakjes { display: flex; justify-content: center; gap: 10px; margin: 18px 0 6px; }
+.pf-vakjes span { display: grid; place-items: center; width: 52px; height: 60px; border-radius: 14px; border: 1.5px solid var(--pf-krand2); background: var(--pf-kaart-in); transition: border-color .15s ease, transform .15s ease; }
+.pf-vakjes i { width: 14px; height: 14px; border-radius: 50%; background: var(--pf-kt); transform: scale(0); transition: transform .14s cubic-bezier(.3, 1.6, .5, 1); }
+.pf-vakjes .is-vol { border-color: var(--pf-kt); }
+.pf-vakjes .is-vol i { transform: scale(1); }
+.pf-vakjes-klein { margin: 0; gap: 6px; }
+.pf-vakjes-klein span { width: 30px; height: 36px; border-radius: 9px; }
+.pf-vakjes-klein i { width: 9px; height: 9px; }
+.pf-paneel.is-bezig .pf-vakjes span { animation: pf-puls .7s ease-in-out infinite; }
+.pf-paneel.is-bezig .pf-vakjes span:nth-child(2) { animation-delay: .08s; }
+.pf-paneel.is-bezig .pf-vakjes span:nth-child(3) { animation-delay: .16s; }
+.pf-paneel.is-bezig .pf-vakjes span:nth-child(4) { animation-delay: .24s; }
+@keyframes pf-puls { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.pf-paneel.is-open .pf-vakjes span { border-color: var(--poort-open); }
+.pf-paneel.is-schud { animation: pf-schud .42s cubic-bezier(.36, .07, .19, .97); border-color: var(--poort-dicht); }
+.pf-paneel.is-schud .pf-vakjes span { border-color: var(--poort-dicht); }
+@keyframes pf-schud { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(5px); } 30%, 50%, 70% { transform: translateX(-9px); } 40%, 60% { transform: translateX(9px); } }
+
+.pf-p-melding { min-height: 21px; margin: 8px 0 0; font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--pf-foutkleur); }
+.pf-p-melding:empty { visibility: hidden; }
+.pf-p-melding.is-rustig { color: var(--pf-kt2); }
+.pf-paneel.is-blok .pf-p-melding { font-variant-numeric: tabular-nums; }
+.pf-p-hulp { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--pf-kt2); }
+
+.pf-toetsen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.pf-toets {
+  min-height: 62px; border-radius: 16px; border: 1.5px solid var(--pf-krand2); background: var(--pf-kaart); color: var(--pf-kt); cursor: pointer;
+  font-family: var(--pf-kop); font-size: 24px; font-weight: 700; line-height: 1; display: grid; place-items: center; padding: 0;
+  transition: background .1s ease, transform .1s ease, border-color .1s ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.pf-toets:hover { border-color: var(--pf-kt); }
+.pf-toets:active, .pf-toets.is-druk { background: var(--pf-kt); color: var(--pf-kaart); border-color: var(--pf-kt); transform: scale(.96); }
+.pf-toets-tekst { border-color: transparent; background: transparent; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--pf-kt2); }
+.pf-toets-tekst:hover { border-color: var(--pf-krand2); color: var(--pf-kt); }
+.pf-toets:disabled { opacity: .38; cursor: default; }
+.pf-toets:disabled:hover { border-color: var(--pf-krand2); }
+.pf-toets-tekst:disabled:hover { border-color: transparent; }
+:is(.pf-toets, .pf-knop, .pf-toon, .pf-chip, .pf-kleurknop):focus-visible { outline: 3px solid var(--pf-kt); outline-offset: 2px; }
+
+.pf-label { display: block; margin: 14px 0 6px; padding: 0; text-align: left; font-family: var(--mono, monospace); font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--pf-kt2); }
+.pf-veld {
+  width: 100%; min-height: 48px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--pf-krand2); background: var(--pf-kaart-in); color: var(--pf-kt);
+  font: inherit; font-size: 16px; outline: none;
+}
+.pf-veld::placeholder { color: var(--pf-kt2); opacity: .8; }
+.pf-veld:focus-visible { border-color: var(--pf-kt); outline: 3px solid var(--pf-kt); outline-offset: 1px; }
+.pf-ww-rij { display: flex; gap: 8px; }
+.pf-ww-rij .pf-veld { flex: 1; min-width: 0; }
+.pf-toon { flex: none; min-width: 76px; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--pf-krand2); background: transparent; color: var(--pf-kt); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pf-p-k { display: flex; gap: 10px; margin-top: 16px; }
+.pf-p-k .pf-knop { flex: 1; }
+.pf-knop {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--pf-actie); background: var(--pf-actie); color: var(--pf-op-actie); font: inherit; font-size: 15px; font-weight: 700; text-decoration: none;
+  transition: transform .12s ease, filter .12s ease;
+}
+.pf-knop:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.pf-knop:disabled { opacity: .5; cursor: default; transform: none; filter: none; }
+.pf-knop-rustig { background: transparent; border-color: var(--pf-krand2); color: var(--pf-kt); }
+.pf-knop-rustig:hover { border-color: var(--pf-kt); filter: none; }
+.pf-knop-let { background: transparent; border-color: var(--poort-dicht); color: var(--pf-kt); }
+
+/* ── 4. Nieuw profiel ───────────────────────────────────────────────────── */
+.pf-laag-form { overflow: hidden; }
+/* De kaart past altijd in het scherm: de velden rollen, de knoppen blijven onderaan staan. */
+.pf-form {
+  display: flex; flex-direction: column; width: min(540px, 100%); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow: hidden;
+  border-radius: 24px; background: var(--pf-kaart); color: var(--pf-kt); border: 1px solid var(--pf-krand);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .8); text-align: left;
+}
+.pf-f-rol { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 24px 16px; }
+.pf-oog { font-family: var(--mono, monospace); font-size: 10.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--poort-dicht); }
+.pf-f-kop { margin: 6px 0 0; font-family: var(--pf-kop); font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -.015em; color: var(--pf-kt); text-transform: none; }
+.pf-f-kop:focus { outline: none; }
+.pf-f-sub { margin: 8px 0 4px; font-size: 14.5px; line-height: 1.55; color: var(--pf-kt2); }
+.pf-f-wie { display: flex; align-items: flex-end; gap: 16px; margin-top: 6px; }
+.pf-f-velden { flex: 1; min-width: 0; }
+.pf-f-sug { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pf-chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--pf-krand2); background: transparent; color: var(--pf-kt); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pf-chip:hover { border-color: var(--pf-kt); background: var(--pf-druk); }
+.pf-f-kleur, .pf-f-ww { margin: 0; padding: 0; border: 0; min-width: 0; }
+.pf-kleuren { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-kleur { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; }
+.pf-kleur input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.pf-kleur .pf-rond { --r: 32px; }
+.pf-kleur input:checked + .pf-rond { box-shadow: 0 0 0 3px var(--pf-kaart), 0 0 0 5.5px var(--pf-kt); }
+.pf-kleur input:focus-visible + .pf-rond { outline: 3px solid var(--pf-kt); outline-offset: 6px; }
+.pf-f-pas-rij { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.pf-f-pas-s { flex: 1; min-width: 110px; font-size: 14px; font-weight: 600; color: var(--pf-kt); }
+.pf-f-klein { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--pf-kt2); }
+.pf-f-ww { margin-top: 18px; padding: 4px 16px 16px; border-radius: 16px; border: 1.5px solid var(--pf-krand); background: var(--pf-kaart-in); }
+.pf-f-ww .pf-veld { background: var(--pf-kaart); }
+.pf-f-ww > legend { margin: 0; padding: 0 6px; }
+.pf-sterk { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; line-height: 1.4; color: var(--pf-kt2); }
+.pf-sterk-b { flex: none; display: inline-flex; gap: 4px; }
+.pf-sterk-b i { width: 22px; height: 6px; border-radius: 3px; background: var(--pf-krand2); opacity: .5; }
+.pf-sterk[data-sterk="1"] .pf-sterk-b i:nth-child(1), .pf-sterk[data-sterk="2"] .pf-sterk-b i:nth-child(-n+2), .pf-sterk[data-sterk="3"] .pf-sterk-b i { background: var(--pf-kt); opacity: 1; }
+.pf-f-zicht { margin-top: 18px; padding: 14px 16px; border-radius: 16px; border: 1.5px solid var(--pf-krand); }
+.pf-f-zicht p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--pf-kt2); }
+.pf-f-zicht b { color: var(--pf-kt); }
+.pf-vink { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 6px; font-size: 15px; font-weight: 700; color: var(--pf-kt); cursor: pointer; }
+/* Eigen vinkje: de stijl Sporthub tekent vinkjes voor een blauw vlak, hier staat het op een witte kaart. */
+html body .pf-laag .pf-vink input[type="checkbox"] {
+  appearance: none !important; -webkit-appearance: none !important; flex: none; width: 24px !important; height: 24px !important; margin: 0 !important; border-radius: 7px !important;
+  border: 2px solid var(--pf-kt) !important; background: var(--pf-kaart) center / 16px 16px no-repeat !important; cursor: pointer; position: relative;
+}
+html body .pf-laag .pf-vink input[type="checkbox"]::after { content: none !important; }
+html body .pf-laag .pf-vink input[type="checkbox"]:checked { background-color: var(--pf-kt) !important; background-image: var(--pf-vink) !important; }
+html body .pf-laag .pf-vink input[type="checkbox"]:focus-visible { outline: 3px solid var(--pf-kt) !important; outline-offset: 3px; }
+.pf-f-fout { min-height: 20px; margin: 12px 0 0; font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--pf-foutkleur); }
+.pf-f-fout:empty { display: none; }
+.pf-f-k { flex: none; display: flex; justify-content: flex-end; gap: 10px; padding: 14px 24px 18px; background: var(--pf-kaart); border-top: 1px solid var(--pf-krand); }
+
+/* ── 5. Eigen pasje en balk ─────────────────────────────────────────────── */
+/* "Ingelogd als …" staat in een eigen element (zodat het pasje die plek kan overnemen), maar doet in de opmaak niet mee. */
+.pf-wie { display: contents; }
+.who.pf-heeft-pasje { position: relative; }
+.who.pf-heeft-pasje > .pf-wie { display: none; }
+.pf-pasje {
+  order: 9; margin-left: auto; display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 3px 14px 3px 3px; cursor: pointer; text-align: left;
+  border-radius: 999px; border: 1.5px solid var(--pf-krand2); background: transparent; color: var(--pf-kt); font: inherit;
+}
+.pf-pasje:hover { border-color: var(--pf-kt); }
+.pf-pasje:focus-visible { outline: 3px solid var(--pf-kt); outline-offset: 2px; }
+.pf-pasje .pf-rond { --r: 40px; }
+.pf-pasje-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 190px; }
+.pf-pasje-t b { font-size: 14px; font-weight: 700; line-height: 1.2; color: var(--pf-kt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+.pf-pasje-t span { font-size: 12px; line-height: 1.2; color: var(--pf-kt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who.pf-heeft-pasje > #admin-help-fab.adm-help-vast { order: 10; margin-left: 0 !important; }
+/* Klein in het pasje: "pas actief tot 14:32" of "pas verlopen" (de warme pas). */
+.pf-pasje-t .pf-pasje-pas { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; overflow: visible; }
+.pf-pasje-pas i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--poort-open); }
+.pf-pasje-pas.is-koud i { background: var(--poort-dicht); }
+.pf-kaart-pas { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; color: var(--pf-kt2); border: 1px solid var(--pf-krand); }
+.pf-kaart .pf-kaart-pas b { color: var(--pf-kt) !important; margin: 0 !important; font-weight: 700; }
+.pf-kaart-pas.is-koud { border-color: var(--poort-dicht); }
+
+.pf-kaart {
+  position: absolute; z-index: 90; top: calc(100% + 8px); right: 0; width: min(360px, calc(100vw - 28px)); padding: 18px; border-radius: 20px; text-align: left;
+  background: var(--pf-kaart); color: var(--pf-kt); border: 1px solid var(--pf-krand); box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .8);
+  font-family: var(--body, inherit); font-size: 14px; letter-spacing: 0; text-transform: none;
+}
+.pf-kaart-kop { display: flex; align-items: center; gap: 14px; }
+.pf-kaart-kop h2 { margin: 0; font-family: var(--pf-kop); font-size: 18px; font-weight: 800; line-height: 1.2; color: var(--pf-kt); text-transform: none; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pf-kaart-kop h2:focus { outline: none; }
+.pf-kaart-kop p { margin: 2px 0 0; font-size: 14px; color: var(--pf-kt2); overflow-wrap: anywhere; }
+.pf-label-s { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: 999px; border: 1.5px solid var(--pf-krand2); font-family: var(--mono, monospace); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--pf-kt); }
+.pf-kaart-t { margin: 16px 0 8px; font-family: var(--mono, monospace); font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--pf-kt2); }
+.pf-wijken { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pf-wijken li { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 2px 8px; border-radius: 10px; font-size: 14.5px; font-weight: 600; color: var(--pf-kt); }
+.pf-wijken em { margin-left: auto; font-style: normal; font-size: 12.5px; font-weight: 500; color: var(--pf-kt2); }
+.pf-wijk-i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--pf-krand2); }
+.pf-wijk-i svg { width: 13px; height: 13px; }
+.pf-wijken .is-dicht { color: var(--pf-kt2); font-weight: 500; }
+.pf-wijken .is-dicht .pf-wijk-i { border-style: dashed; }
+.pf-wijken .is-nu { background: var(--pf-kaart-in); box-shadow: inset 0 0 0 1.5px var(--poort-open); }
+.pf-wijken .is-nu em { color: var(--pf-kt); font-weight: 700; }
+.pf-kaart-zin { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--pf-kaart-in); font-size: 13px; line-height: 1.5; color: var(--pf-kt2); }
+.pf-kaart-kleur { display: flex; flex-wrap: wrap; gap: 0; margin-top: 12px; }
+.pf-kleurknop { display: grid; place-items: center; width: 38px; height: 40px; padding: 0; border-radius: 50%; border: 0; background: transparent; cursor: pointer; }
+.pf-kleurknop .pf-rond { --r: 26px; }
+.pf-kleurknop.is-nu .pf-rond { box-shadow: 0 0 0 2.5px var(--pf-kaart), 0 0 0 4.5px var(--pf-kt); }
+.pf-kaart-k { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.pf-kaart-k .pf-knop { min-height: 44px; padding: 0 12px; font-size: 14px; }
+.pf-kaart-k .pf-knop:last-child { grid-column: 1 / -1; }
+
+.pf-balk { margin: 12px 0 0; padding: 12px 16px; border-radius: 14px; border: 1.5px solid #F0685E; background: rgba(196, 56, 46, .16); color: var(--pf-kt); }
+.pf-balk p { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.pf-balk p + p { margin-top: 6px; }
+
+/* ── 6. Telefoon ────────────────────────────────────────────────────────── */
+@media (max-width: 759px) {
+  /* Het paneel is een blad van onderen: de duim kan erbij en de stad blijft erboven zichtbaar. */
+  .pf-laag:not(.pf-laag-form) { place-items: end center; padding: 0; }
+  .pf-laag.pf-plaats-poort { place-items: end center; padding: 0; }
+  .pf-paneel { width: 100%; max-width: 520px; padding: 16px 18px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 24px 24px 0 0; border-bottom: 0; transform: translateY(40px); }
+  .pf-p-top { gap: 6px; }
+  .pf-p-kop { font-size: 19px; }
+  .pf-vakjes { margin: 12px 0 4px; }
+  .pf-vakjes span { width: 48px; height: 52px; }
+  .pf-vakjes-klein span { width: 28px; height: 34px; }
+  .pf-toetsen { gap: 8px; margin-top: 8px; }
+  .pf-toets { min-height: 56px; font-size: 22px; }
+  .pf-toets-tekst { font-size: 14px; }
+  .pf-p-melding { margin-top: 6px; }
+  .pf-rond-g { --r: 52px; }
+  .pf-laag-form { padding: 8px 8px 0; place-items: end center; }
+  .pf-form { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); border-radius: 22px 22px 0 0; border-bottom: 0; }
+  .pf-f-rol { padding: 20px 18px 12px; }
+  .pf-f-k { padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .pf-f-k .pf-knop { flex: 1; padding: 0 12px; }
+  .pf-f-kop, .pf-k-kop { font-size: 21px; }
+  .pf-pasje { order: -1; margin-left: 0; margin-right: auto; }
+  .pf-pasje-t { max-width: 130px; }
+  .pf-pasje-t:has(.pf-pasje-pas) .pf-pasje-f { display: none; }      /* telefoon: naam + de stand van je pas */
+  .who.pf-heeft-pasje > #live-status { display: none; }
+  .who.pf-heeft-pasje > #admin-help-fab.adm-help-vast { margin-left: 0 !important; }
+  .pf-kaart { left: 0; right: auto; }
+}
+
+/* ── 7. Minder beweging ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .pf-laag, .pf-paneel, .pf-vakjes span, .pf-vakjes i, .pf-toets, .pf-knop, .pf-k-knop, .pf-lamp i { transition: none !important; }
+  .pf-paneel, .pf-laag.is-in .pf-paneel { transform: none; }
+  .pf-paneel.is-schud { animation: none; border-color: var(--poort-dicht); box-shadow: 0 0 0 3px var(--poort-dicht); }
+  .pf-paneel.is-bezig .pf-vakjes span { animation: none; opacity: .6; }
+  .pf-toets:active, .pf-toets.is-druk, .pf-knop:hover, .pf-k-knop:hover { transform: none; }
+}
+
+
+/* Koppen krijgen de focus vanuit het script (voor de schermlezer); daar hoort geen kader om. */
+html body :is(.pf-k-kop, .pf-p-kop, .pf-f-kop, .pf-kaart-kop h2):focus-visible { outline: none !important; }
+
+
+/* ── 8. Zichtbare focus in de stijl Sporthub ────────────────────────────────
+   De algemene themaregel (thema-sporthub.css) geeft elke knop een WITTE focusrand: goed op
+   blauw, onzichtbaar op de witte kaarten van het paneel, het formulier, de kiezer en het
+   pasje. Hier wint de donkere rand, met dezelfde zwaarte als de themaregel plus de kaart. */
+html[data-theme="sporthub"] :is(.pf-laag, .pf-kiezer, .pf-kaart) :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #06193A; outline-offset: 2px;
+}
+html[data-theme="sporthub"] .pf-laag .pf-kleur input:focus-visible + .pf-rond { outline: 3px solid #06193A; outline-offset: 6px; }
+html[data-theme="sporthub"] .pf-laag .pf-kleur input:focus-visible { outline: none; }
+html[data-theme="sporthub"] :is(.pf-laag, .pf-kiezer, .pf-kaart) :is(.pf-k-kop, .pf-p-kop, .pf-f-kop, .pf-kaart-kop h2):focus-visible { outline: none; }
+
+/* Twee alinea's in het blok "goed om te weten" van het profielformulier. */
+.pf-f-zicht p + p { margin-top: 8px; }

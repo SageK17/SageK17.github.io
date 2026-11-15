@@ -1,1 +1,1 @@
-{"event_date":"2026-11-22","auto":false,"waves":{"week":{"wave":"week","eligible":34,"sent":0,"remaining":34,"target":"2026-11-15T12:30:00.000Z","due":false},"day":{"wave":"day","eligible":34,"sent":0,"remaining":34,"target":"2026-11-21T12:30:00.000Z","due":false}}}
+{"event_date":"2026-11-22","auto":false,"waves":{"week":{"wave":"week","eligible":42,"sent":0,"remaining":42,"target":"2026-11-15T08:00:00.000Z","due":true},"day":{"wave":"day","eligible":42,"sent":0,"remaining":42,"target":"2026-11-21T08:00:00.000Z","due":false}}}

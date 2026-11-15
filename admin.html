@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/klembord-klein.webp');--werk-icoon-groot:url('/sport/werk/klembord.webp')">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,6 +10,8 @@
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/jvo-smart.css" />
   <link rel="stylesheet" href="/admin-regie.css" />
+  <link rel="stylesheet" href="/admin-hub.css" />
+  <link rel="stylesheet" href="/admin-profielen.css" />
   <link rel="manifest" href="/admin.webmanifest" />
   <meta name="theme-color" content="#FF6B1A" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -434,6 +437,7 @@
         <label for="admin-code">Gedeelde admincode</label>
         <input type="password" id="admin-code" required autocomplete="off" />
       </div>
+      <p class="pf-login-uitleg" id="pf-login-uitleg" hidden>Na de code kies je je eigen profiel en toets je je pas van 4 cijfers in.</p>
       <div id="login-alert"></div>
       <button type="submit" class="btn full" style="margin-top:14px;">Inloggen →</button>
       <p class="small mono" style="text-align:center; margin-top:14px; color: var(--ice-faint); letter-spacing:.18em;">
@@ -451,6 +455,7 @@
       <span class="badge-circle">JVO</span>
       <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; <span data-ev="shortName">Sportdag</span> · Admin</span>
       <span class="brand-text-short"><b>JVO</b> · Admin</span>
+      <span class="brand-text-hub"><b data-ev="shortName">Sportdag</b></span>
     </div>
     <nav>
       <a href="/" target="_blank">Aanmeldformulier ↗</a>
@@ -475,6 +480,12 @@
     <button type="button" class="refresh-btn" id="refresh-btn" title="Direct vernieuwen"><svg class="ri" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg><span class="rl">Vernieuw</span></button>
   </div>
 
+  <!-- ADMIN HUB (admin-hub.js): alleen in hub-modus (meerdere sporten). Het gebouw met
+       zes afdelingen vervangt dan de tabs; de blokken hieronder verhuizen (dezelfde
+       knopen, dezelfde ids) naar hun afdeling. Met één toernooi blijft dit leeg en
+       verborgen, en verandert er niets. -->
+  <div class="ah" id="ah" hidden></div>
+
   <!-- TAB NAV -->
   <div class="tabs" role="tablist">
     <button class="tab-btn active" data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview" id="tabbtn-overview">Overzicht</button>
@@ -495,7 +506,20 @@
     <section class="rg-dag" id="rg-dag" hidden aria-labelledby="rg-dag-titel"></section>
     <details class="help">
       <summary>Hoe werkt dit?</summary>
-      <div class="help-body">
+      <!-- Uitleg voor de Admin Hub (alleen zichtbaar in hub-modus; zie admin-hub.css) -->
+      <div class="help-body ah-uitleg">
+        <p>Dit is de Admin Hub van <span data-ev="withArticle">de JVO Sportdag</span>. Het gebouw is je organisatie: in het midden het evenement, daaromheen vijf afdelingen. Tik op een bouwdeel of op een tegel.</p>
+        <ul>
+          <li><strong>Evenement</strong>: naam, datum, plaats en stijl, het programma, de spelregels en de controle “Klaar voor de start?”.</li>
+          <li><strong>Sport</strong>: sporten toevoegen en bewerken, velden en plekken, teamlogo’s.</li>
+          <li><strong>Toernooien</strong>: schema’s maken en bijsturen, en op de dag zelf de wedstrijddag: pauzeren, uitloop en uitslagen.</li>
+          <li><strong>Mensen</strong>: teams beoordelen, aanmeldingen, check-in en wie van de crew waar staat.</li>
+          <li><strong>Communicatie</strong>: mails, pushmeldingen, de omroep en je eigen notificaties.</li>
+          <li><strong>Veiligheid</strong>: het logboek, back-ups, toegang, de systeemcontrole en de schone start.</li>
+        </ul>
+        <p class="off"><b>Geen internet?</b> Je ziet de laatst geladen gegevens. Wijzigingen (goedkeuren, mailen) hebben verbinding nodig.</p>
+      </div>
+      <div class="help-body ah-uitleg-oud">
         <p>Dit is het organisatie-paneel. Vanuit de tabs hierboven beheer je alles rond <span data-ev="withArticle">de JVO Sportdag</span>:</p>
         <ul>
           <li><strong>Evenement</strong> en <strong>Spelregels</strong> (hieronder op Overzicht) — naam, datum, locatie, tijden, teksten en sponsor. Alles wat je daar invult staat meteen op de site en in de mails.</li>
@@ -646,7 +670,7 @@
 
           <fieldset class="evc-group">
             <legend class="tcz-sub-label">Tijden</legend>
-            <p class="evc-quiet">De tijden op de site en in de mails. Wanneer de eerste wedstrijd begint stel je apart in bij <b>Toernooi → Tijdschema</b>.</p>
+            <p class="evc-quiet">De tijden op de site en in de mails. Wanneer de eerste wedstrijd begint stel je apart in<span class="ah-niet-hub"> bij <b>Toernooi → Tijdschema</b></span><span class="ah-alleen-hub">: per sport, bij <b>Sport</b> onder <b>Opzet, velden en plekken</b></span>.</p>
             <div class="evc-grid c4">
               <div class="evc-f">
                 <label for="evc-teamArrivalTime">Teams aanwezig</label>
@@ -699,7 +723,7 @@
                 <input type="number" id="evc-maxPlayers" inputmode="numeric" step="1" />
               </div>
             </div>
-            <p class="evc-quiet" style="margin:10px 0 0;">Het toernooischema werkt met 10 tot 24 teams (opzet 16, 18 of 20). Wedstrijdduur en aantal velden stel je in bij <b>Toernooi → Tijdschema</b>.</p>
+            <p class="evc-quiet" style="margin:10px 0 0;">Het toernooischema werkt met 10 tot 24 teams (opzet 16, 18 of 20). Wedstrijdduur en aantal velden stel je in<span class="ah-niet-hub"> bij <b>Toernooi → Tijdschema</b></span><span class="ah-alleen-hub"> per sport, bij <b>Sport</b> onder <b>Opzet, velden en plekken</b></span>.</p>
           </fieldset>
 
           <fieldset class="evc-group">
@@ -1465,7 +1489,7 @@
       <div class="section-sub">
         <b style="color:var(--success);">De ronde-updates gaan via push, niet via e-mail.</b> Zodra een wedstrijd
         wordt afgefloten, zet het systeem elk team op de juiste status en stuurt een <b>push-melding</b> naar de
-        volgers (zie Pushmeldingen hierboven). De automatische “volgende ronde”-mails staan uit. Hieronder kun je
+        volgers (zie <span class="ah-niet-hub">Pushmeldingen hierboven</span><span class="ah-alleen-hub">Communicatie, onder Pushmeldingen</span>). De automatische “volgende ronde”-mails staan uit. Hieronder kun je
         de status handmatig corrigeren of — als je dat echt wilt — een statusmail los versturen.
       </div>
       <div style="overflow-x:auto;">
@@ -1594,7 +1618,7 @@
   <div class="tab-pane" id="tab-audit" role="tabpanel" aria-labelledby="tabbtn-audit">
     <div class="section">
       <h3>Logboek</h3>
-      <div class="section-sub">
+      <div class="section-sub" id="audit-uitleg" data-zonder="Wie deed wat, wanneer. Code wordt gedeeld door het admin-team, dus log is gebaseerd op de naam die je bij het inloggen invulde.">
         Wie deed wat, wanneer. Code wordt gedeeld door het admin-team, dus log is gebaseerd op de naam die je bij het inloggen invulde.
       </div>
       <div class="audit-filters" role="tablist" aria-label="Logboek filter">
@@ -1915,8 +1939,10 @@
 <script src="/register-sw.js"></script>
 <script src="/fx.js"></script>
 <script src="/logo-render.js"></script>
+<script src="/admin-profielen.js"></script>
 <script src="/admin.js"></script>
 <script src="/admin-competities.js"></script>
 <script src="/admin-regie.js"></script>
+<script src="/admin-hub.js"></script>
 </body>
 </html>

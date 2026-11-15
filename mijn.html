@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp')">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <script src="/voorbeeld.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Mijn team — JVO Sportdag</title>
+  <meta name="description" content="Jouw aanmelding voor de JVO Sportdag: status, check-in en je wedstrijden op één plek." />
+  <!-- Persoonlijke pagina: hoort niet in zoekmachines (zie ook robots.txt). -->
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/png" href="/icons/favicon.png" />
+  <!-- Eén web-app voor de deelnemer: Mijn team + het bord (zie /mijn.webmanifest in server.js). -->
+  <link rel="manifest" href="/mijn.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/jvo-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sportdag" />
+  <meta name="theme-color" content="#06193A" /><script src="/sh-bal3d.js" defer></script>
+  
+  <link rel="stylesheet" href="/fonts.css" />
+  <!-- Mijn team: eigen, page-scoped opmaak (alles onder .mt-…). De basis hieronder is de
+       neutrale terugval (stijl schemering); de stijl Sporthub zet alleen de --m-*-waarden om
+       (blauw, wit, oranje, rode ring, ronde letter). Geen evenement-teksten in dit bestand:
+       alles komt uit de ev-tokens van de pagina-vuller of uit GET /api/mijn. -->
+  <style>
+    :root {
+      --m-bg: #0A1628; --m-bg2: #122544; --m-wit: #F3F7FC; --m-inkt: #0A1628; --m-inkt2: #46506E;
+      --m-accent: #FF6B1A; --m-ring: #C4382E; --m-ring-l: #F0685E;
+      --m-rand: rgba(232, 244, 255, .34); --m-scheur: rgba(10, 22, 40, .3);
+      --m-kop: 'Big Shoulders Display', 'Impact', sans-serif; --m-ks: 1.32; --m-ktt: uppercase; --m-kls: .01em;
+      --m-body: 'Geist', system-ui, sans-serif;
+      --m-mono: 'Geist Mono', ui-monospace, monospace;
+      --m-onder: 74px;
+    }
+    html[data-theme="sporthub"] {
+      --m-bg: #06193A; --m-bg2: #0D2550; --m-wit: #FFFFFF; --m-inkt: #06193A; --m-inkt2: #4A4F72;
+      --m-rand: rgba(255, 255, 255, .4); --m-scheur: rgba(6, 25, 58, .3);
+      --m-kop: 'Unbounded', 'Geist', system-ui, sans-serif; --m-ks: 1; --m-ktt: none; --m-kls: -.02em;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--m-bg); color: #fff; }
+    body.mt { font-family: var(--m-body); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .mt :focus-visible { outline: 3px solid #fff; outline-offset: 3px; border-radius: 6px; }
+    .mt [hidden] { display: none !important; }
+    .mt .mono { font-family: var(--m-mono); letter-spacing: .16em; text-transform: uppercase; }
+    .mt-wrap { position: relative; max-width: 560px; margin: 0 auto; padding: calc(18px + env(safe-area-inset-top)) 16px calc(var(--m-onder) + 40px + env(safe-area-inset-bottom)); }
+
+    /* kop */
+    .mt-bar { display: flex; align-items: center; gap: 10px; }
+    .mt-bar img { width: 34px; height: 34px; border-radius: 50%; }
+    .mt-bar .nm { font-family: var(--m-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .85); }
+    .mt-bar .nm b { color: #fff; }
+    .mt-pil { margin-left: auto; font-family: var(--m-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 6px 11px; border-radius: 999px; font-weight: 600; background: #fff; color: var(--m-inkt); white-space: nowrap; }
+    .mt-hoofd h1 { font-family: var(--m-kop); font-weight: 900; font-size: calc(clamp(30px, 9.6vw, 42px) * var(--m-ks)); line-height: 1; letter-spacing: var(--m-kls); text-transform: var(--m-ktt); margin-top: 30px; }
+    .mt-hoofd h1 em, .mt-nu h3 em, .mt-leeg h2 em { font-style: normal; color: var(--m-accent); }
+    .mt-sub { font-size: 10px; color: rgba(255, 255, 255, .85); margin-top: 12px; line-height: 1.6; }
+    .mt-melding { margin-top: 16px; border: 1.5px solid var(--m-accent); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.5; background: var(--m-bg2); }
+    .mt-laden { margin-top: 26px; font-size: 14px; color: rgba(255, 255, 255, .85); }
+
+    .mt-lbl { font-family: var(--m-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .mt-lbl::before { content: ''; width: 22px; height: 1.5px; background: var(--m-ring-l); flex: none; }
+    .mt-lbl i { font-style: normal; margin-left: auto; color: rgba(255, 255, 255, .8); letter-spacing: .12em; }
+
+    /* ── één aanmelding = één blok: het pasje, het ene ding dat nu telt, schema en stand ── */
+    .mt-blok { display: flex; flex-direction: column; gap: 14px; margin-top: 26px; scroll-margin-top: 16px; }
+    .mt-blok + .mt-blok { margin-top: 44px; }
+    .mt-links, .mt-rechts, .mt-onderdelen { display: contents; }
+    .mt-pas { order: 1; } .mt-nu { order: 2; } .mt-wed { order: 3; } .mt-stand-vak { order: 4; } .mt-acties { order: 5; }
+    .mt-blok.qr-eerst .mt-nu, .mt-blok.nu-eerst .mt-nu { order: 0; }
+    .mt-tip { order: 1; font-size: 13.5px; line-height: 1.4; margin-top: -4px; }
+    .mt-tip a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; text-underline-offset: 3px; }
+    .mt-wie { font-size: 9.5px; color: rgba(255, 255, 255, .88); margin-bottom: 12px; }
+    .mt-blok:focus { outline: none; }
+
+    /* meer dan één aanmelding: bovenaan per aanmelding het ene ding dat nu telt */
+    .mt-kort { margin-top: 26px; }
+    .mt-kort .mt-lbl { margin-bottom: 6px; }
+    .mt-kort-rij { display: grid; grid-template-columns: 78px 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 52px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, .22); text-decoration: none; font-size: 14px; line-height: 1.3; }
+    .mt-kort .mt-lbl + .mt-kort-rij { border-top: 0; }
+    .mt-kort-rij b { font-family: var(--m-kop); font-weight: 900; font-size: calc(16px * var(--m-ks)); letter-spacing: var(--m-kls); line-height: 1.1; }
+    .mt-kort-rij.tekst b { font-family: var(--m-body); font-weight: 700; font-size: 12.5px; letter-spacing: 0; }
+    .mt-kort-rij img { width: 26px; height: 26px; object-fit: contain; }
+    .mt-kort-rij span { min-width: 0; overflow-wrap: break-word; color: rgba(255, 255, 255, .92); }
+    .mt-kort-rij span i { display: block; font-style: normal; font-weight: 700; color: #fff; }
+    .mt-kort-rij em.mono { font-style: normal; font-size: 9px; letter-spacing: .12em; color: rgba(255, 255, 255, .85); text-align: right; }
+    .mt-kort-rij .mt-live { margin-right: 2px; }
+
+    /* inklapbaar: eigen wedstrijden en de stand */
+    .mt-vouw > summary { cursor: pointer; list-style: none; min-height: 44px; }
+    .mt-vouw > summary::-webkit-details-marker { display: none; }
+    .mt-vouw > summary::after { content: ''; flex: none; width: 8px; height: 8px; border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(45deg) translate(-2px, -2px); }
+    .mt-vouw[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+    .mt-stand-uitleg { font-size: 9px; letter-spacing: .12em; color: rgba(255, 255, 255, .8); text-align: right; }
+
+    /* het pasje */
+    .mt-pas { position: relative; background: var(--m-wit); color: var(--m-inkt); border-radius: 22px; }
+    .mt-pas :focus-visible, .mt-stand :focus-visible, .mt-kaartje :focus-visible { outline-color: var(--m-inkt); }
+    .mt-pas-kop { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 18px 18px 16px; }
+    .mt-ring { position: relative; display: block; width: 68px; height: 68px; border-radius: 50%; flex: none;
+      background: radial-gradient(circle at 50% 38%, var(--m-bg2), var(--m-bg) 72%);
+      box-shadow: 0 0 0 2px var(--m-wit), 0 0 0 4.5px var(--m-ring); margin: 5px; }
+    .mt-ring-in { position: absolute; inset: 14%; display: block; }
+    .mt-ring-in img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .mt-k { font-family: var(--m-mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--m-inkt2); line-height: 1.5; }
+    .mt-pas h2 { font-family: var(--m-kop); font-weight: 900; font-size: calc(21px * var(--m-ks)); line-height: 1.08; letter-spacing: var(--m-kls); text-transform: var(--m-ktt); margin-top: 4px; overflow-wrap: break-word; -webkit-hyphens: manual; hyphens: manual;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+    /* lange naam: kleinere letter, hooguit drie regels, nooit een afbreking midden in een woord */
+    .mt-pas h2.lang { font-size: calc(17px * var(--m-ks)); line-height: 1.12; }
+    .mt-pas h2.erg-lang { font-size: calc(14px * var(--m-ks)); line-height: 1.16; letter-spacing: 0; -webkit-line-clamp: 4; line-clamp: 4; }
+    /* …en de naam krijgt de volle breedte van het pasje (ring en logo erboven) */
+    .mt-pas-kop.breed { grid-template-areas: "ring k logo" "naam naam naam" "st st st"; row-gap: 10px; }
+    .mt-pas-kop.breed > div { display: contents; }
+    .mt-pas-kop.breed .mt-ring { grid-area: ring; width: 50px; height: 50px; }
+    .mt-pas-kop.breed .mt-k { grid-area: k; align-self: center; }
+    .mt-pas-kop.breed h2 { grid-area: naam; margin-top: 0; }
+    .mt-pas-kop.breed .mt-st { grid-area: st; margin-top: 0; }
+    .mt-pas-kop.breed .jvo-logo { grid-area: logo; align-self: center; }
+    .mt-st { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 9px; }
+    .mt-chip { font-family: var(--m-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; padding: 4px 9px; border-radius: 999px; white-space: nowrap; font-style: normal;
+      color: var(--m-inkt); box-shadow: inset 0 0 0 1.5px var(--m-inkt); }
+    .mt-chip.ja { background: var(--m-accent); box-shadow: none; }           /* blauw op oranje = 5,9:1 */
+    .mt-chip.vol { background: var(--m-inkt); color: #fff; box-shadow: none; }
+    .mt-chip.nee { box-shadow: inset 0 0 0 1.5px var(--m-ring); }
+    .mt-chip.stil { box-shadow: none; padding-left: 0; padding-right: 0; color: var(--m-inkt2); font-weight: 500; }
+    .mt-pas .jvo-logo { align-self: start; }
+    .jvo-logo { display: inline-flex; flex: none; line-height: 0; vertical-align: middle; }
+    .jvo-logo img { border-radius: 22%; object-fit: cover; display: block; }
+    .mt-geen-logo { display: inline-block; flex: none; height: 1px; }
+    .mt-scheur { position: relative; border-top: 2px dashed var(--m-scheur); margin: 0 14px; }
+    .mt-scheur::before, .mt-scheur::after { content: ''; position: absolute; top: -11px; width: 20px; height: 20px; border-radius: 50%; background: var(--m-bg); }
+    .mt-scheur::before { left: -24px; } .mt-scheur::after { right: -24px; }
+    .mt-pas-qr { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 16px; align-items: center; padding: 16px 18px 18px; }
+    .mt-qr { display: block; width: 100%; aspect-ratio: 1; border: 0; padding: 0; background: #fff; border-radius: 12px; cursor: zoom-in; box-shadow: 0 0 0 1.5px var(--m-scheur); overflow: hidden; }
+    .mt-qr img { display: block; width: 100%; height: 100%; }
+    .mt-code { display: block; font-family: var(--m-mono); font-weight: 700; font-size: 23px; letter-spacing: .1em; line-height: 1.2; margin-top: 2px; white-space: nowrap; }
+    .mt-pas-qr p, .mt-pas-stub p { font-size: 12.5px; line-height: 1.45; color: var(--m-inkt2); margin-top: 6px; }
+    .mt-bewaard { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--m-inkt) !important; }
+    .mt-bewaard svg { width: 15px; height: 15px; flex: none; }
+    .mt-blok.qr-eerst .mt-pas-qr { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+    .mt-blok.qr-eerst .mt-qr { width: min(100%, 292px); }
+    .mt-blok.qr-eerst .mt-bewaard { justify-content: center; }
+    .mt-pas-stub { padding: 14px 18px 18px; }
+    .mt-pas-voet { padding: 0 18px 16px; margin-top: -4px; }
+    .mt-pas-voet .mt-k b { color: var(--m-inkt); font-weight: 700; letter-spacing: .12em; }
+
+    /* het ene ding dat nu telt */
+    .mt-nu { background: var(--m-bg2); border: 1.5px solid var(--m-rand); border-radius: 22px; padding: 18px; }
+    .mt-nu h3 { font-family: var(--m-kop); font-weight: 900; font-size: calc(clamp(26px, 8.2vw, 34px) * var(--m-ks)); line-height: 1.04; letter-spacing: var(--m-kls); text-transform: var(--m-ktt); margin-top: 12px; overflow-wrap: break-word; }
+    .mt-nu p { font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, .92); margin-top: 10px; }
+    .mt-nu p.klein { font-size: 13px; color: rgba(255, 255, 255, .85); }
+    .mt-nu .mt-lbl + .mt-kaartje, .mt-nu .mt-kaartje + .mt-lbl, .mt-nu p + .mt-lbl, .mt-nu h3 + .mt-lbl, .mt-nu .mt-rij + .mt-lbl { margin-top: 18px; }
+    .mt-nu .mt-lbl + .mt-kaartje { margin-top: 10px; }
+    .mt-reden { margin-top: 12px; border-left: 2px solid var(--m-ring-l); padding: 2px 0 2px 12px; font-size: 15px; line-height: 1.5; }
+    .mt-reden b { display: block; font-family: var(--m-mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: rgba(255, 255, 255, .85); margin-bottom: 3px; }
+    .mt-pauze { margin-top: 14px; border: 1.5px solid var(--m-accent); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.5; background: var(--m-bg); }
+    .mt-pauze b { display: block; font-family: var(--m-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--m-accent); margin-bottom: 3px; font-weight: 600; }
+    .mt-nu > .mt-pauze:first-child { margin-top: 0; }
+    .mt-nu .mt-pauze + .mt-lbl, .mt-nu .mt-pauze + p { margin-top: 16px; }
+    .mt-rij { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+    /* wedstrijdkaartje (zelfde vorm als op het bord) */
+    .mt-kaartje { --stub: 86px; background: var(--m-wit); color: var(--m-inkt); border-radius: 16px; display: grid; grid-template-columns: minmax(0, 1fr) var(--stub);
+      -webkit-mask: radial-gradient(circle 9px at calc(100% - var(--stub)) 0, #0000 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at calc(100% - var(--stub)) 100%, #0000 98%, #000) bottom/100% 51% no-repeat;
+              mask: radial-gradient(circle 9px at calc(100% - var(--stub)) 0, #0000 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at calc(100% - var(--stub)) 100%, #0000 98%, #000) bottom/100% 51% no-repeat; }
+    .mt-kaartje .l { padding: 13px 14px 13px 16px; border-right: 2px dashed var(--m-scheur); min-width: 0; }
+    .mt-kaartje .r { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 8px 4px; }
+    .mt-kaartje .r span.mono { font-size: 9px; color: var(--m-inkt2); text-align: center; letter-spacing: .12em; }
+    .mt-badge { border-radius: 50%; background: var(--m-bg); box-shadow: 0 0 0 1.5px var(--m-bg), 0 0 0 3px var(--m-ring); display: flex; align-items: center; justify-content: center; flex: none; width: 46px; height: 46px; }
+    .mt-badge img { width: 72%; height: 72%; object-fit: contain; }
+    .mt-kaartje .k { font-family: var(--m-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--m-inkt2); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+    .mt-kaartje .k em { font-style: normal; background: var(--m-accent); color: var(--m-inkt); padding: 2px 7px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+    .mt-kaartje .k s { text-decoration-thickness: 1.5px; }
+    .mt-tijd { font-family: var(--m-kop); font-weight: 900; font-size: calc(32px * var(--m-ks)); line-height: 1; letter-spacing: var(--m-kls); margin-top: 8px; }
+    .mt-tegen { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 500; margin-top: 8px; min-width: 0; }
+    .mt-tegen b { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+    .mt-sets { margin-top: 7px; font-family: var(--m-mono); font-size: 11px; letter-spacing: .06em; color: var(--m-inkt2); }
+
+    /* eigen wedstrijden */
+    .mt-wed ul { list-style: none; margin-top: 4px; }
+    .mt-wr { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 11px 0; border-top: 1px solid rgba(255, 255, 255, .22); }
+    .mt-wr:first-child { border-top: 0; }
+    .mt-wr .t { font-family: var(--m-kop); font-weight: 700; font-size: calc(13px * var(--m-ks)); }
+    .mt-wr .n { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 15px; font-weight: 600; line-height: 1.25; }
+    .mt-wr .n span { min-width: 0; overflow-wrap: anywhere; }
+    .mt-wr .u { display: flex; align-items: center; gap: 8px; }
+    .mt-wr .u b { font-family: var(--m-kop); font-weight: 900; font-size: calc(15px * var(--m-ks)); white-space: nowrap; }
+    .mt-wr .o { grid-column: 2 / -1; font-family: var(--m-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255, 255, 255, .82); line-height: 1.5; }
+    .mt-uit { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font: 700 11px var(--m-mono); font-style: normal; flex: none; }
+    .mt-uit.w { background: var(--m-accent); color: var(--m-inkt); }
+    .mt-uit.d { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .8); color: #fff; }
+    .mt-uit.l { background: #fff; color: var(--m-inkt); }
+    .mt-live { font-family: var(--m-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; font-style: normal; background: var(--m-accent); color: var(--m-inkt); padding: 3px 8px; border-radius: 999px; }
+
+    /* stand van de eigen poule */
+    .mt-stand { background: var(--m-wit); color: var(--m-inkt); border-radius: 18px; padding: 12px 16px 8px; margin-top: 10px; }
+    .mt-srow { display: grid; grid-template-columns: 22px minmax(0, 1fr) 30px 38px 34px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(6, 25, 58, .14); font-size: 14px; font-weight: 600; }
+    .mt-srow.kop { font-family: var(--m-mono); font-size: 9px; letter-spacing: .12em; color: var(--m-inkt2); font-weight: 500; text-transform: uppercase; border-top: 0; padding: 2px 0; }
+    .mt-srow span { font-family: var(--m-mono); font-size: 11px; color: var(--m-inkt2); font-weight: 500; }
+    .mt-srow .n { text-align: right; }
+    .mt-srow b { font-family: var(--m-kop); font-weight: 900; font-size: calc(15px * var(--m-ks)); text-align: right; }
+    .mt-srow em { font-style: normal; display: flex; align-items: center; gap: 7px; min-width: 0; line-height: 1.22; }
+    .mt-srow em i { font-style: normal; min-width: 0; overflow-wrap: anywhere; }
+    .mt-srow.mij em i { text-decoration: underline; text-decoration-color: var(--m-accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+    /* knoppen */
+    .mt-knop { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 999px; border: 1.5px solid #fff; background: #fff; color: var(--m-inkt); font: 700 14.5px var(--m-body); padding: 0 20px; cursor: pointer; text-decoration: none; text-align: center; }
+    .mt-knop.rustig { background: transparent; color: #fff; border-color: var(--m-rand); }
+    .mt-knop.accent { background: var(--m-accent); border-color: var(--m-accent); color: var(--m-inkt); }
+    .mt-knop.vol { width: 100%; }
+    .mt-knop[disabled] { opacity: .6; cursor: default; }
+    .mt-knop svg { width: 18px; height: 18px; flex: none; }
+    .mt-acties { display: grid; gap: 10px; }
+    .mt-status { font-size: 13px; line-height: 1.5; color: rgba(255, 255, 255, .9); min-height: 0; }
+    .mt-status:empty { display: none; }
+
+    /* scherm zonder sleutel */
+    .mt-leeg { display: grid; gap: 14px; margin-top: 26px; }
+    .mt-vak { background: var(--m-bg2); border: 1.5px solid var(--m-rand); border-radius: 22px; padding: 18px; }
+    .mt-vak h2, .mt-vak h3.groot { font-family: var(--m-kop); font-weight: 900; font-size: calc(24px * var(--m-ks)); line-height: 1.06; letter-spacing: var(--m-kls); text-transform: var(--m-ktt); margin-top: 12px; }
+    .mt-vak h3 { font-size: 16px; font-weight: 700; margin-top: 12px; }
+    .mt-vak p { font-size: 14.5px; line-height: 1.5; color: rgba(255, 255, 255, .9); margin-top: 8px; }
+    .mt-vak form { margin-top: 14px; display: grid; gap: 8px; }
+    .mt-vak form + form { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .22); }
+    .mt-vak label { font-family: var(--m-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: #fff; }
+    .mt-invoer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+    .mt-vak input { min-height: 48px; width: 100%; border-radius: 14px; border: 1.5px solid var(--m-rand); background: var(--m-bg); color: #fff; font: 600 16px var(--m-body); padding: 0 14px; }
+    .mt-vak input::placeholder { color: rgba(255, 255, 255, .55); font-weight: 500; }
+    .mt-vak input.code { font-family: var(--m-mono); letter-spacing: .12em; text-transform: uppercase; }
+    .mt-fout { font-size: 13.5px; line-height: 1.45; color: #fff; border-left: 2px solid var(--m-ring-l); padding-left: 10px; }
+    .mt-fout:empty { display: none; }
+
+    /* op dit toestel: meldingen, beginscherm, sleutel */
+    .mt-toestel { display: grid; gap: 14px; margin-top: 44px; }
+    .mt-toestel > .mt-lbl { margin-bottom: -2px; }
+    .mt-vak.wijs { box-shadow: 0 0 0 3px var(--m-accent); }
+    .mt-vak .st { font-family: var(--m-mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .85); }
+    .mt-vak .st.aan { color: var(--m-accent); }
+    .mt-vak .kopregel { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .mt-vak .kopregel h3 { margin-top: 0; }
+    .mt-vak .mt-rij { margin-top: 12px; }
+    .mt-vak details summary { cursor: pointer; font-size: 14px; font-weight: 600; min-height: 44px; display: flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
+    .mt-vak ol { margin: 8px 0 0 20px; font-size: 14.5px; line-height: 1.5; color: rgba(255, 255, 255, .92); }
+    .mt-vak ol li + li { margin-top: 4px; }
+    .mt-deel { display: inline-block; width: 1.05em; height: 1.05em; vertical-align: -.16em; }
+    .mt-voet { margin-top: 30px; font-size: 12px; line-height: 1.6; color: rgba(255, 255, 255, .75); }
+
+    /* de QR groot in beeld (altijd zwart op wit) */
+    .mt-groot { position: fixed; inset: 0; z-index: 60; background: #fff; color: #06193A; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)); text-align: center; }
+    .mt-groot :focus-visible { outline-color: #06193A; }
+    .mt-groot img { width: min(88vw, 62vh); height: min(88vw, 62vh); display: block; }
+    .mt-groot h2 { font-family: var(--m-kop); font-weight: 900; font-size: calc(20px * var(--m-ks)); letter-spacing: var(--m-kls); text-transform: var(--m-ktt); overflow-wrap: anywhere; }
+    .mt-groot .mt-code { font-size: 30px; }
+    .mt-groot p { font-size: 13.5px; line-height: 1.5; color: #4A4F72; max-width: 34ch; }
+    .mt-groot button { min-height: 48px; border-radius: 999px; border: 1.5px solid #06193A; background: #06193A; color: #fff; font: 700 14.5px var(--m-body); padding: 0 24px; cursor: pointer; }
+
+    /* vaste links onderaan: Mijn team · Live · Regels */
+    .mt-onder { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--m-bg2); border-top: 1.5px solid var(--m-rand); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+    .mt-onder a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; border-radius: 14px; text-decoration: none; font: 600 11.5px var(--m-body); color: rgba(255, 255, 255, .88); }
+    .mt-onder a svg { width: 21px; height: 21px; }
+    .mt-onder a[aria-current="page"] { background: #fff; color: var(--m-inkt); }
+    .mt-onder a:focus-visible { outline-offset: -3px; }
+    .mt-onder a[aria-current="page"]:focus-visible { outline-color: var(--m-inkt); }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .mt-vak { transition: box-shadow .3s ease; }
+      .mt-ring-in { animation: mt-zweef 6s ease-in-out infinite; }
+      @keyframes mt-zweef { 0%, 100% { transform: translateY(1.5px); } 50% { transform: translateY(-2px); } }
+    }
+    @media (max-width: 359px) {
+      .mt-pas-qr { grid-template-columns: 104px minmax(0, 1fr); gap: 12px; }
+      .mt-code { font-size: 19px; }
+      .mt-ring { width: 56px; height: 56px; }
+      .mt-pas h2.erg-lang { font-size: calc(12.5px * var(--m-ks)); }
+    }
+
+    /* ── breder dan een telefoon ─────────────────────────────────────────────── */
+    @media (min-width: 700px) {
+      .mt-wrap { max-width: 640px; padding-left: 24px; padding-right: 24px; padding-bottom: 130px; }
+      .mt-onder { left: 50%; right: auto; bottom: 16px; width: 372px; transform: translateX(-50%); border: 1.5px solid var(--m-rand); border-radius: 22px; padding: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, .4); }
+      .mt-leeg.twee { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+      .mt-acties { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mt-acties > :only-child { grid-column: 1 / -1; }
+    }
+    /* ── laptop: het pasje links, "nu" + schema + stand rechts ───────────────── */
+    @media (min-width: 900px) {
+      .mt-wrap { max-width: 1180px; padding: 28px 32px 130px; }
+      .mt-hoofd h1 { font-size: calc(56px * var(--m-ks)); margin-top: 36px; }
+      .mt-sub { font-size: 11px; margin-top: 14px; }
+      .mt-lbl { font-size: 11px; }
+      .mt-blok { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); gap: 0 40px; align-items: start; margin-top: 34px; }
+      .mt-blok + .mt-blok { margin-top: 64px; padding-top: 56px; border-top: 1px solid rgba(255, 255, 255, .22); }
+      .mt-links, .mt-rechts { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+      .mt-links { position: sticky; top: 24px; }
+      .mt-acties { grid-template-columns: minmax(0, 1fr); }
+      .mt-nu { padding: 24px; }
+      .mt-nu h3 { font-size: calc(40px * var(--m-ks)); }
+      .mt-nu .mt-kaartje { max-width: 460px; }
+      .mt-onderdelen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; align-items: start; margin-top: 12px; order: 3; }
+      .mt-onderdelen > :only-child { grid-column: 1 / -1; max-width: 520px; }
+      .mt-leeg { max-width: 880px; }
+      .mt-toestel { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; margin-top: 64px; }
+      .mt-toestel > .mt-lbl { grid-column: 1 / -1; }
+    }
+  </style>
+  <link rel="stylesheet" href="/thema-sporthub.css" />
+</head>
+<body class="mt">
+  <div class="mt-wrap">
+    <header class="mt-bar">
+      <img src="/jvo-logo.jpg" alt="JVO" />
+      <span class="nm"><b>JVO</b> · Sportdag</span>
+      <span class="mt-pil" id="mt-net" role="status" hidden></span>
+    </header>
+    <div class="mt-hoofd">
+      <h1 id="mt-kop">Mijn team<em>.</em></h1>
+      <p class="mt-sub mono" id="mt-sub">Zondag 22 november 2026</p>
+    </div>
+    <p class="mt-melding" id="mt-melding" role="status" aria-live="polite" hidden></p>
+
+    <!-- De kaarten (opgebouwd door mijn.js uit GET /api/mijn). data-*: waarden uit het
+         evenement-profiel die het script nodig heeft, ook zonder verbinding. -->
+    <main id="mt-app" data-contact="contact@example.org" data-locatie="Sportcampus Zuiderpark, Den Haag">
+      <p class="mt-laden" id="mt-laden">Laden…</p>
+    </main>
+
+    <!-- Nog geen sleutel op dit toestel: erin met je teamcode of via een link per mail. -->
+    <section class="mt-leeg twee" id="mt-leeg" hidden>
+      <div class="mt-vak">
+        <div class="mt-lbl">Al aangemeld?</div>
+        <h2>Open je team<em>.</em></h2>
+        <p>Typ je teamcode, of laat je link mailen. Een wachtwoord is niet nodig.</p>
+        <form id="mt-code-form" novalidate>
+          <label for="mt-code">Teamcode (8 tekens)</label>
+          <div class="mt-invoer">
+            <input class="code" type="text" id="mt-code" name="code" inputmode="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="12" placeholder="K7M3-PA9Q" />
+            <button type="submit" class="mt-knop" id="mt-code-knop">Open</button>
+          </div>
+          <p class="mt-fout" id="mt-code-fout" role="alert"></p>
+        </form>
+        <form id="mt-link-form" novalidate>
+          <label for="mt-mail">E-mailadres van je aanmelding</label>
+          <div class="mt-invoer">
+            <input type="email" id="mt-mail" name="email" autocomplete="email" placeholder="je@voorbeeld.nl" />
+            <button type="submit" class="mt-knop rustig" id="mt-link-knop">Stuur mijn link</button>
+          </div>
+          <p class="mt-fout" id="mt-link-fout" role="alert"></p>
+          <p class="mt-status" id="mt-link-ok" role="status" aria-live="polite"></p>
+          <p class="mt-status">Alleen voor wie een team of zichzelf als speler heeft aangemeld. Kom je kijken? Dan heb je niets nodig.</p>
+        </form>
+      </div>
+      <div class="mt-vak">
+        <div class="mt-lbl">Nog niet aangemeld?</div>
+        
+        <h3 class="groot">Doe mee<em>.</em></h3>
+        <p>Meld je aan voor de JVO Sportdag. Daarna staat je aanmelding meteen hier.</p>
+        <div class="mt-rij"><a class="mt-knop accent" href="/">Meld je aan</a></div>
+        
+        
+      </div>
+    </section>
+
+    <!-- Op dit toestel: meldingen (opt-in, met uit-knop), op je beginscherm, en de sleutel. -->
+    <section class="mt-toestel" id="mt-toestel" hidden>
+      <div class="mt-lbl">Op dit toestel</div>
+      <div class="mt-vak" id="mt-meld">
+        <div class="kopregel"><h3>Meldingen</h3><span class="st" id="mt-meld-st"></span></div>
+        <p id="mt-meld-uitleg"></p>
+        <div class="mt-rij">
+          <button type="button" class="mt-knop" id="mt-meld-aan" hidden>Zet meldingen aan</button>
+          <button type="button" class="mt-knop rustig" id="mt-meld-uit" hidden>Zet meldingen uit</button>
+        </div>
+        <p class="mt-status" id="mt-meld-msg" role="status" aria-live="polite"></p>
+      </div>
+      <div class="mt-vak" id="mt-install" tabindex="-1" hidden>
+        <div class="kopregel"><h3>Zet op je beginscherm</h3></div>
+        <p id="mt-install-uitleg">Dan open je Mijn team en het live-bord met één tik, ook zonder internet.</p>
+        <ol id="mt-install-ios" hidden>
+          <li>Tik op de deelknop <svg class="mt-deel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg> (vierkant met pijl).</li>
+          <li>Kies ‘Zet op beginscherm’.</li>
+          <li>De app staat los van je browser. Typ daar één keer je teamcode.</li>
+        </ol>
+        <ol id="mt-install-android" hidden>
+          <li>Tik rechtsboven op het menu (⋮).</li>
+          <li>Kies ‘App installeren’ of ‘Toevoegen aan startscherm’.</li>
+        </ol>
+        <div class="mt-rij">
+          <button type="button" class="mt-knop" id="mt-install-knop" hidden>Installeer</button>
+          <button type="button" class="mt-knop rustig" id="mt-install-weg">Niet nu</button>
+        </div>
+      </div>
+      <div class="mt-vak" id="mt-sleutel">
+        <div class="kopregel"><h3>Je sleutel</h3></div>
+        <p id="mt-sleutel-uitleg">Dit toestel onthoudt je sleutel, zodat je niet hoeft in te loggen.</p>
+        <details id="mt-extra">
+          <summary>Nog een team openen met een code</summary>
+          <form id="mt-code-form2" novalidate>
+            <label for="mt-code2">Teamcode (8 tekens)</label>
+            <div class="mt-invoer">
+              <input class="code" type="text" id="mt-code2" name="code" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="12" placeholder="K7M3-PA9Q" />
+              <button type="submit" class="mt-knop" id="mt-code-knop2">Open</button>
+            </div>
+            <p class="mt-fout" id="mt-code-fout2" role="alert"></p>
+          </form>
+        </details>
+        <div class="mt-rij">
+          <button type="button" class="mt-knop rustig" id="mt-weg">Verwijder mijn sleutel van dit toestel</button>
+          <button type="button" class="mt-knop" id="mt-weg-ja" hidden>Ja, verwijder</button>
+          <button type="button" class="mt-knop rustig" id="mt-weg-nee" hidden>Nee, laat staan</button>
+        </div>
+        <p class="mt-status" id="mt-weg-msg" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <p class="mt-voet">JVO · Jeugdgroep van Oranje · <a href="/privacy">Privacy</a> · Vragen? Mail <a href="mailto:contact@example.org">contact@example.org</a></p>
+  </div>
+
+  <nav class="mt-onder" aria-label="Deelnemers-app">
+    <a href="/mijn" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg>Mijn team</a>
+    <a href="/sporten" id="mt-live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>Live</a>
+    <a href="/spelregels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>Regels</a>
+  </nav>
+
+  <div class="mt-groot" id="mt-groot" role="dialog" aria-modal="true" aria-labelledby="mt-groot-naam" hidden>
+    <h2 id="mt-groot-naam"></h2>
+    <img id="mt-groot-img" alt="QR-code voor de check-in" />
+    <div><span class="mt-k">Lukt scannen niet? Noem deze code</span><b class="mt-code" id="mt-groot-code"></b></div>
+    <p>Zet je scherm op de felste stand en houd de QR recht voor de scanner.</p>
+    <button type="button" id="mt-groot-dicht">Sluit</button>
+  </div>
+
+  <script src="/register-sw.js"></script>
+  <script src="/logo-render.js"></script>
+  <script src="/mijn.js"></script>
+</body>
+</html>

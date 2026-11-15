@@ -4,7 +4,10 @@
   const escape = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
   }[c]));
-  const fmtTime = (iso) => iso ? new Date(iso).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  // Tijden uit de database zijn UTC zonder zone ("2026-07-05 12:00:00"): die als UTC lezen,
+  // anders loopt elke tijd in de admin een of twee uur achter.
+  const alsUtc = (iso) => (typeof iso === 'string' && /^\d{4}-\d\d-\d\d[ T]\d\d:\d\d(:\d\d(\.\d+)?)?$/.test(iso) ? iso.replace(' ', 'T') + 'Z' : iso);
+  const fmtTime = (iso) => iso ? new Date(alsUtc(iso)).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
   // Inline stroke icons (currentColor) — replaces emoji for a cleaner look.
   const svg = (paths, size = 13) =>
@@ -76,7 +79,14 @@
   }
 
   // Toast notifications — non-blocking feedback in bottom-right
+  // Heb je het cijferpaneel bij "poort dicht" zelf geannuleerd, dan is de weigering van de
+  // server geen fout om te melden: de balk "de poort is dicht" staat er al. De melding met
+  // precies die servertekst (alert of rode toast) wordt dan kort overgeslagen.
+  let geannuleerd = { op: 0, tekst: '' };
+  const zelfGeannuleerd = (msg) => !!geannuleerd.tekst && Date.now() - geannuleerd.op < 2500 && String(msg || '').includes(geannuleerd.tekst);
+  const alert = (msg) => { if (!zelfGeannuleerd(msg)) window.alert(msg); };
   function showToast(msg, kind = 'success') {
+    if (kind === 'error' && zelfGeannuleerd(msg)) return;
     let host = $('toast-host');
     if (!host) {
       host = document.createElement('div');
@@ -170,55 +180,77 @@
   const loginForm = $('login-form');
   const loginAlert = $('login-alert');
 
+  // Profielen en poortjes (admin-profielen.js, laadt vóór dit bestand). Zonder profielen
+  // op de server is PAS().actief() onwaar en loopt alles hieronder zoals altijd.
+  const PAS = () => window.JVO_PAS || null;
+
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginAlert.innerHTML = '';
-    const name = $('admin-name').value.trim();
+    const P = PAS();
+    // Met profielen op de server vraagt het formulier alleen de code; je naam kies je daarna.
+    const metProfielen = !!(P && P.modus() === true);
+    const name = metProfielen ? '' : $('admin-name').value.trim();
     const code = $('admin-code').value;
-    if (!name || !code) {
-      loginAlert.innerHTML = '<div class="alert error">Vul beide velden in.</div>';
+    if (!code || (!metProfielen && !name)) {
+      loginAlert.innerHTML = `<div class="alert error">${metProfielen ? 'Vul de admincode in.' : 'Vul beide velden in.'}</div>`;
       return;
     }
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, code }),
+        body: JSON.stringify(P ? { name, code, v: 2 } : { name, code }),
       });
       const json = await res.json();
       if (!res.ok) {
         loginAlert.innerHTML = `<div class="alert error">${escape(json.error || 'Inloggen mislukt')}</div>`;
         return;
       }
-      token = json.token;
-      adminName = name;
-      sessionExpiredNotified = false;   // nieuwe sessie → mag weer één keer melden
-      localStorage.setItem('jvo_admin_token', token);
-      localStorage.setItem('jvo_admin_name', adminName);
-      enterDashboard();
+      if (json.kies_profiel && P) {       // de code klopt: nu je profiel en je pas
+        $('admin-code').value = '';
+        P.naLogin(json);
+        return;
+      }
+      startSessie(json.token, name);
     } catch (err) {
       loginAlert.innerHTML = '<div class="alert error">Netwerkfout.</div>';
     }
   });
 
-  $('logout-btn').addEventListener('click', (e) => {
-    e.preventDefault();
+  function startSessie(tok, name) {
+    token = tok;
+    adminName = name || '';
+    sessionExpiredNotified = false;   // nieuwe sessie → mag weer één keer melden
+    localStorage.setItem('jvo_admin_token', token);
+    localStorage.setItem('jvo_admin_name', adminName);
+    enterDashboard();
+  }
+
+  // Uitloggen. Met een profiel wordt ook de sessie op de server beëindigd.
+  async function uitloggen() {
+    const P = PAS(), oud = token;
     localStorage.removeItem('jvo_admin_token');
     token = null;
     stopPoller();
+    if (P) { if (oud && P.heeftProfiel()) P.uitlogServer(oud); P.zetToken(null); }
     // Keep adminName + localStorage so the name stays prefilled
+    loginAlert.innerHTML = '';
     showLogin();
-  });
+  }
+  $('logout-btn').addEventListener('click', (e) => { e.preventDefault(); uitloggen(); });
 
   function showLogin() {
     $('login').style.display = 'grid';
     $('dash').style.display = 'none';
+    const P = PAS();
+    if (P) P.opLogin();     // kijkt of de server profielen heeft en past het formulier daarop aan
     if (adminName) {
       $('admin-name').value = adminName;
       // Focus password field directly if name is already known
       setTimeout(() => $('admin-code').focus(), 50);
     } else {
-      setTimeout(() => $('admin-name').focus(), 50);
+      setTimeout(() => { const n = $('admin-name'); (n && !n.closest('.field')?.hidden ? n : $('admin-code')).focus(); }, 50);
     }
   }
 
@@ -227,12 +259,30 @@
   else showLogin();
 
   async function enterDashboard() {
+    const P = PAS();
+    if (P) {
+      // Eerst weten wie je bent en in welke afdeling je sessie staat: daar hangt van af wat er geladen wordt.
+      P.zetToken(token);
+      const mij = await P.laadIk();
+      if (!token) return;
+      if (mij && mij.profielen_actief && !mij.profielen_uit && !mij.profiel) {
+        // Er zijn profielen en dit token heeft er (nog) geen: eerst kiezen of er een maken.
+        const oud = token;
+        localStorage.removeItem('jvo_admin_token'); token = null;
+        P.zetToken(null);
+        $('login').style.display = 'grid'; $('dash').style.display = 'none';
+        P.profielNodig(oud);
+        return;
+      }
+      if (mij && mij.profiel && mij.naam) { adminName = mij.naam; localStorage.setItem('jvo_admin_name', adminName); }
+    }
     $('login').style.display = 'none';
     $('dash').style.display = 'block';
     $('who').textContent = adminName;
     renderProfile();
     await Promise.all([loadConfig(), refreshAll()]);
-    loadReminderStatus();
+    if (!token) return;
+    if (inWijk('communicatie')) loadReminderStatus();
     loadEventConfig();   // evenement-profiel: checklist, sponsor-knop en namen op het scherm
     // Sync profile (in case admin updated email/toggles before this session)
     syncProfileToServer(adminName, getProfile(adminName));
@@ -345,24 +395,89 @@
     } catch (e) { console.warn('loadConfig mislukt', e); }
   }
 
+  // Eén plek voor alle verzoeken van de admin.
+  //   opts.stil: dit verzoek loopt vanzelf (verversen, een blok dat zichzelf laadt). Zegt
+  //   de server dan "poort dicht", dan komt er geen venster; de aanroeper krijgt de 403.
+  // Zonder `stil` en na een tik van de gebruiker: bij 403 "poort_dicht" komt het
+  // cijferpaneel als venster, en daarna wordt HETZELFDE verzoek precies één keer herhaald
+  // (`_herhaald` voorkomt een lus). De aanroeper merkt daar niets van.
+  function netGetikt() { try { return !navigator.userActivation || navigator.userActivation.isActive; } catch { return true; } }
   async function api(path, opts = {}) {
+    const { stil, _herhaald, ...rest } = opts;
+    const gebruikt = token;
+    const bron = document.activeElement;      // de aangetikte knop (voor de focus na annuleren)
     const res = await fetch(path, {
-      ...opts,
-      headers: { 'x-admin-token': token, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+      ...rest,
+      headers: { 'x-admin-token': token, 'Content-Type': 'application/json', ...(rest.headers || {}) },
     });
     if (res.status === 401) {
+      // Een laat antwoord op een verzoek van een sessie die al weg is (uitgelogd, of er
+      // wordt net een profiel gekozen): niets meer doen, het inlogscherm staat er al.
+      if (gebruikt !== token || !token) throw new Error('Sessie verlopen');
+      let code = '';
+      try { code = (await res.clone().json()).code || ''; } catch { /* oude 401 zonder body */ }
+      if (gebruikt !== token || !token) throw new Error('Sessie verlopen');     // intussen al afgehandeld
+      const P = PAS(), oud = token;
       localStorage.removeItem('jvo_admin_token'); token = null;
+      stopPoller();
+      if (P) { P.zetToken(null); P.sluitPaneel(); }     // een open cijferpaneel hoort niet over het inlogscherm
       showLogin();
-      // Tell the admin WHY the screen just flipped — the generic catch at every
-      // call site would otherwise label this a "Netwerkfout". Maar ÉÉN keer: bij
-      // het openen lopen er meerdere calls parallel (teams/aanmeldingen/logboek),
-      // en die gaven anders alledrie hun eigen foutmelding op het inlogscherm —
-      // terwijl je nog niets had ingetypt.
-      if (!sessionExpiredNotified) {
+      if (code === 'profiel_nodig' && P && oud) {
+        // Er zijn (nu) profielen: dit token werkt nog voor de kiezer. Eén keer, ook als er
+        // meerdere verzoeken tegelijk terugkomen.
+        if (!sessionExpiredNotified) { sessionExpiredNotified = true; P.profielNodig(oud); }
+      } else if (!sessionExpiredNotified) {
+        // Tell the admin WHY the screen just flipped — the generic catch at every
+        // call site would otherwise label this a "Netwerkfout". Maar ÉÉN keer: bij
+        // het openen lopen er meerdere calls parallel (teams/aanmeldingen/logboek),
+        // en die gaven anders alledrie hun eigen foutmelding op het inlogscherm —
+        // terwijl je nog niets had ingetypt.
         sessionExpiredNotified = true;
-        showToast('Je sessie is verlopen — log opnieuw in.', 'error');
+        // Als vaste regel boven het formulier: een toast kan al weg zijn als je weer kijkt.
+        loginAlert.innerHTML = '<div class="alert error" role="alert"></div>';
+        loginAlert.firstChild.textContent = code === 'sessie_ingetrokken' ? 'Je bent uitgelogd. Log opnieuw in.' : 'Je sessie is verlopen. Log opnieuw in.';
       }
       throw new Error('Sessie verlopen');
+    }
+    if (res.status === 403) {
+      const P = PAS();
+      if (P && P.heeftProfiel()) {
+        let j = null;
+        try { j = await res.clone().json(); } catch { /* geen JSON: gewone 403 */ }
+        const lijst = j && (Array.isArray(j.wijken) && j.wijken.length ? j.wijken : [j.wijk]);
+        if (j && j.code === 'poort_dicht') {
+          const methode = String(rest.method || 'GET').toUpperCase();
+          const vraagPas = !stil && !_herhaald && (methode !== 'GET' || netGetikt());
+          if (vraagPas) {
+            if (await P.heropen(j.wijk, j.wijken)) {
+              const opnieuw = await api(path, { ...rest, _herhaald: true });
+              // Dit hoorde bij een andere afdeling dan waar je staat: met een warme pas loop je stil terug.
+              if (P.terugNaarPlek) P.terugNaarPlek();
+              return opnieuw;
+            }
+            if (!token) throw new Error('Sessie verlopen');
+            // Zelf geannuleerd: geen foutmelding, en de focus terug op de knop waar je op tikte.
+            geannuleerd = { op: Date.now(), tekst: String(j.error || '') };
+            // In de hub staat er nu een balk "de poort is dicht" met de knop "Pas intoetsen": dat is de
+            // logische volgende stap, en de aangetikte knop verdwijnt vaak mee met de gegevens van de afdeling.
+            setTimeout(() => {
+              const balk = document.querySelector('#ah-poortbalk [data-ah="poort-open"]');
+              const nu = document.activeElement;      // body, de oude knop, of nog de kop van het paneel dat net sluit
+              if (nu && nu !== document.body && nu !== bron && !(nu.closest && nu.closest('.pf-laag'))) return;
+              const doel = balk && balk.offsetParent ? balk : (bron && bron.isConnected && !bron.disabled ? bron : null);
+              if (doel) { try { doel.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+            }, 260);
+          }
+          // Geen pas (stil verzoek of geannuleerd): de sessie staat niet in die afdeling, dus wat
+          // daarbij hoort (captains, aanmeldingen, logboek) gaat meteen uit beeld.
+          P.poortDicht(lijst);
+          const had = teams.some(t => !t.kort) || signups.length || auditLog.length;
+          lijst.forEach(wisWijkData);
+          if (had && !(teams.some(t => !t.kort) || signups.length || auditLog.length)) setTimeout(() => { if (token && !userIsBusy()) renderAll(); }, 0);
+        } else if (j && j.code === 'geen_toegang') {
+          P.geenToegang(j.wijk);
+        }
+      }
     }
     return res;
   }
@@ -372,30 +487,117 @@
     renderAll();
   }
 
+  // ── Laden per afdeling (alleen met profielen) ───────────────────────────
+  // Gegevens met namen van captains, aanmeldingen en het logboek komen alleen binnen als
+  // je sessie in die afdeling staat. Daarbuiten werkt de admin met de korte teamlijst
+  // (teams-lite: geen captain, mail of telefoon). Zonder profielen laadt alles zoals altijd.
+  function inWijk(w) { const P = PAS(); return !P || !P.heeftProfiel() || P.inWijk() === w; }
+  function kortTeam(x) { return {
+    id: x.id, team_name: x.team_name, status: x.status, tournament_status: x.tournament_status,
+    competition_id: x.competition_id, competition: x.competition, expected_players: x.expected_players,
+    checked_in_at: (x.checked_in || x.checked_in_at) ? (x.checked_in_at || 'ja') : null, kort: true,
+  }; }
+  function wisWijkData(wijk) {
+    const P = PAS();
+    if (!P || !P.heeftProfiel()) return;
+    if (wijk === 'mensen') { teams = teams.map(kortTeam); signups = []; }
+    if (wijk === 'veiligheid') { auditLog = []; }
+  }
+  async function laadWijk(wijk) {
+    if (!token) return;
+    if (wijk === 'mensen') await Promise.all([loadTeams(), loadSignups()]);
+    else if (wijk === 'veiligheid') await loadAudit();
+    else if (wijk === 'communicatie') {
+      loadReminderStatus();
+      if (typeof loadPushPrefs === 'function') loadPushPrefs();
+      if (typeof loadPushTexts === 'function') loadPushTexts();
+    }
+    if (token) renderAll();
+  }
+
   // On a failed refresh keep the LAST-KNOWN data — resetting to [] would repaint
   // the whole dashboard as if the system were empty after one hiccup of the 10s
   // background poll.
   // Alleen een geslaagd antwoord overnemen. Zonder verbinding geeft de service worker
   // een 503 met { offline: true }: dat is geen lijst, dus dan blijft de laatst bekende staan.
-  async function lees(path, cur) {
-    try { const r = await api(path); return r.ok ? await r.json() : cur; } catch (e) { return cur; /* keep last-known */ }
+  // `dicht`: wat er overblijft als de server zegt dat de poort dicht is of dat je er niet
+  // in mag (dan mag er niets van die afdeling in beeld blijven staan).
+  async function lees(path, cur, dicht) {
+    try {
+      const r = await api(path, { stil: true });
+      if (r.ok) return await r.json();
+      return (r.status === 403 && dicht !== undefined && PAS() && PAS().heeftProfiel()) ? dicht : cur;
+    } catch (e) { return cur; /* keep last-known */ }
   }
-  async function loadTeams() { teams = await lees('/api/admin/teams', teams); }
-  async function loadSignups() { signups = await lees('/api/admin/registrations', signups); }
-  async function loadAudit() { auditLog = await lees('/api/admin/audit', auditLog); }
+  async function loadTeams() {
+    if (inWijk('mensen')) {
+      const v = await lees('/api/admin/teams', teams, null);
+      if (v !== null) { teams = v; return; }
+    }
+    // Buiten Mensen (of de poort is net dichtgegaan): de korte lijst zonder persoonsgegevens.
+    const kort = await lees('/api/admin/teams-lite', null);
+    teams = (Array.isArray(kort) ? kort : teams).map(kortTeam);
+  }
+  async function loadSignups() { signups = inWijk('mensen') ? await lees('/api/admin/registrations', signups, []) : []; }
+  // Met profielen wijst een logregel naar een profiel: de naam erbij zoeken (de kiezerlijst:
+  // id, naam, functie) zodat er "Noor de Vries" staat en niet "profiel #2".
+  let profielNamen = new Map();
+  async function loadAudit() {
+    const P = PAS(), metProfiel = !!(P && P.heeftProfiel());
+    auditLog = inWijk('veiligheid') ? await lees('/api/admin/audit', auditLog, []) : [];
+    if (metProfiel && auditLog.some(a => a.target_type === 'profiel')) {
+      const lijst = await lees('/api/admin/profielen', null, null);
+      if (lijst && Array.isArray(lijst.profielen)) profielNamen = new Map(lijst.profielen.map(p => [Number(p.id), String(p.naam || '')]));
+    }
+    const zin = $('audit-uitleg');
+    if (zin) {
+      const t = metProfiel ? 'Wie deed wat, wanneer. Elke regel staat op naam van het profiel waarmee iemand werkte.' : zin.dataset.zonder;
+      if (t && zin.textContent.trim() !== t) zin.textContent = t;
+    }
+  }
+  function auditDoel(a) {
+    if (!a.target_type) return '—';
+    if (a.target_type !== 'profiel') return `${a.target_type} #${a.target_id}`;
+    const naam = profielNamen.get(Number(a.target_id));
+    if (naam && naam === a.actor_name) return 'eigen profiel';
+    return naam ? `profiel ${naam}` : `profiel #${a.target_id} (bestaat niet meer)`;
+  }
 
   // ===== TABS =====================================================
-  function switchTab(name) {
+  // In hub-modus (admin-hub.js) zijn de tabs afdelingen geworden: de hub brengt je naar
+  // de plek die bij deze tab hoort. De hub roept zelf aan met { vanHub: true } om de
+  // tab-staat hieronder (en het verversen dat eraan hangt) gelijk te houden.
+  function switchTab(name, opts) {
+    const vanHub = !!(opts && opts.vanHub);
+    const H = window.JVO_ADMIN_HUB;
+    if (!vanHub && H && H.actief() && H.naarTab(name)) return;
+    // Profielen zonder Admin Hub (alleen als de hub later is uitgezet): een tab die bij een
+    // afdeling hoort vraagt eerst de pas van die afdeling. In de hub regelt de camera dit.
+    const P = PAS();
+    if (!vanHub && !(opts && opts.naPoort) && P && P.heeftProfiel() && !(H && H.actief())) {
+      const wijk = ({ teams: 'mensen', signups: 'mensen', tournament: 'toernooi', program: 'evenement', audit: 'veiligheid' })[name];
+      if (wijk && P.inWijk() !== wijk) {
+        if (!P.magIn(wijk)) { showToast('Daar mag je met dit profiel niet in. Vraag iemand van Veiligheid om toegang.', 'error'); return; }
+        const vorige = P.inWijk();
+        P.poort(wijk, {}).then(async (ok) => {
+          if (!ok) return;
+          if (vorige) wisWijkData(vorige);
+          await laadWijk(wijk);
+          switchTab(name, { naPoort: true });
+        });
+        return;
+      }
+    }
     document.querySelectorAll('.tab-btn').forEach(b => {
       const active = b.dataset.tab === name;
       b.classList.toggle('active', active);
       b.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!vanHub) window.scrollTo({ top: 0, behavior: 'smooth' });
     // Refresh the tournament dashboard the moment its tab opens (the periodic
     // refresh only runs while it's the active pane — see renderAll).
-    if (name === 'tournament' && typeof renderTournDashboard === 'function') { renderTournDashboard(); if (typeof loadPushPrefs === 'function') loadPushPrefs(); if (typeof loadPushTexts === 'function') loadPushTexts(); }
+    if (name === 'tournament' && typeof renderTournDashboard === 'function') { renderTournDashboard(); if (inWijk('communicatie')) { if (typeof loadPushPrefs === 'function') loadPushPrefs(); if (typeof loadPushTexts === 'function') loadPushTexts(); } }
     if (name === 'overview' && typeof renderOverviewLive === 'function') renderOverviewLive();
   }
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -715,7 +917,7 @@
       const res = await api('/api/admin/tournament-statuses');
       tournamentStatuses = await res.json();
     } catch (e) {
-      console.error('Could not load tournament statuses:', e);
+      if (!e || e.message !== 'Sessie verlopen') console.error('Could not load tournament statuses:', e);   // uitgelogd is geen fout
       tournamentStatuses = [];
     }
     return tournamentStatuses;
@@ -730,7 +932,7 @@
     const tbody = $('tournament-tbody');
     if (!tbody) return;
     if (approvedTeams.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Nog geen goedgekeurde teams. Keur teams eerst goed in het tabblad "Teams".</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Nog geen goedgekeurde teams. Keur eerst teams goed bij Teams.</td></tr>`;
       return;
     }
     tbody.innerHTML = approvedTeams.map(t => {
@@ -942,7 +1144,7 @@
         blocked.style.display = 'block';
         blocked.innerHTML =
           `${ICON.warn} Deze persoon kan niet verwijderd worden zolang team <b>${escape(team.team_name)}</b> bestaat. ` +
-          `Verwijder of pas eerst het team aan via het Teams-tabblad.`;
+          `Verwijder het team eerst, of pas het aan, bij Teams.`;
       }
       if (deleteBtn) {
         deleteBtn.disabled = true;
@@ -1109,6 +1311,8 @@
     return 'other';
   }
 
+  // Een foute pas staat bewust niet op naam (iemand anders kan hem hebben ingetoetst).
+  const auditWie = (a) => (a.actor_name === '(pas fout)' ? 'onbekend' : a.actor_name);
   function renderAudit() {
     const filtered = currentAuditFilter === 'all'
       ? auditLog
@@ -1116,9 +1320,9 @@
     $('audit-tbody').innerHTML = filtered.map(a => `
       <tr>
         <td class="mono small muted">${fmtTime(a.timestamp)}</td>
-        <td>${escape(a.actor_name)}</td>
+        <td>${escape(auditWie(a))}</td>
         <td class="small"><b>${escape(actionLabel(a.action))}</b></td>
-        <td class="small">${escape(a.target_type ? `${a.target_type} #${a.target_id}` : '—')}${a.details ? ` <span class="muted">— ${escape(a.details)}</span>` : ''}</td>
+        <td class="small">${escape(auditDoel(a))}${a.details ? ` <span class="muted">— ${escape(a.details)}</span>` : ''}</td>
       </tr>
     `).join('') || `<tr><td colspan="4" class="empty-state">Geen logregels in dit filter.</td></tr>`;
   }
@@ -1128,8 +1332,8 @@
     $('recent-activity').innerHTML = recent.map(a => `
       <div class="recent-row">
         <div class="time">${fmtTime(a.timestamp)}</div>
-        <div class="who">${escape(a.actor_name)}</div>
-        <div class="action">${escape(actionLabel(a.action))}${a.target_type ? ` <span class="muted">→ ${escape(a.target_type)} #${a.target_id}</span>` : ''}</div>
+        <div class="who">${escape(auditWie(a))}</div>
+        <div class="action">${escape(actionLabel(a.action))}${a.target_type ? ` <span class="muted">→ ${escape(auditDoel(a))}</span>` : ''}</div>
       </div>
     `).join('') || `<div class="empty-state">Nog geen activiteit.</div>`;
   }
@@ -1179,7 +1383,8 @@
 
   async function loadReminderStatus() {
     try {
-      const res = await api('/api/admin/reminders/status');
+      const res = await api('/api/admin/reminders/status', { stil: true });
+      if (!res.ok) return;
       const json = await res.json();
       const auto = json.auto !== false;
       renderReminderWave('week', json.waves.week, auto);
@@ -1590,9 +1795,14 @@
   // (anders scroll je naar iets onzichtbaars), in beeld, en even oplichten zodat
   // je ziet waar je terecht bent gekomen.
   const smartGoto = (pane, anchorId) => {
-    switchTab(pane);
+    // Hub-modus: het anker bepaalt de afdeling (de oude tabnaam zegt daar niets meer).
+    const H = window.JVO_ADMIN_HUB, doel = anchorId && document.getElementById(anchorId);
+    if (!(H && H.actief() && doel && H.toon(doel))) switchTab(pane);
     if (!anchorId) return;
-    setTimeout(() => {
+    // In de hub zoomt de camera eerst in (en vraagt de poort zo nodig je pas): pas daarna
+    // staat het anker in beeld.
+    const naAankomst = (fn) => { if (H && H.actief() && H.naAankomst) H.naAankomst(() => setTimeout(fn, 160)); else setTimeout(fn, 160); };
+    naAankomst(() => {
       const el = document.getElementById(anchorId);
       if (!el) { console.warn('smartGoto: anker bestaat niet →', anchorId); return; }
       // elke <details> erboven openklappen (ook het element zelf als dat er een is)
@@ -1602,7 +1812,7 @@
       el.classList.add('jvs-target');
       clearTimeout(smartGoto.t);
       smartGoto.t = setTimeout(() => el.classList.remove('jvs-target'), 2400);
-    }, 160);
+    });
   };
   // De diensten die JVO Smart nú kan verrichten, in zijn eigen woorden.
   function smartServices(t) {
@@ -1732,7 +1942,7 @@
 
   async function loadSmartLearnings() {
     try {
-      const d = await (await api('/api/admin/smart/learnings')).json();
+      const d = await (await api('/api/admin/smart/learnings', { stil: true })).json();
       smartLearnings = Array.isArray(d.learnings) ? d.learnings : [];
       smartEnrichAvail = !!d.enrichAvailable;
     } catch { if (smartLearnings === null) smartLearnings = []; }
@@ -2078,7 +2288,7 @@
     // Don't rebuild the list while the admin is typing in one of its time fields
     // (the 10s auto-refresh would clobber the input). Global shift still updates.
     if (list.contains(document.activeElement)) return;
-    if (!t || !t.configured || !t.poules) { list.innerHTML = '<div class="tcz-empty">Genereer eerst een schema op deze tab.</div>'; return; }
+    if (!t || !t.configured || !t.poules) { list.innerHTML = `<div class="tcz-empty">${window.JVO_ADMIN_HUB && window.JVO_ADMIN_HUB.actief() ? 'Maak eerst een schema bij Opzet &amp; genereren.' : 'Genereer eerst een schema op deze tab.'}</div>`; return; }
     // Only still-to-start matches can be moved — a live/finished match keeps its
     // time, so a change made during a match takes effect from the next one onward.
     const items = [];
@@ -2136,7 +2346,7 @@
   async function loadPushPrefs() {
     if (!$('pp-all')) return;
     try {
-      const r = await api('/api/admin/push-prefs');
+      const r = await api('/api/admin/push-prefs', { stil: true });
       if (!r.ok) return;
       const { prefs } = await r.json();
       const all = prefs.all !== false;
@@ -2270,7 +2480,7 @@
   async function loadPushTexts() {
     if (!$('pt-cats')) return;
     try {
-      const r = await api('/api/admin/push-texts');
+      const r = await api('/api/admin/push-texts', { stil: true });
       if (!r.ok) return;
       const data = await r.json();
       ptPresets = data.presets || {}; ptPlaceholders = data.placeholders || {};
@@ -2328,11 +2538,24 @@
     audit: { title: 'Logboek', html: `<p>Wie deed wat, wanneer. Handig om terug te zien wat er is gebeurd — beslissingen, mails, statuswijzigingen.</p>` },
   };
   function openHelp() {
+    // Admin Hub: de uitleg hoort bij de afdeling of het onderwerp waar je staat, niet bij
+    // de (verborgen) oude tab die daar toevallig onder hangt.
+    const H = window.JVO_ADMIN_HUB;
+    const vanHub = H && H.actief() && H.uitleg ? H.uitleg() : null;
     const tab = document.querySelector('.tab-btn.active')?.dataset.tab || 'overview';
-    const c = HELP_CONTENT[tab] || HELP_CONTENT.overview;
+    const c = vanHub || HELP_CONTENT[tab] || HELP_CONTENT.overview;
     if ($('help-modal-title')) $('help-modal-title').textContent = c.title;
-    if ($('help-modal-body')) $('help-modal-body').innerHTML = c.html;
+    if ($('help-modal-body')) $('help-modal-body').innerHTML = c.html + (vanHub ? hulpVoet() : '');
     const m = $('help-modal'); if (m) { m.classList.add('show'); document.body.style.overflow = 'hidden'; }
+  }
+  // In hub-modus staat het systeemoverzicht niet meer in de bovenbalk maar hier, onder de hulp.
+  // Met profielen hoort die pagina bij Veiligheid: wie daar niet in mag krijgt de link niet.
+  function hulpVoet() {
+    const P = PAS();
+    if (P && P.heeftProfiel() && !P.magIn('veiligheid')) return '';
+    const metPoort = P && P.heeftProfiel();
+    return `<div class="ah-hulp-voet"><a class="ah-hulp-link" href="/system-overview.html" target="_blank" rel="noopener">Systeemoverzicht ↗</a>
+      <span>Hoe het hele systeem in elkaar zit, van aanmelden tot uitslag.${metPoort ? ' Hoort bij Veiligheid: open daar eerst de poort.' : ''}</span></div>`;
   }
   function closeHelp() { const m = $('help-modal'); if (m) m.classList.remove('show'); document.body.style.overflow = ''; }
   $('admin-help-fab')?.addEventListener('click', openHelp);
@@ -2346,6 +2569,8 @@
     fab.classList.add('adm-help-vast');
     who.appendChild(fab);
   })();
+  // Een link in de hub-uitleg brengt je naar die plek; het venster gaat dan dicht.
+  $('help-modal-body')?.addEventListener('click', (e) => { if (e.target.closest('a[data-ah-uitleg]')) closeHelp(); });
   $('help-modal-close')?.addEventListener('click', closeHelp);
   $('help-modal-close-2')?.addEventListener('click', closeHelp);
   $('help-modal')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeHelp(); });
@@ -4248,11 +4473,24 @@
   // en heeft alleen deze paar dingen nodig. `onRender` loopt mee met elke renderAll,
   // dus met de bestaande 10 s-poll: er komt geen tweede timer bij.
   try { const v = sessionStorage.getItem('jvo_admin_sport'); if (v && /^\d+$/.test(v)) selSport = Number(v); } catch {}
+  // Het systeemoverzicht hoort met profielen bij Veiligheid: wie daar niet in mag ziet de knop niet.
+  if (PAS()) PAS().opIk(() => {
+    const l = document.querySelector('nav a[href="/system-overview.html"]');
+    if (!l) return;
+    const P = PAS(), weg = !P.magIn('veiligheid');
+    l.style.display = weg ? 'none' : '';
+    const titel = P.heeftProfiel() ? 'Hoe het systeem werkt (hoort bij Veiligheid: open daar eerst de poort)' : 'Hoe het systeem werkt';
+    if (l.getAttribute('title') !== titel) l.setAttribute('title', titel);
+  });
   window.JVO_ADMIN = {
     api, escape, showToast, switchTab, setFilter, refreshAll, userIsBusy, showPendingTeams,
     getTeams: () => teams,
+    getSignups: () => signups,
     getConfig: () => cfg,
     hasToken: () => !!token,
+    // Profielen en poortjes (admin-profielen.js, admin-hub.js)
+    startSessie, uitloggen, wisWijkData, laadWijk, inWijk,
+    naarLogin: (tekst) => { localStorage.removeItem('jvo_admin_token'); token = null; stopPoller(); showLogin(); if (tekst) showToast(tekst, 'error'); },
     onRender: (fn) => { if (typeof fn === 'function') renderHooks.push(fn); },
     // De Regie-laag geeft de lijst met sporten door (leeg = laag staat uit).
     setComps: (list) => {

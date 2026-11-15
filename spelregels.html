@@ -1,23 +1,31 @@
 <!DOCTYPE html>
 <html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp')">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="/jvo-loader.js"></script>
   <title>Spelregels — JVO Sportdag</title>
   <meta name="description" content="De spelregels van de JVO Sportdag (Sportcampus Zuiderpark, Den Haag)." />
-  <link rel="canonical" href="http://localhost:4795/spelregels" />
+  <link rel="canonical" href="https://sagek17.github.io/spelregels" />
   <meta property="og:title" content="Spelregels — JVO Sportdag" />
   <meta property="og:description" content="De spelregels van de JVO Sportdag." />
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="http://localhost:4795/spelregels" />
+  <meta property="og:url" content="https://sagek17.github.io/spelregels" />
   <meta property="og:locale" content="nl_NL" />
-  <meta property="og:image" content="http://localhost:4795/og/sporthub-liggend.jpg" />
+  <meta property="og:image" content="https://sagek17.github.io/og/sporthub-liggend.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="http://localhost:4795/og/sporthub-liggend.jpg" />
+  <meta name="twitter:image" content="https://sagek17.github.io/og/sporthub-liggend.jpg" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/refined.css" />
+  <!-- Deze pagina zit in de onderbalk van de deelnemers-app (Mijn team · Live · Regels): zelfde manifest. -->
+  <link rel="manifest" href="/mijn.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/jvo-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sportdag" />
   <meta name="theme-color" content="#06193A" /><script src="/sh-beweging.js" defer></script>
   
   <link rel="stylesheet" href="/thema-sporthub.css" />
@@ -67,7 +75,7 @@
 
   <footer class="foot">
     <span>JVO — Jeugdgroep van Oranje · <a href="https://www.jvonl.nl" target="_blank" rel="noopener">jvonl.nl</a></span>
-    <span>Vragen? mail <a class="js-contact-mail" href="mailto:enschede@jvonl.nl">enschede@jvonl.nl</a></span>
+    <span>Vragen? mail <a class="js-contact-mail" href="mailto:contact@example.org">contact@example.org</a></span>
   </footer>
 </div>
 
@@ -105,7 +113,24 @@
     .rules-list li { font-size: 14px; padding: 10px 0 10px 24px; }
     .rules-p { font-size: 14px; }
   }
+  /* vaste links onderaan: Mijn team · Live · Regels (zelfde balk als op /mijn en het bord; kleuren uit het thema) */
+  body { padding-bottom: calc(74px + env(safe-area-inset-bottom)); }
+  .app-onder { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--midnight-2); border-top: 1px solid var(--line-strong); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+  .app-onder a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; border-radius: 14px; text-decoration: none; font: 600 11.5px var(--body); color: var(--ice); }
+  .app-onder a svg { width: 21px; height: 21px; }
+  .app-onder a[aria-current="page"] { background: var(--ice); color: var(--midnight); }
+  .app-onder a:focus-visible { outline-offset: -3px; }
+  @media (min-width: 700px) {
+    body { padding-bottom: 110px; }
+    .app-onder { left: 50%; right: auto; bottom: 16px; width: 372px; transform: translateX(-50%); border: 1px solid var(--line-strong); border-radius: 22px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.4); }
+  }
+  @media print { .app-onder { display: none; } body { padding-bottom: 0; } }
 </style>
+<nav class="app-onder" aria-label="Deelnemers-app">
+  <a href="/mijn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg>Mijn team</a>
+  <a href="/sporten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>Live</a>
+  <a href="/spelregels" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>Regels</a>
+</nav>
 <script src="/offline-ui.js"></script>
 <script src="/register-sw.js"></script>
 <script src="/fx.js"></script>

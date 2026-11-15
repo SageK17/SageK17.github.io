@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/kaartje-klein.webp');--werk-icoon-groot:url('/sport/werk/kaartje.webp')">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -19,6 +20,8 @@
   <!-- Vendored locally (was unpkg) so the scanner works with no internet.
        Byte-for-byte identical to html5-qrcode@2.3.8 (verified against its SRI hash). -->
   <script src="/vendor/html5-qrcode.min.js" defer></script>
+  <!-- Lijst "gescand op dit toestel": alleen in de stijl 'sporthub' (thema-sporthub-beheer.css zet hem aan). -->
+  <style>.ci-recent { display: none; }</style>
   <link rel="stylesheet" href="/thema-sporthub.css" />
   <link rel="stylesheet" href="/thema-sporthub-beheer.css" />
 </head>
@@ -72,36 +75,43 @@
     </p>
   </div>
 
+  <!-- .ci-cols/.ci-scan: op een laptop (stijl 'sporthub') scanner links, uitleg + lijst rechts. -->
+  <div class="ci-cols">
   <details class="help">
     <summary>Hoe werkt dit?</summary>
     <div class="help-body">
       <p>Hiermee check je teams in bij de JVO Sportdag. Goedgekeurde teams kregen een <strong>QR-code per mail</strong>.</p>
       <ul>
         <li>Richt de camera op de QR-code van het team. Het systeem controleert of de code geldig is en het team is <strong>goedgekeurd</strong>.</li>
-        <li>Geen camera, of lukt scannen niet? Tik <strong>“Teamcode invoeren”</strong> en typ de 6-tekens teamcode uit de QR-mail van de captain (of plak de check-in-link).</li>
+        <li>Geen camera, of lukt scannen niet? Tik <strong>“Check-in-code invoeren”</strong> en typ de check-in-code van 6 tekens. Die staat in de QR-mail van de captain en in Mijn team (of plak de check-in-link). De teamcode van 8 tekens is voor meekijken en werkt hier niet.</li>
         <li><strong>“Al ingecheckt”</strong> betekent dat dit team al eerder is gescand.</li>
       </ul>
       <p class="off"><svg class="off-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> <b>Geen internet?</b> Check-ins worden opgeslagen en <b>pas gecontroleerd zodra de verbinding terug is</b> — onderaan zie je hoeveel er in de wachtrij staan. Let op: een offline check-in is <b>voorlopig</b>. Wordt een team bij synchronisatie alsnog geweigerd (bijv. niet goedgekeurd), dan krijg je dat te zien — controleer dat team dan handmatig.</p>
     </div>
   </details>
 
+  <div class="ci-scan">
   <div id="qr-reader"></div>
 
   <div style="display:flex; gap:8px; margin-bottom:16px;">
     <button class="btn-sm" id="restart-btn">Scanner opnieuw starten</button>
-    <button class="btn-sm" id="manual-btn">Teamcode invoeren</button>
+    <button class="btn-sm" id="manual-btn">Check-in-code invoeren</button>
   </div>
 
   <div id="result"></div>
+  </div>
+
+  <section class="ci-recent" id="recent" aria-label="Gescand op dit toestel"></section>
+  </div>
 </div>
 
 <!-- Manual-input modal (replaces native prompt) -->
 <div id="manual-modal" class="manual-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="manual-modal-title">
   <div class="manual-modal-content">
-    <h3 id="manual-modal-title">Teamcode invoeren</h3>
-    <p style="margin-bottom:10px;">Vraag de captain om de <b>teamcode</b> uit de QR-mail en typ 'm hier — hoofdletters en het streepje gaan vanzelf.</p>
+    <h3 id="manual-modal-title">Check-in-code invoeren</h3>
+    <p style="margin-bottom:10px;">Vraag het team om de <b>check-in-code</b> (6 tekens) uit de QR-mail of Mijn team en typ 'm hier — hoofdletters en het streepje gaan vanzelf.</p>
     <input type="text" id="manual-code-input" autocomplete="off" autocapitalize="characters" autocorrect="off"
-           spellcheck="false" placeholder="K7M-3PA" maxlength="7" aria-label="Teamcode, 6 tekens"
+           spellcheck="false" placeholder="K7M-3PA" maxlength="7" aria-label="Check-in-code, 6 tekens"
            style="width:100%; text-align:center; font-family:var(--mono, monospace); font-size:30px; font-weight:700; letter-spacing:.18em; padding:14px 10px; text-transform:uppercase; border-radius:12px;" />
     <div id="manual-code-hint" style="margin-top:8px; font-size:12.5px; color:var(--ice-muted, #9fb4d0); text-align:center; min-height:17px;">Nog 6 tekens</div>
     <details style="margin-top:12px;">

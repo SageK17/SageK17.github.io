@@ -605,17 +605,24 @@
   function stadKnop() {
     if (!stadForm) return;
     const naam = stadWaarde();
-    const vol = isVol(stadComp);
+    const begonnen = !!(stadComp && stadComp.signup_state === 'started');
+    const vol = !begonnen && isVol(stadComp);
     const kort = naam && naam.length <= 22 ? naam : '';
-    SUBMIT_LABEL = vol ? (kort ? `Zet ${kort} op de wachtlijst →` : 'Zet me op de wachtlijst →') : (kort ? `Meld ${kort} aan →` : (BASIS_STAD_KNOP || 'Meld je aan →'));
-    if (submitBtn && !submitBtn.disabled) submitBtn.textContent = SUBMIT_LABEL;
+    SUBMIT_LABEL = begonnen ? 'Aanmelden kan niet meer' : vol ? (kort ? `Zet ${kort} op de wachtlijst →` : 'Zet me op de wachtlijst →') : (kort ? `Meld ${kort} aan →` : (BASIS_STAD_KNOP || 'Meld je aan →'));
+    if (submitBtn && (!submitBtn.disabled || submitBtn.dataset.begonnen)) submitBtn.textContent = SUBMIT_LABEL;
+    if (submitBtn) {
+      if (begonnen) { submitBtn.disabled = true; submitBtn.dataset.begonnen = '1'; }
+      else if (submitBtn.dataset.begonnen) { submitBtn.disabled = false; delete submitBtn.dataset.begonnen; }
+    }
     const noot = $('stad-vol');
     if (noot) {
-      noot.hidden = !vol;
-      if (vol) noot.textContent = `${stadComps.length > 1 ? `${stadComp.name} zit vol.` : 'Alle plekken zijn vergeven.'} Je komt op de wachtlijst en schuift vanzelf door als er een plek vrijkomt.`;
+      noot.hidden = !(vol || begonnen);
+      if (begonnen) noot.textContent = `${stadComps.length > 1 ? `${stadComp.name} is al begonnen.` : 'Het toernooi is al begonnen.'} Aanmelden kan niet meer; vraag het de organisatie.`;
+      else if (vol) noot.textContent = `${stadComps.length > 1 ? `${stadComp.name} zit vol.` : 'Alle plekken zijn vergeven.'} Je komt op de wachtlijst en schuift vanzelf door als er een plek vrijkomt.`;
     }
   }
   function plekTekst(c) {
+    if (c.signup_state === 'started') return 'Al begonnen';
     if (!autoToelaten() || !(c.max_teams > 0)) return c.team_label || '';
     const vrij = c.max_teams - (Number(c.approved) || 0);
     return vrij <= 0 ? 'Vol · wachtlijst' : `Nog ${vrij} ${vrij === 1 ? 'plek' : 'plekken'}`;

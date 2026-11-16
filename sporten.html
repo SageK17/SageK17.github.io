@@ -5,8 +5,8 @@
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nu bezig — JVO Sportdag</title>
-  <meta name="description" content="Alle sporten van de JVO Sportdag live: wat er nu gespeeld wordt, wat er straks komt en de standen." />
+  <title>Nu bezig — Benefiet Zaalvoetbal</title>
+  <meta name="description" content="Alle categorieën van het Benefiet Zaalvoetbal live: wat er nu gespeeld wordt, wat er straks komt en de standen." />
   <link rel="icon" type="image/png" href="/icons/favicon.png" />
   <meta name="theme-color" content="#06193A" />
   <!-- Eén web-app voor de deelnemer: Mijn team (/mijn) en dit bord onder één icoon (zie /mijn.webmanifest in server.js). -->
@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Sportdag" />
+  <meta name="apple-mobile-web-app-title" content="Zaalvoetbal" />
   <link rel="stylesheet" href="/fonts.css" />
   <!-- De ballen in de ring rechtsboven draaien (WebGL, sh-bal3d.js); dat script werkt alleen in de stijl sporthub.
        Bewust: deze pagina staat NIET in THEMED_PAGES (server.js) — ze heeft eigen, page-scoped opmaak en mag
@@ -102,6 +102,8 @@
     .sr span { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; -webkit-hyphenate-limit-before: 4; -webkit-hyphenate-limit-after: 4; line-height: 1.25; }
     .sr i { font-style: normal; font-size: 9px; color: rgba(255,255,255,.85); }
     .leeg { border: 1.5px dashed var(--rand); border-radius: 16px; padding: 18px; font-size: 14px; color: rgba(255,255,255,.88); line-height: 1.5; }
+    /* automatisch ingedeeld en nog niet gestart: de poules kunnen nog schuiven */
+    .voorlopig { margin-top: 14px; padding: 10px 14px; border-radius: 14px; border: 1.5px solid var(--oranje); font-size: 13.5px; line-height: 1.45; color: #fff; }
     .stand { background: #fff; color: var(--navy); border-radius: 18px; padding: 12px 16px 8px; }
     .standen { display: grid; gap: 12px; }
     /* poule-kiezer: "Alle poules" staat altijd vooraan, je zit nooit vast op één poule */
@@ -243,14 +245,14 @@
     <header class="hoofd">
     <div class="bar">
       <img src="/jvo-logo.jpg" alt="JVO" />
-      <span class="nm"><b>JVO</b> · Sportdag</span>
+      <span class="nm"><b>JVO</b> · Zaalvoetbal</span>
       <a class="pill" id="pill" href="/">Aanmelden</a>
     </div>
     <h1 id="kop">Nu bezig<em>.</em></h1>
     <div class="sub mono" id="sub" aria-live="polite">Laden…</div>
     <span class="ring" id="ring" aria-hidden="true"></span>
     </header>
-    <div class="tabs" id="tabs" role="tablist" aria-label="Kies een sport"></div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Kies je categorie"></div>
     <!-- Volg je team: opt-in. Meldingen gaan pas aan na een tik op de knop én
          toestemming in de browser; uitzetten kan hier altijd (zie /privacy). -->
     <details class="volg" id="volg" hidden>

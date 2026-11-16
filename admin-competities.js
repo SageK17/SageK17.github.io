@@ -152,8 +152,14 @@
   async function saveForm(f) {
     const id = f.dataset.id;
     const body = {};
+    // Bewerken: alleen de velden meesturen die je zelf hebt veranderd. Zo zet wie als tweede
+    // opslaat de wijziging van een collega (bv. de wedstrijdduur) niet stil terug.
+    const zelfde = (el) => (el.type === 'checkbox' ? el.checked === el.defaultChecked
+      : el.tagName === 'SELECT' ? [...el.options].every(o => o.selected === o.defaultSelected)
+      : el.value === el.defaultValue);
     for (const el of f.elements) {
       if (!el.name) continue;
+      if (id && zelfde(el)) continue;
       if (el.type === 'checkbox') body[el.name] = el.checked;
       else if (el.type === 'number') { if (el.value !== '') body[el.name] = parseInt(el.value, 10); else if (el.name === 'team_size') body[el.name] = null; }
       else if (el.name === 'best_of') body[el.name] = parseInt(el.value, 10);
@@ -162,7 +168,7 @@
     const j = id ? await api('PUT', `/api/admin/competitions/${encodeURIComponent(id)}`, body)
       : await api('POST', '/api/admin/competitions', body);
     load();
-    return { id: id ? Number(id) : (j.competition && j.competition.id), isNew: !id, name: body.name, competition: j.competition || null };
+    return { id: id ? Number(id) : (j.competition && j.competition.id), isNew: !id, name: body.name || (j.competition && j.competition.name) || (f.elements.name && f.elements.name.value) || '', competition: j.competition || null };
   }
   wrap.addEventListener('submit', async (e) => {
     e.preventDefault();

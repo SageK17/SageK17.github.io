@@ -5,7 +5,8 @@
   main{max-width:1040px;margin:0 auto;padding:28px 18px 40px}
   .oog{font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:#B7C0D6;margin:0}
   h1{font-size:28px;line-height:1.1;margin:8px 0 8px}
-  .in{color:#B7C0D6;margin:0 0 20px;max-width:64ch}
+  h2{font-size:13px;line-height:1.3;margin:26px 0 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#B7C0D6}
+  .in{color:#D5DBEA;margin:0 0 6px;max-width:66ch}
   .rooster{display:grid;gap:12px;grid-template-columns:1fr}
   @media (min-width:760px){.rooster{grid-template-columns:1fr 1fr}}
   a.kaart{display:block;background:#0D2550;border:1.5px solid rgba(255,255,255,.35);border-radius:16px;padding:14px 16px;color:#fff;text-decoration:none}
@@ -16,22 +17,36 @@
   a.kaart .doe{display:block;margin-top:8px;font-size:14px;color:#F6F7FB}
   a.kaart .doe i{font-style:normal;font-weight:600;color:#FFB48A}
   .voet{color:#B7C0D6;font-size:14px;margin-top:22px;max-width:70ch}
+  .voet button{font:inherit;color:#06193A;background:#F6F7FB;border:0;border-radius:999px;min-height:40px;padding:0 16px;font-weight:600;cursor:pointer}
+  .voet button:focus-visible{outline:3px solid #FF6B1A;outline-offset:2px}
 </style></head>
-<body><div class="balk">Voorbeeld met testgegevens · wijzigen werkt hier niet</div>
+<body><div class="balk">Voorbeeld met verzonnen gegevens · wijzigen werkt hier niet</div>
 <main>
 <p class="oog">JVO Sporthub · kijkversie</p>
 <h1>Alle schermen</h1>
-<p class="in">Dit is een kopie om te bekijken, zonder server. Alle namen, teams en uitslagen zijn verzonnen. Inloggen lukt met elke code, elke pas van vier cijfers en elk wachtwoord.</p>
+<p class="in">Dit is een kopie om te bekijken, zonder server. Het voorbeeld is een zaalvoetbaltoernooi met twee categorieën (Dames en Jongens) waar je je aanmeldt met alleen je stad: geen naam, geen e-mail. Het is in het voorbeeld altijd 14:22 op de dag zelf: bij Jongens lopen twee wedstrijden, Dames begint om 15:00.</p>
+<p class="in">Alle steden, uitslagen en namen zijn verzonnen. Inloggen lukt met elke code, elke pas van vier cijfers en elk wachtwoord.</p>
+
+<h2>Voor deelnemers en publiek</h2>
 <div class="rooster">
-<a class="kaart" href="/admin.html"><b>Admin Hub</b><span class="sub">De stad met zes afdelingen, profielen en poortjes</span><span class="doe"><i>Probeer:</i> Vul een willekeurige code in, kies een profiel en toets vier cijfers. Tik op een wijk: de camera zoomt in en het poortje vraagt weer vier cijfers (Veiligheid: een willekeurig wachtwoord). Sam is eigenaar en mag overal in, Daan mag niet in Veiligheid.</span></a>
-<a class="kaart" href="/mijn"><b>Mijn team</b><span class="sub">De eigen pagina van een aanmelder</span><span class="doe"><i>Probeer:</i> Je ziet een goedgekeurd team met QR, eerstvolgende wedstrijd en stand, en een tweede aanmelding die nog wacht. Onderaan kun je met een willekeurige teamcode van 8 tekens met een ander team meekijken.</span></a>
-<a class="kaart" href="/"><b>Aanmeldpagina</b><span class="sub">Voor deelnemers en bezoekers</span><span class="doe"><i>Probeer:</i> Vul het formulier in met verzonnen gegevens. Je komt op het scherm "Je bent aangemeld" met de knop "Open Mijn team" (die opent de voorbeeldkaart van FC Voorbeeld). Er wordt niets bewaard of verstuurd.</span></a>
-<a class="kaart" href="/sporten"><b>Live-bord</b><span class="sub">Alle sporten, voor publiek en tv</span><span class="doe"><i>Probeer:</i> Tik in de ring op een sport. Voetbal heeft vier poules: wissel met de poulekiezer. Op een laptop zie je de brede indeling.</span></a>
-<a class="kaart" href="/wedstrijd.html"><b>Crew-bediening</b><span class="sub">Scores invoeren per sport</span><span class="doe"><i>Probeer:</i> Kies "Mijn plek" (bijvoorbeeld Voetbal, veld 1): je krijgt "Jouw wedstrijd nu". Een stand opslaan wordt in dit voorbeeld geweigerd.</span></a>
-<a class="kaart" href="/checkin.html"><b>Check-in</b><span class="sub">Teams inchecken met QR of code</span><span class="doe"><i>Probeer:</i> Bekijk het scherm van de crew bij de ingang. Inchecken zelf werkt hier niet.</span></a>
-<a class="kaart" href="/omroep.html"><b>Omroep</b><span class="sub">Zinnen om voor te lezen, alle sporten</span><span class="doe"><i>Probeer:</i> Kies bovenaan een sport of laat alle sporten staan.</span></a>
-<a class="kaart" href="/print.html?competition=2"><b>Print per sport</b><span class="sub">Papieren noodplan</span><span class="doe"><i>Probeer:</i> Het schema en de stand van voetbal, klaar om af te drukken.</span></a>
-<a class="kaart" href="/spelregels"><b>Spelregels</b><span class="sub">De regels per sport</span></a>
+<a class="kaart" href="/"><b>Aanmeldpagina</b><span class="sub">De voordeur: categorie kiezen, stad kiezen, klaar</span><span class="doe"><i>Probeer:</i> Tik op Dames, kies een stad en tik op de oranje knop. Je ziet meteen "… doet mee" met je poule, de andere steden en je teamcode. Kies je een stad die er al is (Amsterdam), dan heet je team "Amsterdam 2". Tik op Jongens om te zien wat er gebeurt als een categorie al begonnen is.</span></a>
+<a class="kaart" href="/mijn"><b>Mijn team</b><span class="sub">De eigen pagina van een stad, zonder account</span><span class="doe"><i>Probeer:</i> Je ziet de kaart van Rotterdam (Jongens): de QR-code voor de check-in, de wedstrijd die nu loopt, de poule en de stand. Heb je je net aangemeld, dan staat je eigen stad er met "Jullie poule". Onderaan kun je met een teamcode meekijken: typ er zelf een, bijvoorbeeld UTREC-7K4PXQ.</span></a>
+<a class="kaart" href="/sporten"><b>Live-bord</b><span class="sub">Dames en Jongens, voor publiek en tv</span><span class="doe"><i>Probeer:</i> Tik op Jongens: twee wedstrijden zijn bezig, daaronder het schema en de stand per poule. Tik op Dames: daar staat "Voorlopige indeling", want er kunnen nog steden bij. Na je eigen aanmelding staat jouw stad hier ook.</span></a>
+<a class="kaart" href="/spelregels"><b>Spelregels</b><span class="sub">De regels die de organisatie invult</span></a>
 </div>
-<p class="voet">Opslaan en wijzigen werkt in dit voorbeeld niet: je krijgt dan de melding dat dit een voorbeeld is. Meldingen (push), mail en de live-verbinding staan uit. De klok in de schermen loopt vanaf het moment van opnemen.</p>
-</main></body></html>
+
+<h2>Voor de organisatie</h2>
+<div class="rooster">
+<a class="kaart" href="/admin.html?stand=eenvoudig"><b>Beheer, eenvoudig</b><span class="sub">Eén scherm met vier onderdelen (hoort bij "alleen stad")</span><span class="doe"><i>Probeer:</i> Vul een willekeurige code in. Open Aanmeldingen (steden per categorie met poule, teamcode en check-in), Poules en schema, Wedstrijddag en Instellingen. Onderaan het startscherm brengt "Alles tonen" je naar de volledige Admin Hub.</span></a>
+<a class="kaart" href="/admin.html?stand=volledig"><b>Admin Hub, volledig</b><span class="sub">De stad met zes afdelingen, profielen en poortjes</span><span class="doe"><i>Probeer:</i> Vul een willekeurige code in, kies een profiel en toets vier cijfers. Tik op een wijk: het poortje vraagt weer vier cijfers (Veiligheid: een willekeurig wachtwoord). Bij Evenement staan de nieuwe instellingen: de kop van de voordeur, de aanmeldvorm en de lijst met steden. Sam is eigenaar, Daan mag niet in Veiligheid.</span></a>
+<a class="kaart" href="/wedstrijd.html"><b>Crew-bediening</b><span class="sub">Scores invoeren per veld</span><span class="doe"><i>Probeer:</i> Kies "Mijn plek" (Jongens, veld 1): je krijgt "Jouw wedstrijd nu". Een stand opslaan wordt in dit voorbeeld geweigerd.</span></a>
+<a class="kaart" href="/checkin.html"><b>Check-in</b><span class="sub">Bij de ingang: QR scannen of de stad opzoeken</span><span class="doe"><i>Probeer:</i> Tik op "Zoek op naam" en typ een stad (bijvoorbeeld "den"). Je ziet de categorie, de poule en wie al binnen is. Inchecken zelf werkt hier niet.</span></a>
+<a class="kaart" href="/omroep.html"><b>Omroep</b><span class="sub">Zinnen om voor te lezen</span><span class="doe"><i>Probeer:</i> Bekijk de zinnen bij de wedstrijden die nu lopen en die zo beginnen.</span></a>
+<a class="kaart" href="/print.html?competition=3"><b>Print</b><span class="sub">Papieren noodplan per categorie</span><span class="doe"><i>Probeer:</i> Het schema en de stand van Jongens, klaar om af te drukken.</span></a>
+<a class="kaart" href="/privacy"><b>Privacy</b><span class="sub">Wat er wordt bewaard bij aanmelden met alleen een stad</span></a>
+</div>
+<p class="voet">Opslaan en wijzigen werkt in dit voorbeeld niet: je krijgt dan de melding dat dit een voorbeeld is. Alleen je eigen aanmelding onthoudt dit toestel, zodat je je stad op het bord en in de admin terugziet. Meldingen (push), mail en de live-verbinding staan uit.</p>
+<p class="voet"><button type="button" id="opnieuw">Begin opnieuw</button> &nbsp;Wist wat dit toestel van het voorbeeld onthoudt (je aanmelding, je profiel, je plek bij de crew).</p>
+</main>
+<script src="/alles.js"></script>
+</body></html>

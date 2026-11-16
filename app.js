@@ -7,9 +7,14 @@
 //   • nooit een lege waarde over een door de server gevulde waarde schrijven;
 //   • config-/gebruikerswaarden alleen via textContent of DOM-nodes (geen innerHTML);
 //   • elk element kan ontbreken (bv. het formulier als aanmelden dicht is) → overal guards.
+// Twee aanmeldvormen (evenement-profiel › Aanmelden): "uitgebreid" (#reg-form: naam, e-mail,
+// team, toestemmingen) of "alleen stad" (#stad-form: categorie + één veld, zonder e-mail).
+// De server tekent er precies één; alles wat de vorm of de woorden bepaalt (label, lijst,
+// categorie/sport) komt uit /api/config en /api/competitions, niets staat hier vast.
 (async () => {
   const $ = (id) => document.getElementById(id);
   const form = $('reg-form');
+  const stadForm = $('stad-form');
   const submitBtn = $('submit-btn');
   const alertBox = $('form-alert');
   const successBox = $('success');
@@ -71,6 +76,79 @@
     el.appendChild(a);
   }
 
+  // --- De kop van de voordeur ---------------------------------------------------
+  // De regels komen uit het evenement-profiel (server: {{ev.heroLine1..3}}). Hier alleen de
+  // afwerking: geen dubbele punt als een regel zelf al op een leesteken eindigt, en een
+  // kleinere letter als de langste regel niet in de breedte past (elke regel blijft heel).
+  const kopEl = () => document.querySelector('.hero-intro h1.h-display');
+  // De tekst van één regel, zonder de oranje punt die wij er zelf achter zetten.
+  const regelTekst = (r) => { const p = r.querySelector('.exclaim'); const t = r.textContent; return (p ? t.slice(0, t.length - p.textContent.length) : t).trim(); };
+  const LEESTEKEN = /[.!?\u2026:;,]$/;
+  function kopPunt() {
+    const kop = kopEl();
+    if (!kop || !kop.classList.contains('sh-kop')) return;
+    kop.querySelectorAll('.exclaim').forEach(p => p.remove());
+    const regels = [...kop.querySelectorAll('.sh-kop-regel')].filter(r => r.textContent.trim());
+    const laatste = regels[regels.length - 1];
+    if (!laatste || LEESTEKEN.test(laatste.textContent.trim())) return;
+    const p = document.createElement('span'); p.className = 'exclaim'; p.textContent = '.';
+    laatste.appendChild(p);
+  }
+  function pasKop() {
+    const kop = kopEl();
+    if (!kop) return;
+    const regels = kop.querySelectorAll('.sh-kop-regel, .sh-sr-regel');
+    if (!regels.length) return;
+    kop.style.removeProperty('font-size');
+    const ruimte = (kop.closest('.sh-sr-midden') || kop).clientWidth;
+    if (!(ruimte > 0)) return;
+    for (let i = 0; i < 3; i++) {
+      let breedst = 0;
+      regels.forEach((r) => { breedst = Math.max(breedst, r.scrollWidth); });
+      if (breedst <= ruimte + 1) return;
+      const nu = parseFloat(getComputedStyle(kop).fontSize) || 32;
+      kop.style.setProperty('font-size', Math.max(12, Math.floor((nu * ruimte / breedst) * 10) / 10) + 'px', 'important');
+    }
+  }
+  // De titel in de kaart "Op het programma" (stijl sporthub): één lang woord mag nooit midden
+  // in het woord afbreken. Past het langste woord niet, dan krimpt de letter tot het wel past.
+  function pasTitel() {
+    if (document.documentElement.dataset.theme !== 'sporthub') return;
+    const h = document.querySelector('.tournament-headline h2');
+    if (!h) return;
+    h.style.removeProperty('font-size');
+    const ruimte = h.clientWidth;
+    const woord = String(h.textContent || '').trim().split(/\s+/).sort((x, y) => y.length - x.length)[0];
+    if (!(ruimte > 0) || !woord) return;
+    const maat = document.createElement('span');
+    maat.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:0; top:0;';
+    maat.textContent = woord;
+    h.appendChild(maat);
+    const breed = maat.offsetWidth;
+    h.removeChild(maat);
+    if (breed <= ruimte) return;
+    const nu = parseFloat(getComputedStyle(h).fontSize) || 22;
+    h.style.setProperty('font-size', Math.max(13, Math.floor((nu * ruimte / breed) * 10) / 10) + 'px', 'important');
+  }
+  // De bovenregel bij "alleen stad" (datum · doelgroep · prijs) staat smal naast de bal. Valt
+  // een puntje aan het eind van een regel, dan verbergen we het: geen loshangende " ·".
+  function pasBovenregel() {
+    const delen = document.querySelectorAll('#meta-eyebrow .eb-deel');
+    delen.forEach((d, i) => {
+      const punt = d.querySelector('.eb-punt');
+      if (!punt) return;
+      const volgende = delen[i + 1];
+      punt.style.visibility = volgende && volgende.offsetTop > d.offsetTop + 2 ? 'hidden' : '';
+    });
+  }
+  const pasAlles = () => { pasKop(); pasTitel(); pasBovenregel(); };
+  kopPunt();
+  pasAlles();
+  try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(pasAlles); } catch { /* geen font-API */ }
+  window.addEventListener('load', pasAlles, { once: true });
+  let pasTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(pasTimer); pasTimer = setTimeout(pasAlles, 120); });
+
   // Meteen (zonder op /api/config te wachten) de door de server gevulde waarden opmaken.
   renderLocation($('meta-loc')?.textContent);
   renderAddress($('meta-address')?.textContent);
@@ -106,6 +184,8 @@
     // Stijl "sporthub": de oranje "Meld je team aan"-knop bovenaan wijst nu nergens meer heen.
     const shCta = document.querySelector('.sh-cta-rij');
     if (shCta) shCta.hidden = true;
+    // Alleen stad: de zin "Vul je … in en je doet mee" klopt niet meer als aanmelden dicht is.
+    document.querySelectorAll('.st-lead-open').forEach((z) => { z.textContent = 'Aanmelden kan nu niet.'; });
     return true;
   }
   // Pagina is "dicht" gerenderd (geen formulier in de HTML) maar aanmelden is inmiddels open.
@@ -225,7 +305,7 @@
     }
   }
   // Clear field-level errors when user starts typing in any field
-  ['full_name', 'email', 'team_name', 'expected_players'].forEach(id => {
+  ['full_name', 'email', 'team_name', 'expected_players', 'stad'].forEach(id => {
     const el = $(id);
     if (el) el.addEventListener('input', () => {
       el.closest('.field')?.classList.remove('has-error');
@@ -247,7 +327,7 @@
 
     if (path === 'team') {
       if (sports.length > 1) {
-        if (!chosenSport) { showError('Kies eerst je sport.', 'sport-kiezer'); return; }
+        if (!chosenSport) { showError(`Kies eerst je ${labels.one}.`, 'sport-kiezer'); return; }
         data.competition_id = chosenSport.id;
       }
       data.team_name = form.team_name.value.trim();
@@ -440,15 +520,419 @@
     });
   }
 
+  // --- Gedeelde hulpjes voor de keuze (sport of categorie) -----------------------
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = String(text); return n; };
+  // De woorden voor de keuze: "sport/sporten" bij verschillende sporten, of wat de server
+  // geeft als alle competities dezelfde sport zijn (bv. categorie/categorieën).
+  let labels = { one: 'sport', many: 'sporten', choose: 'Kies je sport', all: 'Alle sporten' };
+  const hoofd = (t) => { const x = String(t || ''); return x.charAt(0).toUpperCase() + x.slice(1); };
+  function neemLabels(j) {
+    const l = j && j.labels;
+    if (!l || typeof l !== 'object') return;
+    const uit = {};
+    for (const k of ['one', 'many', 'choose', 'all']) uit[k] = hasText(l[k]) ? String(l[k]) : labels[k];
+    labels = uit;
+  }
+
+  // --- Alleen stad ------------------------------------------------------------
+  // Eén veld (vrije tekst, of een keuzelijst als de organisatie een lijst heeft ingevuld) en,
+  // bij meer dan één competitie, de categorie als grote knoppen. Geen naam, geen e-mail.
+  // De server beslist alles (toelaten of wachtlijst, het volgnummer bij een dubbele naam, de
+  // poule); dit scherm toont het antwoord. De sleutel voor Mijn team blijft op het toestel en
+  // de teamcode staat groot in beeld: er is geen mail als reserve.
+  const STAD_OPSLAG = 'jvo_stad';   // [{ id, name, comp, cat, at }] wat er op dit toestel is aangemeld
+  const BASIS_STAD_KNOP = submitBtn && stadForm ? submitBtn.textContent : '';
+  let stadComps = [];
+  let stadComp = null;
+  let stadBezig = false;
+  let stadGeladen = false;      // competities binnen (of het ophalen is mislukt): pas dan kan er aangemeld worden
+  let stadVraagGehad = false;
+  const nieuwePoging = () => {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch { /* geen veilige context */ }
+    let x = '';
+    try { const a = new Uint8Array(16); crypto.getRandomValues(a); a.forEach(b => { x += b.toString(16).padStart(2, '0'); }); } catch { x = String(Date.now()) + String(Math.random()).slice(2); }
+    return 'p-' + x.slice(0, 40);
+  };
+  let stadPoging = nieuwePoging();
+  const stadWoord = () => (hasText(cfgText.cityLabelLower) ? String(cfgText.cityLabelLower) : ((stadForm && stadForm.dataset.labelKlein) || ''));
+  const stadVeld = () => $('stad');
+  const stadWaarde = () => { const v = stadVeld(); return v ? String(v.value || '').replace(/\s+/g, ' ').trim() : ''; };
+  const autoToelaten = () => !cfgSignup || cfgSignup.autoApprove !== false;
+  const isVol = (c) => !!(c && autoToelaten() && c.max_teams > 0 && c.approved >= c.max_teams);
+
+  function leesStad() {
+    try { const a = JSON.parse(localStorage.getItem(STAD_OPSLAG) || '[]'); return Array.isArray(a) ? a.filter(x => x && Number.isInteger(x.id) && typeof x.name === 'string').slice(0, 12) : []; } catch { return []; }
+  }
+  function bewaarStad(lijst) {
+    try { if (lijst.length) localStorage.setItem(STAD_OPSLAG, JSON.stringify(lijst.slice(0, 12))); else localStorage.removeItem(STAD_OPSLAG); } catch { /* geen opslag */ }
+  }
+  const opsomming = (namen) => (namen.length <= 1 ? namen.join('') : namen.slice(0, -1).join(', ') + ' en ' + namen[namen.length - 1]);
+
+  // Het veld: keuzelijst (met de lijst van de organisatie) of vrije tekst. De pagina is al in
+  // de goede vorm getekend; hier komen de opties erin, en klopt de vorm niet meer met de
+  // instellingen (oude kopie van de pagina), dan wisselen we het veld om.
+  function bouwStadVeld() {
+    const oud = stadVeld();
+    if (!oud) return;
+    const lijst = cfgSignup && Array.isArray(cfgSignup.cities) ? cfgSignup.cities.filter(hasText).map(String) : null;
+    if (!lijst) return;   // geen antwoord van /api/config: laten staan wat de server tekende
+    const woord = stadWoord();
+    const was = stadWaarde();
+    if (lijst.length) {
+      let sel = oud;
+      if (oud.tagName !== 'SELECT') {
+        sel = el('select'); sel.id = 'stad'; sel.name = 'city'; sel.required = true; sel.setAttribute('autocomplete', 'off');
+        oud.replaceWith(sel);
+        sel.addEventListener('input', () => sel.closest('.field')?.classList.remove('has-error'));
+      }
+      sel.textContent = '';
+      const eerste = el('option', null, `Kies je ${woord}…`); eerste.value = '';
+      sel.appendChild(eerste);
+      lijst.forEach((naam) => { const o = el('option', null, naam); o.value = naam; sel.appendChild(o); });
+      if (was && lijst.includes(was)) sel.value = was;
+    } else if (oud.tagName === 'SELECT') {
+      const inp = el('input'); inp.type = 'text'; inp.id = 'stad'; inp.name = 'city'; inp.required = true; inp.maxLength = 56;
+      inp.setAttribute('autocomplete', 'off'); inp.setAttribute('autocapitalize', 'words'); inp.setAttribute('autocorrect', 'off'); inp.spellcheck = false;
+      inp.setAttribute('enterkeyhint', 'send'); inp.placeholder = `Typ je ${woord}`;
+      oud.replaceWith(inp);
+      inp.addEventListener('input', () => inp.closest('.field')?.classList.remove('has-error'));
+    }
+    const v = stadVeld();
+    if (v && !v.dataset.knop) { v.dataset.knop = '1'; v.addEventListener('input', stadKnop); v.addEventListener('change', stadKnop); }
+  }
+
+  // De knop zegt wat er gebeurt: "Meld <naam> aan", of de wachtlijst als de categorie vol zit.
+  function stadKnop() {
+    if (!stadForm) return;
+    const naam = stadWaarde();
+    const vol = isVol(stadComp);
+    const kort = naam && naam.length <= 22 ? naam : '';
+    SUBMIT_LABEL = vol ? (kort ? `Zet ${kort} op de wachtlijst →` : 'Zet me op de wachtlijst →') : (kort ? `Meld ${kort} aan →` : (BASIS_STAD_KNOP || 'Meld je aan →'));
+    if (submitBtn && !submitBtn.disabled) submitBtn.textContent = SUBMIT_LABEL;
+    const noot = $('stad-vol');
+    if (noot) {
+      noot.hidden = !vol;
+      if (vol) noot.textContent = `${stadComps.length > 1 ? `${stadComp.name} zit vol.` : 'Alle plekken zijn vergeven.'} Je komt op de wachtlijst en schuift vanzelf door als er een plek vrijkomt.`;
+    }
+  }
+  function plekTekst(c) {
+    if (!autoToelaten() || !(c.max_teams > 0)) return c.team_label || '';
+    const vrij = c.max_teams - (Number(c.approved) || 0);
+    return vrij <= 0 ? 'Vol · wachtlijst' : `Nog ${vrij} ${vrij === 1 ? 'plek' : 'plekken'}`;
+  }
+  // `stil` = de lijst wordt alleen opnieuw getekend (niet door de bezoeker gekozen): een
+  // melding die er net staat blijft dan staan.
+  function kiesStadComp(c, focus, stil) {
+    stadComp = c;
+    const wrap = $('stad-cats');
+    if (wrap) wrap.querySelectorAll('.st-knop').forEach((b) => {
+      const on = !!c && Number(b.dataset.id) === c.id;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.tabIndex = on || (!c && b === wrap.firstElementChild) ? 0 : -1;
+      if (on && focus) b.focus();
+    });
+    if (!stil) { $('stad-cat')?.classList.remove('has-error'); clearAlert(); }
+    stadKnop();
+  }
+  function tekenStadCats() {
+    const vak = $('stad-cat'), wrap = $('stad-cats');
+    if (!vak || !wrap) return;
+    const meer = stadComps.length > 1;
+    vak.hidden = !meer;
+    setText($('stad-cat-lbl'), labels.choose);
+    wrap.textContent = '';
+    if (!meer) { stadComp = stadComps[0] || null; stadKnop(); return; }
+    wrap.classList.toggle('een', stadComps.length === 1);
+    // De keuze blijft staan als de lijst ververst (na een aanmelding).
+    const gekozen = stadComp ? stadComps.find(c => c.id === stadComp.id) || null : null;
+    stadComps.forEach((c) => {
+      const b = el('button', 'st-knop');
+      b.type = 'button'; b.dataset.id = String(c.id);
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
+      b.appendChild(el('b', null, c.name));
+      const plek = plekTekst(c);
+      if (plek) b.appendChild(el('span', null, plek));
+      b.addEventListener('click', () => kiesStadComp(c));
+      wrap.appendChild(b);
+    });
+    kiesStadComp(gekozen, false, true);
+  }
+  async function haalStadComps() {
+    try {
+      const r = await fetch('/api/competitions', { cache: 'no-store' });
+      if (!r.ok) return false;
+      const j = await r.json();
+      if (!j || !Array.isArray(j.competitions)) return false;
+      neemLabels(j);
+      stadComps = j.competitions.filter(c => c && Number.isInteger(c.id) && hasText(c.name));
+      return true;
+    } catch { return false; }
+  }
+
+  // Wie doet er al mee: per categorie de namen (zelfde gegevens als het live-bord).
+  async function tekenWie() {
+    const vak = $('stad-wie');
+    if (!vak) return;
+    try {
+      const r = await fetch('/api/hub', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      const comps = j && Array.isArray(j.competitions) ? j.competitions.filter(c => c && c.active !== false) : [];
+      if (!comps.length) return;
+      vak.textContent = '';
+      comps.forEach((c) => {
+        const namen = (Array.isArray(c.teams) ? c.teams : []).map(t => t && t.name).filter(hasText).map(String).sort((a, b) => a.localeCompare(b, 'nl'));
+        const blok = el('div');
+        const k = el('div', 'st-wie-k');
+        k.appendChild(el('span', null, comps.length > 1 ? c.name : 'Doet mee'));
+        k.appendChild(el('i', null, c.max_teams > 0 ? `${namen.length} van ${c.max_teams}` : String(namen.length)));
+        blok.appendChild(k);
+        if (namen.length) { const ul = el('ul'); namen.forEach(n => ul.appendChild(el('li', null, n))); blok.appendChild(ul); }
+        else blok.appendChild(el('p', null, 'Nog niemand. Wees de eerste.'));
+        vak.appendChild(blok);
+      });
+      vak.hidden = false;
+    } catch { /* geen lijst: het blok blijft weg */ }
+  }
+
+  // "Je hebt hier al … aangemeld": eerst vragen, zodat niemand per ongeluk twee keer aanmeldt.
+  function toonAl() {
+    const vak = $('stad-al');
+    if (!vak || !stadForm) return;
+    const lijst = leesStad();
+    const klaar = $('stad-klaar');
+    const toon = lijst.length > 0 && heeftSleutel() && !stadVraagGehad && !(klaar && !klaar.hidden);
+    vak.hidden = !toon;
+    stadForm.hidden = toon || !!(klaar && !klaar.hidden);
+    if (!toon) return;
+    const namen = lijst.map(x => (hasText(x.cat) ? `${x.name} (${x.cat})` : x.name));
+    setText($('stad-al-kop'), lijst.length === 1 ? `${lijst[0].name} is al aangemeld.` : 'Je bent al aangemeld.');
+    const tekst = $('stad-al-tekst');
+    if (tekst) tekst.textContent = `Op dit toestel ${lijst.length === 1 ? 'staat' : 'staan'} ${opsomming(namen)}. Je poule, je wedstrijden en je QR-code vind je in Mijn team.`;
+    setText($('stad-al-nog'), `Nog een ${stadWoord() || 'aanmelding'} aanmelden`);
+  }
+  // Bestaat wat hier bewaard staat nog? (Verwijderd door de organisatie, of een nieuwe editie:
+  // dan hoort de vraag hierboven weg.) Alleen bij een duidelijk antwoord van de server.
+  async function controleerStad() {
+    const lijst = leesStad();
+    if (!lijst.length) return;
+    let alle = [];
+    try { const o = JSON.parse(localStorage.getItem('jvo_mijn') || 'null'); alle = o && Array.isArray(o.keys) ? o.keys.filter(k => k && isKey(k.k)) : []; } catch { return; }
+    // Alleen de sleutels die bij deze aanmeldingen horen (een sleutel zonder teamlijst telt mee). Is een
+    // aanmelding weg, dan verdwijnt hij hier uit de lijst en vragen we er bij een volgend bezoek niet
+    // meer naar; de sleutel zelf ruimt Mijn team op, met uitleg erbij.
+    const ids = new Set(lijst.map(x => x.id));
+    const keys = alle.filter(k => !Array.isArray(k.teams) || !k.teams.length || k.teams.some(id => ids.has(id)));
+    if (!keys.length) { bewaarStad([]); toonAl(); return; }
+    const levend = new Set();
+    let zeker = true;
+    await Promise.all(keys.map(async (k) => {
+      try {
+        const r = await fetch('/api/mijn', { headers: { Authorization: 'Bearer ' + k.k }, cache: 'no-store' });
+        if (r.status === 200) {
+          const j = await r.json();
+          (j && Array.isArray(j.cards) ? j.cards : []).forEach((c) => { if (c && Number.isInteger(c.team_id) && c.status !== 'rejected' && c.status !== 'revoked') levend.add(c.team_id); });
+        } else if (r.status === 401 || r.status === 404) {
+          const j = await r.json().catch(() => ({}));
+          if (!(j && (j.code === 'key_invalid' || j.code === 'gone'))) zeker = false;
+        } else zeker = false;
+      } catch { zeker = false; }
+    }));
+    if (!zeker) return;
+    const rest = lijst.filter(x => levend.has(x.id));
+    if (rest.length !== lijst.length) { bewaarStad(rest); toonAl(); }
+  }
+
+  function stadKlaar(json) {
+    const naam = String(json.team_name || '');
+    const stad = String(json.city || naam);
+    const cat = json.competition && hasText(json.competition.name) && stadComps.length > 1 ? String(json.competition.name) : '';
+    const status = json.team_status;
+    const kept = rememberMijn(json.mijn.key, json.team_id);
+    heeftTeamNet = true;
+    if (Number.isInteger(json.team_id)) {
+      const lijst = leesStad().filter(x => x.id !== json.team_id);
+      lijst.unshift({ id: json.team_id, name: naam, comp: json.competition ? json.competition.id : null, cat, at: Date.now() });
+      bewaarStad(lijst);
+    }
+    const catEl = $('stad-klaar-cat');
+    if (catEl) { catEl.textContent = cat; catEl.hidden = !cat; }
+    const kop = $('stad-klaar-kop');
+    if (kop) kop.textContent = status === 'approved' ? `${naam} doet mee.` : (status === 'waitlist' ? `${naam} staat op de wachtlijst.` : `${naam} is aangemeld.`);
+    const sub = $('stad-klaar-sub');
+    if (sub) {
+      const zinnen = [];
+      if (json.numbered) zinnen.push(`Er was al een aanmelding uit ${stad}. Jullie heten daarom ${naam}.`);
+      if (status === 'waitlist') zinnen.push('Er is nu geen plek. Komt er een plek vrij, dan schuif je vanzelf door: je ziet het in Mijn team.');
+      else if (status !== 'approved') zinnen.push('De organisatie bekijkt je aanmelding. Het besluit zie je in Mijn team.');
+      sub.textContent = zinnen.join(' ');
+    }
+    // De poule: wat de server nu weet. Vier toestanden, of geen blok (wachtlijst).
+    const d = json.draw && typeof json.draw === 'object' ? json.draw : null;
+    const vak = $('stad-klaar-poule'), pNaam = $('stad-klaar-poule-naam'), mates = $('stad-klaar-mates'), noot = $('stad-klaar-poule-noot');
+    if (vak && pNaam && mates && noot) {
+      mates.textContent = '';
+      vak.hidden = !d;
+      if (d && d.state === 'ready' && hasText(d.poule)) {
+        pNaam.textContent = `Poule ${d.poule}`;
+        const anderen = Array.isArray(d.mates) ? d.mates.filter(hasText).map(String) : [];
+        mates.appendChild(el('li', 'ik', naam));
+        anderen.forEach(n => mates.appendChild(el('li', null, n)));
+        noot.textContent = (anderen.length ? '' : 'Je bent de eerste in deze poule. ') + (d.can_change ? 'De indeling kan nog veranderen tot de start. In Mijn team zie je altijd de laatste stand.' : '');
+      } else if (d && d.state === 'few') {
+        pNaam.textContent = 'Volgt nog';
+        noot.textContent = 'Je poule volgt zodra er genoeg aanmeldingen zijn.';
+      } else if (d && d.state === 'outside') {
+        pNaam.textContent = 'Nog niet ingedeeld';
+        noot.textContent = 'Het schema staat al vast. De organisatie deelt je in; je ziet het in Mijn team.';
+      } else if (d) {
+        pNaam.textContent = 'Schema volgt';
+        noot.textContent = 'De organisatie maakt het schema. Zodra het klaar is, staat je poule in Mijn team.';
+      }
+    }
+    const code = $('stad-klaar-code'), codeVak = $('stad-klaar-codebox');
+    if (code) code.textContent = hasText(json.mijn.team_code) ? String(json.mijn.team_code) : '';
+    if (codeVak) codeVak.hidden = !hasText(json.mijn.team_code);
+    const open = $('stad-klaar-open');
+    // De sleutel staat op dit toestel; alleen als bewaren niet lukte reist hij achter de # mee.
+    if (open) open.href = '/mijn' + (Number.isInteger(json.team_id) ? '?team=' + json.team_id : '') + (kept ? '' : '#k=' + json.mijn.key);
+    setText($('stad-klaar-nog'), `Nog een ${stadWoord() || 'aanmelding'} aanmelden`);
+    const klaar = $('stad-klaar');
+    if (klaar) klaar.classList.toggle('wacht', status !== 'approved');   // klokje in plaats van het vinkje
+    stadForm.hidden = true;
+    const al = $('stad-al'); if (al) al.hidden = true;
+    if (klaar) {
+      klaar.hidden = false;
+      try { klaar.scrollIntoView({ behavior: 'smooth', block: 'center' }); klaar.focus({ preventScroll: true }); } catch { /* geen focus */ }
+    }
+    stadPoging = nieuwePoging();
+    refreshIngang();
+    // De tellers op de knoppen en de lijst "wie doet er mee" lopen mee.
+    haalStadComps().then((ok) => { if (ok) tekenStadCats(); });
+    tekenWie();
+  }
+  function stadOpnieuw() {
+    stadVraagGehad = true;
+    const klaar = $('stad-klaar'); if (klaar) klaar.hidden = true;
+    const al = $('stad-al'); if (al) al.hidden = true;
+    stadForm.hidden = false;
+    clearAlert();
+    const v = stadVeld(); if (v) v.value = '';
+    kiesStadComp(stadComps.length > 1 ? null : (stadComps[0] || null));
+    resetSubmit();
+    try { stadForm.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* geen scroll */ }
+    setTimeout(() => { const eerst = (stadComps.length > 1 && $('stad-cats') && $('stad-cats').querySelector('.st-knop')) || stadVeld(); if (eerst) eerst.focus(); }, 300);
+  }
+
+  async function stadStart() {
+    SUBMIT_LABEL = BASIS_STAD_KNOP || SUBMIT_LABEL;
+    bouwStadVeld();
+    await haalStadComps();
+    stadGeladen = true;
+    tekenStadCats();
+    toonAl();
+    controleerStad();
+    tekenWie();
+  }
+
+  if (stadForm) {
+    // Pijltjestoetsen binnen de radiogroep (zelfde patroon als de sportkeuze).
+    $('stad-cats')?.addEventListener('keydown', (e) => {
+      if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key) || !stadComps.length) return;
+      e.preventDefault();
+      // Vanaf de knop waar de focus op staat (er hoeft nog niets gekozen te zijn).
+      const knoppen = [...e.currentTarget.querySelectorAll('.st-knop')];
+      const hier = knoppen.indexOf(document.activeElement);
+      const i = hier >= 0 ? hier : (stadComp ? stadComps.findIndex(c => c.id === stadComp.id) : 0);
+      const stap = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1;
+      kiesStadComp(stadComps[(i + stap + stadComps.length) % stadComps.length], true);
+    });
+    $('stad-al-nog')?.addEventListener('click', stadOpnieuw);
+    $('stad-klaar-nog')?.addEventListener('click', stadOpnieuw);
+    const v0 = stadVeld();
+    if (v0) { v0.dataset.knop = '1'; v0.addEventListener('input', stadKnop); v0.addEventListener('change', stadKnop); }
+
+    stadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (stadBezig) return;
+      clearAlert();
+      if (!stadGeladen) { showError('De pagina is nog aan het laden. Probeer het zo nog een keer.'); return; }
+      if (stadComps.length > 1 && !stadComp) { showError(`${labels.choose}.`, 'stad-cat'); return; }
+      const city = stadWaarde();
+      const woord = stadWoord();
+      if (!city) { showError(stadVeld() && stadVeld().tagName === 'SELECT' ? `Kies je ${woord}.` : `Vul je ${woord} in.`, 'stad'); return; }
+      const body = { city, attempt: stadPoging, website: $('website') ? $('website').value : '' };
+      if (stadComp) body.competition_id = stadComp.id;
+      stadBezig = true;
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Aanmelden…'; }
+      try {
+        const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          resetSubmit();
+          if (res.status === 403 && json.closed) {
+            if (showClosed({ reason: json.closed, message: json.error })) $('reg-closed')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            else showError(json.error || 'Aanmelden is op dit moment gesloten.');
+            return;
+          }
+          if (res.status === 429) { showError(hasText(json.error) ? json.error : 'Te veel pogingen achter elkaar. Wacht een paar minuten en probeer het dan opnieuw.'); return; }
+          const veld = json.field === 'competition_id' ? 'stad-cat' : ((res.status === 400 || res.status === 409) ? 'stad' : null);
+          showError(json.error || 'Er ging iets mis. Probeer het opnieuw.', veld);
+          // Vol of al bezet: de tellers op de knoppen kloppen dan niet meer.
+          if (res.status === 409) haalStadComps().then((ok) => { if (ok) tekenStadCats(); });
+          return;
+        }
+        if (!Number.isInteger(json.team_id) || !json.mijn || !isKey(json.mijn.key)) {
+          // Geen team terug (het onzichtbare veld was gevuld, bv. door automatisch invullen).
+          resetSubmit();
+          const lok = $('website'); if (lok) lok.value = '';
+          showError('Dat lukte niet. Probeer het nog een keer.');
+          return;
+        }
+        resetSubmit();
+        stadKlaar(json);
+      } catch (err) {
+        showError('Geen verbinding. Aanmelden lukt alleen met internet; probeer het zo opnieuw.');
+        resetSubmit();
+      } finally { stadBezig = false; }
+    });
+  }
+
+
   // --- Evenement-config -------------------------------------------------------
   // Pas ná het koppelen van de formulier-handlers: een trage /api/config mag het
   // formulier nooit zonder submit-handler laten staan.
+  let cfgText = {};       // cfg.text, ook voor de sportkeuze en de vorm "alleen stad" hieronder
+  let cfgSignup = null;   // cfg.signup: { form, cityLabel, cities, cityMulti, autoApprove, autoDraw }
   try {
     const cfg = await (await fetch('/api/config')).json();
     const ev = cfg.event || {};
     const t = cfg.text || {};      // zelfde teksten als de server-side {{ev.…}}
     const f = cfg.flags || {};     // zelfde vlaggen als de server-side ev-if's
     const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    cfgText = t;
+    cfgSignup = cfg.signup && typeof cfg.signup === 'object' ? cfg.signup : null;
+
+    // De pagina is in een andere aanmeldvorm getekend dan de server nu heeft (een oudere kopie
+    // uit de cache): één keer verversen, anders vult iemand een formulier in dat niet meer geldt.
+    const vorm = cfgSignup && cfgSignup.form;
+    if (cfg.registration && cfg.registration.open && ((vorm === 'city' && form && !stadForm) || (vorm === 'full' && stadForm && !form))) {
+      let al = false;
+      try { al = sessionStorage.getItem('jvo_vorm_ververst') === '1'; sessionStorage.setItem('jvo_vorm_ververst', '1'); } catch { al = true; }
+      if (!al && navigator.onLine !== false) { window.location.reload(); return; }
+    } else { try { sessionStorage.removeItem('jvo_vorm_ververst'); } catch { /* geen opslag */ } }
+
+    // De kopregels: alleen bijwerken als de tekst echt anders is (de bewegingslaag heeft de
+    // woorden dan al in stukjes geknipt; die laten we met rust).
+    let kopAnders = false;
+    document.querySelectorAll('.sh-kop [data-kop]').forEach((el) => {
+      // Een lege regel 2 of 3 mag wél leeg worden (de kop is dan korter geworden); regel 1 nooit.
+      if (!own(t, el.dataset.kop)) return;
+      const v = String(t[el.dataset.kop] == null ? '' : t[el.dataset.kop]).trim();
+      if (!v && (el.dataset.kop === 'heroLine1' || !hasText(t.heroLine1))) return;
+      if (regelTekst(el) !== v) { el.textContent = v; kopAnders = true; }
+    });
+    if (kopAnders) { kopPunt(); pasKop(); }
 
     // Elke <… data-ev="sleutel"> volgt cfg.text[sleutel]; lege waarden slaan we over.
     document.querySelectorAll('[data-ev]').forEach((el) => {
@@ -462,8 +946,23 @@
     const eyebrow = $('meta-eyebrow');
     const dateLabel = hasText(t.dateText) ? t.dateText : ev.dateText;
     if (eyebrow && hasText(dateLabel)) {
-      eyebrow.textContent = [dateLabel, ev.audience, ev.priceText].filter(hasText).join(' · ');
+      const delen = [dateLabel, ev.audience, ev.priceText].filter(hasText).map(String);
+      // (alleen in de stijl sporthub: in de andere stijl is de regel een flex-rij en zouden de
+      // losse stukken niet meer afbreken, waardoor de pagina breder wordt dan het scherm)
+      if ((stadForm || document.body.classList.contains('pg-stad')) && document.documentElement.dataset.theme === 'sporthub') {
+        // Alleen stad: de regel staat smal naast de bal. Elk deel blijft heel (geen "15-" / "30 jaar").
+        eyebrow.textContent = '';
+        // Het puntje hoort bij het deel ervóór, zodat een nieuwe regel nooit met een los puntje begint.
+        delen.forEach((d, i) => {
+          if (i) eyebrow.appendChild(document.createTextNode(' '));
+          const deel = document.createElement('span'); deel.className = 'eb-deel'; deel.style.whiteSpace = 'nowrap'; deel.textContent = d;
+          if (i < delen.length - 1) { const punt = document.createElement('span'); punt.className = 'eb-punt'; punt.textContent = ' ·'; deel.appendChild(punt); }
+          eyebrow.appendChild(deel);
+        });
+        pasBovenregel();
+      } else eyebrow.textContent = delen.join(' · ');
     }
+    pasTitel();
 
     // Contact-e-mail (behoud een eventuele ?subject=… achter de mailto).
     if (hasText(cfg.contactEmail)) document.querySelectorAll('.js-contact-mail').forEach((a) => {
@@ -545,7 +1044,6 @@
   }
   if (form && form.full_name) form.full_name.addEventListener('input', () => { if (chosenSport && chosenSport.solo) soloNaam(); });
   const isIcon = (u) => /^\/sport\/[a-z]+(-klein)?\.webp$/.test(String(u || ''));
-  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = String(text); return n; };
   const formatLine = (c) => [c.team_label, c.max_teams ? `${c.max_teams} ${c.unit}` : ''].filter(Boolean).join(' · ');
 
   function renderKaartje(c) {
@@ -656,21 +1154,28 @@
     const kop = document.querySelector('.hero-intro h1.h-display');
     if (eyebrow) midden.appendChild(eyebrow);
     if (kop) {
-      // De kop gaat over alle sporten samen (geen evenement-specifieke tekst).
-      kop.textContent = '';
-      // Elke regel is een eigen blok: zo blijft de kop op drie regels staan, ook als het
-      // thema <br> verbergt of de bewegingslaag de woorden in losse stukjes knipt.
-      ['Eén dag.', 'Alle', 'sporten'].forEach((regel, i, alle) => {
-        const r = el('span', 'sh-sr-regel', regel);
-        r.style.display = 'block'; r.style.whiteSpace = 'nowrap';   // niet afhankelijk van een (mogelijk oud gecachet) stylesheet
-        if (i === alle.length - 1) r.appendChild(el('span', 'exclaim', '.'));
-        kop.appendChild(r);
-      });
+      // De kop bij meerdere sporten komt uit het evenement-profiel (heroTitleMulti →
+      // heroLine1..3): eerst wat /api/config nu zegt, anders wat de server in de pagina zette.
+      // Staat er nergens een eigen kop, dan blijft de kop zoals hij is.
+      let regels = ['heroLine1', 'heroLine2', 'heroLine3'].map(k => (hasText(cfgText[k]) ? String(cfgText[k]).trim() : '')).filter(Boolean);
+      if (!regels.length) regels = [...kop.querySelectorAll('[data-kop]')].map(regelTekst).filter(Boolean);
+      if (regels.length) {
+        kop.textContent = '';
+        // Elke regel is een eigen blok: zo blijft de kop op zijn regels staan, ook als het
+        // thema <br> verbergt of de bewegingslaag de woorden in losse stukjes knipt.
+        regels.forEach((regel, i, alle) => {
+          const r = el('span', 'sh-sr-regel', regel);
+          r.style.display = 'block'; r.style.whiteSpace = 'nowrap';   // niet afhankelijk van een (mogelijk oud gecachet) stylesheet
+          if (i === alle.length - 1 && !LEESTEKEN.test(regel)) r.appendChild(el('span', 'exclaim', '.'));
+          kop.appendChild(r);
+        });
+      }
       midden.appendChild(kop);
     }
     ring.appendChild(midden);
     oud.replaceWith(ring);
     document.querySelector('.hero-intro')?.classList.add('sh-multi');
+    pasKop();
     return true;
   }
 
@@ -679,7 +1184,7 @@
     const intro = document.querySelector('.hero-intro.sh-multi');
     if (!intro || intro.querySelector('.sh-kies')) return;
     const wrap = el('div', 'sh-kies');
-    const lbl = el('div', 'sh-kies-lbl', 'Kies je sport'); lbl.id = 'sh-kies-lbl';
+    const lbl = el('div', 'sh-kies-lbl', labels.choose); lbl.id = 'sh-kies-lbl';
     wrap.appendChild(lbl);
     heroTegels = el('div', 'sh-kies-tegels');
     heroTegels.setAttribute('role', 'group'); heroTegels.setAttribute('aria-labelledby', 'sh-kies-lbl');
@@ -717,7 +1222,7 @@
     const g = strook.querySelector('.sh-strook-g');
     if (g) {
       let sport = g.querySelector('.sh-strook-sport');
-      if (!sport) { sport = el('div', 'sh-strook-sport'); sport.appendChild(el('span', null, 'Sport')); sport.appendChild(el('b')); g.appendChild(sport); }
+      if (!sport) { sport = el('div', 'sh-strook-sport'); sport.appendChild(el('span', null, hoofd(labels.one))); sport.appendChild(el('b')); g.appendChild(sport); }
       sport.querySelector('b').textContent = c.name;
     }
     const img = strook.querySelector('.sh-badge img');
@@ -728,12 +1233,15 @@
   }
 
   async function loadSports() {
+    if (stadForm) { await stadStart(); return; }
     if (!kiezer || !tegels) return;
     try {
       const r = await fetch('/api/competitions');
       if (!r.ok) return;
       const j = await r.json();
       if (!j || !j.multi || !Array.isArray(j.competitions)) return;
+      neemLabels(j);
+      setText($('sport-kiezer-lbl'), labels.choose);
       sports = j.competitions;
       tegels.textContent = '';
       sports.forEach((c) => {
@@ -761,10 +1269,13 @@
       });
       tegels.querySelector('.sport-tegel').tabIndex = 0;
       kiezer.hidden = false;
-      if (ringOfSports()) { heroKiezer(sports); chooseSport(sports[0]); }
-      // De feitjes bovenaan gaan nu over alle sporten samen.
+      // Verschillende sporten: de ring met alle sporten en de keuze in de hero. Allemaal dezelfde
+      // sport (bv. twee categorieën): de ene grote bal en de kop uit het profiel blijven staan,
+      // de keuze staat in het formulier en heet naar de competitie.
+      if (!j.same_sport && ringOfSports()) { heroKiezer(sports); chooseSport(sports[0]); }
+      // De feitjes bovenaan gaan nu over alle sporten (of categorieën) samen.
       const feiten = document.querySelectorAll('.sh-feiten > div');
-      if (feiten[0]) { setText(feiten[0].querySelector('span'), 'Sporten'); setText(feiten[0].querySelector('b'), sports.length); }
+      if (feiten[0]) { setText(feiten[0].querySelector('span'), hoofd(labels.many)); setText(feiten[0].querySelector('b'), sports.length); }
       if (feiten[1]) {
         const lo = Math.min(...sports.map(s => s.min_players)), hi = Math.max(...sports.map(s => s.max_players));
         setText(feiten[1].querySelector('b'), lo === hi ? lo : `${lo}–${hi}`);

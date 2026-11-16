@@ -76,7 +76,7 @@
     { id: 'sport', naam: 'Sport', rol: 'Hoofd sport', sub: 'Welke sporten er zijn en hoe ze gespeeld worden.' },
     { id: 'toernooi', naam: 'Toernooien', kort: 'Toernooi', rol: 'Hoofd toernooien', sub: 'Schema’s, tijden en de wedstrijddag zelf.' },
     { id: 'mensen', naam: 'Mensen', rol: 'Hoofd mensen', sub: 'Teams, aanmeldingen, check-in en de crew.' },
-    { id: 'communicatie', naam: 'Communicatie', kort: 'Bericht', rol: 'Hoofd communicatie', sub: 'Mails, pushmeldingen en de omroep.' },
+    { id: 'communicatie', naam: 'Communicatie', kort: 'Comm.', rol: 'Hoofd communicatie', sub: 'Mails, pushmeldingen en de omroep.' },
     { id: 'veiligheid', naam: 'Veiligheid', kort: 'Veilig', rol: 'Hoofd veiligheid', sub: 'Logboek, back-ups, toegang en de systeemcontrole.' },
   ];
   const afdVan = (id) => AFD.find(a => a.id === id) || null;
@@ -118,7 +118,7 @@
     { afd: 'veiligheid', id: 'logboek', titel: 'Logboek', sub: 'Wie deed wat, en wanneer.', tab: 'audit', breed: true, pak: () => [...vouwMet('#recent-activity')(), document.querySelector('#tab-audit > .section')] },
     { afd: 'veiligheid', id: 'backups', titel: 'Back-ups & exports', sub: 'Alles downloaden als zip, de mailinglijst en een database-snapshot.', tab: 'signups', pak: vouwMet('#export-backup-btn') },
     { afd: 'veiligheid', id: 'profielen', titel: 'Profielen en passen', sub: 'Wie in welke afdeling mag komen, een pas opnieuw instellen en het wachtwoord van Veiligheid.', tab: 'overview', maak: true, breed: true, als: () => metPas() },
-    { afd: 'veiligheid', id: 'toegang', titel: 'Toegang', sub: 'Wie waar in kan en waar je de codes wijzigt.', tab: 'overview', maak: true },
+    { afd: 'veiligheid', id: 'toegang', titel: 'Codes', sub: 'Admincode, crew-code en captain-link: wat je ermee kunt en waar je ze wijzigt.', tab: 'overview', maak: true },
     { afd: 'veiligheid', id: 'systeem', titel: 'Systeemcontrole', sub: 'Mail, webadres, crew-code en back-ups: staat alles goed?', tab: 'overview', maak: true },
     { afd: 'veiligheid', id: 'smart', titel: 'JVO Smart leert', sub: 'Wat JVO Smart van eerdere dagen heeft onthouden.', tab: 'overview', pak: sel('#smart-learn-fold') },
     { afd: 'veiligheid', id: 'gevaar', titel: 'Gevaarlijke acties', sub: 'Schone start: aanmeldingen, teams en uitslagen wissen.', tab: 'overview', slot: true, pak: sel('#tab-overview > .danger-zone') },
@@ -146,6 +146,10 @@
   let aanwezigOp = 0, aanwezigEerder = new Set();
   let laatstePid = null, stondOpen = false;
   let qrOpen = null, kopieKlaar = null, mijnBestaat = null;   // Schermen en pagina's: open QR, net gekopieerde link, bestaat /mijn?
+  let actiesOpen = false;       // "Wat moet je nu doen?": alle punten in beeld (anders de eerste drie)
+  // De sport waar je het laatst een schema van bekeek: onthouden, ook na verversen.
+  try { const v = localStorage.getItem('jvo_admin_sport_laatst'); if (v && /^\d+$/.test(v)) sportBewaard = Number(v); } catch { /* geen opslag */ }
+  const onthoudSport = (id) => { try { if (id == null) localStorage.removeItem('jvo_admin_sport_laatst'); else localStorage.setItem('jvo_admin_sport_laatst', String(id)); } catch { /* geen opslag */ } };
 
   // Geen flits van de oude tabs bij verversen: was de hub de vorige keer aan, dan
   // blijft de oude indeling uit beeld tot de gegevens er zijn (hooguit 4 s).
@@ -165,6 +169,9 @@
   const losse = () => actief().filter(c => !c.is_default);
   const teams = () => { const t = A.getTeams(); return Array.isArray(t) ? t : []; };
   const checksOpen = () => ((R() && R().checks) || []).filter(c => !c.competition_id && c.level !== 'ok');
+  // Wat "Klaar voor de start?" als open punt toont: van het evenement én per sport. De regels voor
+  // wie bij de hosting kan staan daar apart (ingeklapt) en tellen hier niet mee.
+  const checksLijst = () => ((R() && R().checks) || []).filter(c => c.level !== 'ok' && !c.host);
   const hm = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 
   function systeemRijen() {
@@ -198,7 +205,7 @@
     if (!d) return { tekst: '', let: false, n: 0 };
     const t = d.totals || {};
     if (id === 'evenement') {
-      const open = checksOpen(), fout = open.some(c => c.level === 'fout');
+      const open = checksLijst(), fout = open.some(c => c.level === 'fout');
       const af = RG.afrondenNu();
       if (af.allDone) return { tekst: 'afronden', let: true, n: 1 };
       return { tekst: open.length ? plural(open.length, 'punt', 'punten') : 'klaar', let: fout, n: open.length };
@@ -236,10 +243,10 @@
     const k = `${t.afd}/${t.id}`;
     const tm = teams();
     if (k === 'evenement/profiel') return { tekst: d.registration && d.registration.open ? 'aanmelden open' : 'aanmelden dicht' };
-    if (k === 'evenement/klaar') { const o = checksOpen(); return o.length ? { tekst: plural(o.length, 'punt', 'punten'), let: o.some(c => c.level === 'fout') } : { tekst: 'geregeld', ok: true }; }
+    if (k === 'evenement/klaar') { const o = checksLijst(); return o.length ? { tekst: plural(o.length, 'punt', 'punten'), let: o.some(c => c.level === 'fout') } : { tekst: 'geregeld', ok: true }; }
     if (k === 'evenement/afronden') return { tekst: 'nu', let: true };
     if (k === 'sport/sporten') return { tekst: `${actief().length} actief` };
-    if (k === 'toernooi/wedstrijddag') return d.paused_all ? { tekst: 'op pauze', let: true } : d.totals.live ? { tekst: `${d.totals.live} live` } : null;
+    if (k === 'toernooi/wedstrijddag') { const z = zonderBediener().length; return d.paused_all ? { tekst: 'op pauze', let: true } : z ? { tekst: `${z} zonder bediener`, let: true } : d.totals.live ? { tekst: `${d.totals.live} live` } : null; }
     if (k === 'toernooi/schema') { const n = losse().filter(c => RG.stateOf(c).key === 'maak-schema').length; return n ? { tekst: plural(n, 'te maken', 'te maken'), let: true } : null; }
     if (k === 'mensen/teams') { const p = tm.filter(x => x.status === 'pending').length; return p ? { tekst: `${p} ${p === 1 ? 'wacht' : 'wachten'}`, let: true } : { tekst: `${tm.filter(x => x.status === 'approved').length} goedgekeurd` }; }
     if (k === 'mensen/aanmeldingen') { const n = ($('info-signups-count') || {}).textContent; return n && /^\d+$/.test(n) ? { tekst: n } : null; }
@@ -298,23 +305,67 @@
         knop: 'Bekijk de crew', afd: 'mensen', t: 'crew' });
     }
     if (d.paused_all) out.push({ titel: 'Alles staat op pauze', tekst: 'Niemand kan een wedstrijd starten tot je hervat.', knop: 'Naar wedstrijddag', afd: 'toernooi', t: 'wedstrijddag' });
-    const pend = teams().filter(x => x.status === 'pending').length;
-    if (pend) out.push({ titel: plural(pend, 'aanmelding wacht op jou', 'aanmeldingen wachten op jou'), tekst: 'Goedkeuren stuurt de captain meteen de check-in-QR.', knop: 'Beoordeel', doe: () => A.showPendingTeams() });
+    // Iemand staat buiten door te veel foute passen: wie in Veiligheid mag kan dat oplossen.
+    const mij = metPas() ? PAS().ik() : null;
+    if (mij && magIn('veiligheid')) for (const g of (Array.isArray(mij.geblokkeerd) ? mij.geblokkeerd : []).slice(0, 2)) {
+      out.push({ titel: `${g.naam} is geblokkeerd`, tekst: 'Te veel foute passen. Jij kunt de blokkade opheffen of de pas opnieuw instellen.', knop: 'Naar het profiel', afd: 'veiligheid', t: 'profielen', na: () => toonProfiel(g.id) });
+    }
+    const wachten = teams().filter(x => x.status === 'pending');
+    const pend = wachten.length;
+    // Aangemeld met alleen een stad (geen e-mailadres): dan gaat er bij goedkeuren geen QR-mail uit.
+    const zonderMail = wachten.filter(x => x.no_email).length;
+    const pendTekst = !zonderMail ? 'Goedkeuren stuurt de captain meteen de check-in-QR.'
+      : (zonderMail === pend ? 'Na goedkeuren zien ze hun QR en poule in Mijn team. Er gaat geen mail uit: deze teams hebben geen e-mailadres.'
+        : 'Goedkeuren stuurt de captain meteen de check-in-QR. Teams zonder e-mailadres zien hem in Mijn team.');
+    if (pend) out.push({ titel: plural(pend, 'aanmelding wacht op jou', 'aanmeldingen wachten op jou'), tekst: pendTekst, knop: 'Beoordeel', doe: () => A.showPendingTeams(), na: () => naarEerste('#teams-cards') });
     for (const c of actief()) {
       const st = RG.stateOf(c).key;
       if (st === 'maak-schema') out.push({ titel: `${c.name} kan een schema krijgen`, tekst: `${c.teams.approved} ${c.unit || 'teams'} goedgekeurd, nog geen wedstrijden.`, knop: 'Maak schema', doe: () => { A.selSport = c.id; ga('toernooi', c.is_default ? 'genereren' : 'schema'); } });
       else if ((st === 'schema-staat' || st === 'bezig') && RG.losVan(c) > 0) out.push({ titel: `${c.name}: ${plural(RG.losVan(c), c.solo ? 'deelnemer' : 'team', c.solo ? 'deelnemers' : 'teams')} buiten het schema`, tekst: 'Goedgekeurd nadat het schema is gemaakt. Zo spelen ze geen enkele wedstrijd.', knop: 'Bekijk schema', doe: () => { A.selSport = c.id; ga('toernooi', c.is_default ? 'genereren' : 'schema'); } });
     }
     const fout = checksOpen().filter(c => c.level === 'fout');
-    if (fout.length) out.push({ titel: plural(fout.length, 'punt moet je oplossen', 'punten moet je oplossen'), tekst: fout[0].text, knop: 'Bekijk de controle', afd: 'evenement', t: 'klaar' });
+    if (fout.length) out.push({ titel: plural(fout.length, 'punt moet je oplossen', 'punten moet je oplossen'), tekst: fout[0].kort || fout[0].text, knop: 'Bekijk de controle', afd: 'evenement', t: 'klaar' });
     const laat = actief().filter(c => c.delay_min >= 10 && !c.finished && !c.paused).sort((a, b) => b.delay_min - a.delay_min);
     if (laat.length && t.live > 0) out.push({ titel: `${laat[0].name} loopt ${laat[0].delay_min} min uit`, tekst: laat.length > 1 ? `En nog ${plural(laat.length - 1, 'sport loopt', 'sporten lopen')} achter. Schuif de tijden op of laat het zo.` : 'Schuif de tijden op, of laat het zo.', knop: 'Naar wedstrijddag', afd: 'toernooi', t: 'wedstrijddag' });
     const af = RG.afrondenNu();
     if (af.show) out.push({ titel: af.allDone ? 'De dag zit erop' : 'De datum is voorbij', tekst: 'Bewaar de uitslagen, bedank iedereen en begin daarna schoon.', knop: 'Afronden', afd: 'evenement', t: 'afronden' });
     if (!actief().length) out.push({ titel: 'Nog geen sport actief', tekst: 'Voeg een sport toe; een voorinstelling vult het formulier voor je in.', knop: 'Sport toevoegen', afd: 'sport', t: 'sporten' });
     const open = checksOpen().filter(c => c.level !== 'fout');
-    if (open.length) out.push({ titel: `Nog ${plural(open.length, 'ding', 'dingen')} na te lopen`, tekst: open[0].text, knop: 'Bekijk de controle', afd: 'evenement', t: 'klaar' });
-    return out.slice(0, 3);
+    if (open.length) out.push({ titel: `Nog ${plural(open.length, 'ding', 'dingen')} na te lopen`, tekst: open[0].kort || open[0].text, knop: 'Bekijk de controle', afd: 'evenement', t: 'klaar' });
+    return out;
+  }
+  // Op een smal scherm staat de kop van een lijst hoog: breng het eerste item in beeld.
+  function naarEerste(selector) {
+    const el = document.querySelector(selector);
+    if (!el || window.innerWidth >= 1024) return;
+    try { el.scrollIntoView({ block: 'start', behavior: rustig() ? 'auto' : 'smooth' }); } catch { /* oudere browser */ }
+  }
+  // Het profiel van iemand in beeld (Veiligheid > Profielen en passen). De lijst komt kort na
+  // aankomst binnen, dus een paar keer proberen.
+  function toonProfiel(id, poging = 0) {
+    const li = root.querySelector(`.ah-pb[data-id="${CSS.escape(String(id))}"]`);
+    if (li) { try { li.scrollIntoView({ block: 'center', behavior: rustig() ? 'auto' : 'smooth' }); } catch { /* oudere browser */ } flits(li); return; }
+    if (poging < 12) setTimeout(() => { if (aan && route.afd === 'veiligheid' && route.t === 'profielen') toonProfiel(id, poging + 1); }, 300);
+  }
+
+  // Wedstrijddag-snelbalk: zodra de dag loopt staan de handelingen die onder druk gebeuren op het
+  // startscherm, één tik van de plek waar je ze doet.
+  const SNEL = {
+    pauze: ['toernooi', 'wedstrijddag', '#rg-nood'], uitslag: ['toernooi', 'wedstrijddag', '#rg-h-uit'], uitloop: ['toernooi', 'wedstrijddag', '#rg-rijen'],
+    niet: ['toernooi', 'wedstrijddag', '#rg-h-straks'], crew: ['mensen', 'crew', null], checkin: ['mensen', 'checkin', null],
+  };
+  function dagLoopt(d) {
+    const t = d.totals || {};
+    return t.live > 0 || !!d.paused_any || !!(d.event && d.event.is_today && t.total > 0 && t.done < t.total);
+  }
+  function snelbalk(d) {
+    if (!dagLoopt(d)) return '';
+    const zonder = zonderBediener().length;
+    const tm = teams().filter(x => x.status === 'approved'), nog = tm.filter(x => !x.checked_in_at).length;
+    const k = (id, label, extra) => (magIn(SNEL[id][0]) ? `<button type="button" class="ah-snel-k${extra ? ' is-let' : ''}" data-ah="snel" data-doel="${id}"><span>${label}</span>${extra ? `<em>${extra}</em>` : ''}</button>` : '');
+    const knoppen = k('pauze', d.paused_all ? 'Hervat alles' : 'Pauzeer alles') + k('uitslag', 'Uitslag corrigeren') + k('uitloop', 'Tijden opschuiven')
+      + k('niet', 'Team niet gekomen') + k('crew', 'Wie bedient wat', zonder ? `${zonder} zonder` : '') + (nog ? k('checkin', 'Inchecken') : '');
+    return knoppen ? `<span class="ah-snel-kop"><i class="ah-snel-stip" aria-hidden="true"></i>Wedstrijddag</span><div class="ah-snel-rij">${knoppen}</div>` : '';
   }
 
   // ── Opbouw (één keer) ────────────────────────────────────────────────────
@@ -338,6 +389,7 @@
             <h2 class="rg-titel ah-titel" id="ah-home-titel" tabindex="-1">—</h2>
             <p class="rg-sub ah-sub" id="ah-home-sub"></p>
           </header>
+          <nav class="ah-snel" id="ah-snel" aria-label="Wedstrijddag: snel naar" hidden></nav>
           <div class="ah-home-raster">
             <div class="ah-gebouw-wrap" id="ah-gebouw-wrap">
               <div id="ah-gebouw-plek"></div>
@@ -353,6 +405,7 @@
           <h3 class="ah-tussenkop" id="ah-afd-kop">Afdelingen</h3>
           <div class="ah-afdelingen" id="ah-afdelingen"></div>
           <div id="ah-home-voet"></div>
+          <div class="ah-stand" id="ah-stand" hidden></div>
         </section>
         <section class="ah-afd" id="ah-afd" hidden aria-labelledby="ah-afd-titel">
           <nav class="ah-kruimel" id="ah-kruimel" aria-label="Je bent hier"></nav>
@@ -669,7 +722,10 @@
     const pas = metPas();
     // Bij een diepe link kan de stad nog onderweg zijn: daar heel even op wachten.
     if (opts.eerste && !gebouw && !gebouwMis) await Promise.race([gebouwKlaar, slaap(900)]);
-    const metCam = !!gebouw && !gebouwMis;
+    // De camera hoort bij de stap vanaf het plein. Wissel je vanuit een afdeling (zijbalk, onderbalk,
+    // een knop) naar een andere, dan ga je er direct heen met een korte overgang.
+    const vanWijk = !!route.afd && route.afd !== afd && !opts.eerste;
+    const metCam = !!gebouw && !gebouwMis && !vanWijk;
     // 1. Geen toegang: de wijk blijft dicht, met uitleg bij het poortje.
     if (pas && !P.magIn(afd)) {
       if (opts.eerste) { root.classList.remove('ah-komt'); }
@@ -733,6 +789,7 @@
     crew = null; crewAt = 0;
     zetRoute(afd, tId, true);
     if (metCam) await camDoor(afd);
+    else if (vanWijk && !rustig()) { el.afd.classList.remove('ah-kort-in'); void el.afd.offsetWidth; el.afd.classList.add('ah-kort-in'); setTimeout(() => el.afd.classList.remove('ah-kort-in'), 320); }
     return true;
   }
   async function naarPlein(opts) {
@@ -792,9 +849,10 @@
 
     // De sportkeuze geldt alleen waar de schakelaar zichtbaar is.
     const metSport = !!(top && top.sport);
-    if (!metSport && A.selSport != null) { sportBewaard = A.selSport; A.selSport = null; }
+    // De sport van "Schema per sport" wordt onthouden (ook na verversen). Lijsten met "Alle sporten"
+    // (Teams) openen nooit stil op een oude sport: dan mis je de teams van de andere sporten.
+    if (!metSport && A.selSport != null) { sportBewaard = A.selSport; onthoudSport(sportBewaard); A.selSport = null; }
     else if (metSport && top.sport === 'een') sportBijAankomst(top);
-    else if (metSport && A.selSport == null && sportBewaard != null && comps().some(c => c.id === sportBewaard)) { const s = sportBewaard; sportBewaard = null; A.selSport = s; }
 
     for (const t of T) {
       const zicht = !!top && t === top;
@@ -811,6 +869,8 @@
     teken();
     if (top && top.id === 'crew') laadCrew(true);
     if (top && top.id === 'profielen') laadBeheer(true);
+    // Evenement: de controle en het formulier tonen altijd de stand van nu, niet die van het inloggen.
+    if (top && top.afd === 'evenement' && (top.id === 'klaar' || top.id === 'profiel') && A.laadEvenement) { A.laadEvenement({ zacht: true }); RG.refresh(); }
     if (!afd) laadAanwezig(true);
     if (nieuw) {
       window.scrollTo(0, 0);
@@ -833,10 +893,14 @@
       const wil = m && m.active ? m.id : null;
       if (A.selSport !== wil) A.selSport = wil;
     } else if (top.id === 'schema') {
-      if (cur && cur.active && !cur.is_default) return;
-      const b = lijst.find(c => c.id === sportBewaard) || lijst[0] || null;
+      if (cur && cur.active && !cur.is_default) { onthoudSport(cur.id); return; }
+      // Geen sport gekozen: eerst de sport die nog een schema nodig heeft, anders de laatst bekeken.
+      const moet = lijst.find(c => RG.stateOf(c).key === 'maak-schema');
+      const vorige = lijst.find(c => c.id === sportBewaard);
+      const b = (vorige && (!moet || RG.stateOf(vorige).key === 'maak-schema') ? vorige : moet) || vorige || lijst[0] || null;
       sportBewaard = null;
       if (b && A.selSport !== b.id) A.selSport = b.id;
+      if (b) onthoudSport(b.id);
     }
   }
   // Onderwerpen die precies één sport nodig hebben: nooit "Alle sporten".
@@ -905,13 +969,18 @@
     if ($('ah-home-sub').textContent !== sub) $('ah-home-sub').textContent = sub;
 
     // Wat moet je nu doen?
+    const snel = snelbalk(d), snelEl = $('ah-snel');
+    setHtml(snelEl, snel);
+    if (snelEl.hidden !== !snel) snelEl.hidden = !snel;
     const act = acties();
     tekenHome.__act = act;
-    setHtml($('ah-nu-lijst'), act.map((a, i) => `<li class="ah-actie">
+    // De eerste drie staan er altijd; de rest klapt uit, zodat er nooit iets stil buiten beeld valt.
+    const meer = act.length - 3;
+    setHtml($('ah-nu-lijst'), act.slice(0, actiesOpen ? act.length : 3).map((a, i) => `<li class="ah-actie">
         <span class="ah-actie-n" aria-hidden="true">${i + 1}</span>
         <div class="ah-actie-t"><b>${esc(a.titel)}</b><span>${esc(a.tekst)}</span></div>
         <button type="button" class="rg-knop ah-knop" data-ah="actie" data-i="${i}">${esc(a.knop)}${IC.pijl}</button>
-      </li>`).join('') || `<li class="ah-actie ah-actie-rust"><span class="ah-actie-n" aria-hidden="true">${IC.check}</span><div class="ah-actie-t"><b>Niets dat op je wacht</b><span>${d.totals.live > 0 ? 'Alles loopt. Kijk gerust mee bij Toernooien.' : 'Je bent bij. Zodra er iets is, staat het hier.'}</span></div></li>`);
+      </li>`).join('') + (meer > 0 ? `<li class="ah-actie-meer"><button type="button" class="rg-link ah-meer" data-ah="acties-meer" aria-expanded="${actiesOpen}">${actiesOpen ? 'Toon alleen de eerste drie' : `Nog ${plural(meer, 'ding', 'dingen')}`}</button></li>` : '') || `<li class="ah-actie ah-actie-rust"><span class="ah-actie-n" aria-hidden="true">${IC.check}</span><div class="ah-actie-t"><b>Niets dat op je wacht</b><span>${d.totals.live > 0 ? 'Alles loopt. Kijk gerust mee bij Toernooien.' : 'Je bent bij. Zodra er iets is, staat het hier.'}</span></div></li>`);
 
     // Afdelingstegels (de betrouwbare weg; op telefoon staan ze direct onder het gebouw)
     const pas = metPas(), nuIn = pas ? PAS().inWijk() : null;
@@ -926,6 +995,13 @@
     const mij = PAS() && PAS().ik();
     setHtml($('ah-profielstart'), mij && !mij.profielen_actief && !mij.profielen_uit && mij.kan_starten
       ? `<div class="ah-pstart"><div class="ah-actie-t"><b>Geef iedereen een eigen profiel</b><span>Nu logt iedereen in met dezelfde code en een naam die je zelf typt. Met profielen heeft elke beheerder een eigen pas van 4 cijfers, vraagt elke afdeling die pas bij de poort en bepaal jij wie waar in mag.</span></div><button type="button" class="rg-knop rg-knop-rustig ah-knop" data-ah="profiel-start">Start met profielen</button></div>` : '');
+    // Terug naar de eenvoudige weergave (admin-eenvoudig.js). Alleen als de server zegt dat het kan:
+    // bij de uitgebreide aanmelding en met profielen is de stand altijd volledig.
+    const E = window.JVO_ADMIN_EENVOUDIG, standEl = $('ah-stand');
+    const kanEenvoudig = !!(E && E.kanEenvoudig());
+    setHtml(standEl, kanEenvoudig ? `<p>Dit is de volledige Admin Hub. Voor de dag zelf is de eenvoudige weergave genoeg: aanmeldingen, poules en schema, wedstrijddag en instellingen.</p>
+        <button type="button" class="rg-knop rg-knop-rustig ah-knop" data-ah="stand-eenvoudig">Eenvoudige weergave</button>` : '');
+    if (standEl.hidden !== !kanEenvoudig) standEl.hidden = !kanEenvoudig;
     tekenGebouw(st);
     tekenAanwezig();
     probeerLus();
@@ -935,8 +1011,8 @@
     const t = d.totals || {};
     const c = (v, k, cls = '') => ({ v, k, cls });
     if (afd.id === 'evenement') {
-      const open = checksOpen();
-      return [c(esc((d.event && d.event.dateText) || 'Volgt'), 'Datum', 'is-tekst'), c(d.registration && d.registration.open ? 'Open' : 'Dicht', 'Aanmelden', 'is-tekst'),
+      const open = checksLijst();
+      return [c(esc((d.event && d.event.dateText) || 'Volgt'), 'Datum', 'is-tekst'), { ...c(d.registration && d.registration.open ? 'Open' : 'Dicht', 'Aanmelden', 'is-tekst'), doe: 'aanmelden', hulp: 'Aanmelden open of dicht zetten' },
         c(open.length, 'Nog te regelen', open.some(x => x.level === 'fout') ? 'is-let' : ''), c(actief().length, actief().length === 1 ? 'Sport actief' : 'Sporten actief')];
     }
     if (afd.id === 'sport') {
@@ -952,7 +1028,9 @@
         c(uit ? `${uit}<small> min</small>` : '0', 'Grootste uitloop', uit >= 10 ? 'is-let' : ''), c(esc(eind || '–'), 'Klaar rond')];
     }
     if (afd.id === 'communicatie') {
-      return [c(d.mail_live ? 'Aan' : 'Proef', 'E-mail', 'is-tekst'), c(d.reminders_auto ? 'Auto' : 'Zelf', 'Herinneringen', 'is-tekst'), c(t.approved || 0, 'Teams die mail krijgen')];
+      // Teams zonder e-mailadres (aangemeld met alleen een stad) krijgen geen mail: niet meetellen.
+      const metAdres = (n) => { const ok = teams().filter(x => x.status === 'approved'); return ok.length ? ok.filter(x => !x.no_email).length : (((A.getConfig && A.getConfig()) || {}).signupForm === 'city' ? 0 : n); };
+      return [c(d.mail_live ? 'Aan' : 'Proef', 'E-mail', 'is-tekst'), c(d.reminders_auto ? 'Auto' : 'Zelf', 'Herinneringen', 'is-tekst'), c(metAdres(t.approved || 0), 'Teams die mail krijgen')];
     }
     if (afd.id === 'veiligheid') {
       const p = systeemPunten(), b = (d.system && d.system.backups) || {};
@@ -990,7 +1068,9 @@
 
     // Kerncijfers
     const kc = kerncijfers(d, afd);
-    setHtml($('ah-cijfers'), kc.map(x => `<div class="ah-cijfer ${x.cls}"><div class="ah-cijfer-v">${x.v}</div><div class="ah-cijfer-k">${esc(x.k)}</div></div>`).join(''));
+    setHtml($('ah-cijfers'), kc.map(x => (x.doe
+      ? `<button type="button" class="ah-cijfer ah-cijfer-knop ${x.cls}" data-ah="cijfer" data-doe="${x.doe}" aria-label="${esc(`${x.k}: ${String(x.v).replace(/<[^>]+>/g, '')}. ${x.hulp || ''}`)}"><div class="ah-cijfer-v">${x.v}</div><div class="ah-cijfer-k">${esc(x.k)}<span class="ah-cijfer-p" aria-hidden="true">${IC.pijl}</span></div></button>`
+      : `<div class="ah-cijfer ${x.cls}"><div class="ah-cijfer-v">${x.v}</div><div class="ah-cijfer-k">${esc(x.k)}</div></div>`)).join(''));
     $('ah-cijfers').hidden = !kc.length;
     $('ah-slot-mensen').hidden = afd.id !== 'mensen';
 
@@ -1345,7 +1425,8 @@
         <h4 class="ah-tussenkop">Nog niet binnen${nog.length ? ` (${nog.length})` : ''}</h4>
         ${tm.length === 0 ? '<p class="ah-leeg">Er zijn nog geen goedgekeurde teams.</p>'
           : nog.length === 0 ? '<p class="ah-leeg">Iedereen is binnen.</p>'
-          : `<ul class="ah-namen">${nog.slice(0, 60).map(x => `<li><b>${esc(x.team_name)}</b><span>${esc([naam(x.competition_id), x.captain_name].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul>${nog.length > 60 ? `<p class="rg-eerlijk ah-eerlijk">En nog ${nog.length - 60}. De hele lijst staat bij Teams.</p>` : ''}`}
+          : `<p class="ah-tekst ah-checkin-uitleg">Geen QR bij de hand? Tik op <b>Check in</b> bij het team.</p>
+            <ul class="ah-namen ah-namen-ci">${nog.slice(0, 60).map(x => `<li><span class="ah-namen-t"><b>${esc(x.team_name)}</b><span>${esc([naam(x.competition_id), x.captain_name].filter(Boolean).join(' · '))}</span></span><button type="button" class="rg-mini ah-mini" data-ah="checkin" data-id="${esc(x.id)}" aria-label="Check ${esc(x.team_name)} in">Check in</button></li>`).join('')}</ul>${nog.length > 60 ? `<p class="rg-eerlijk ah-eerlijk">En nog ${nog.length - 60}. De hele lijst staat bij Teams.</p>` : ''}`}
         ${magIn('veiligheid') ? '<div class="ah-kaart-k"><button type="button" class="rg-knop rg-knop-rustig ah-knop" data-ah="log-checkin">Check-ins in het logboek</button></div>' : ''}`;
   }
 
@@ -1483,7 +1564,7 @@
   function kaartToegang() {
     const s = (R() && R().system) || {};
     const wie = ($('who') || {}).textContent || '';
-    return kaartKop('Veiligheid', 'Toegang', 'Wie waar in kan. De codes zelf staan hier bewust niet.')
+    return kaartKop('Veiligheid', 'Codes', 'Wat je met elke code kunt. De codes zelf staan hier bewust niet.')
       + `<ul class="ah-toegang">
           <li><b>Admincode</b><span>${metPas()
             ? 'Voor dit scherm. Met de code kom je bij de profielkiezer; zonder profiel en pas kun je verder niets. Deel hem alleen met het organisatieteam.'
@@ -2030,11 +2111,48 @@
     const b = e.target.closest('[data-ah]');
     if (!b || !root.contains(b)) return;
     const act = b.dataset.ah;
+    if (act === 'stand-eenvoudig') { const E = window.JVO_ADMIN_EENVOUDIG; if (E) E.zetStand('eenvoudig', b); return; }
     if (act === 'actie') {
       const a = (tekenHome.__act || [])[Number(b.dataset.i)];
       if (!a) return;
-      const licht = () => { const top = route.afd && route.t ? tVan(route.afd, route.t) : null; if (top) flits(top.el); };
+      const licht = () => { const top = route.afd && route.t ? tVan(route.afd, route.t) : null; if (top) flits(top.el); if (a.na) a.na(); };
       if (a.doe) { a.doe(); naAankomst(licht); } else ga(a.afd, a.t, { na: licht, bron: b });
+      return;
+    }
+    if (act === 'acties-meer') {
+      actiesOpen = !actiesOpen; teken();
+      const k = root.querySelector('[data-ah="acties-meer"]');
+      if (k) { try { k.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+      return;
+    }
+    if (act === 'snel') {
+      const doel = SNEL[b.dataset.doel];
+      if (!doel) return;
+      ga(doel[0], doel[1], { bron: b, na: () => {
+        const naar = doel[2] && document.querySelector(doel[2]);
+        if (!naar) return;
+        try { naar.scrollIntoView({ block: 'start', behavior: rustig() ? 'auto' : 'smooth' }); } catch { /* oudere browser */ }
+        const focus = b.dataset.doel === 'pauze' ? ((R() && R().paused_all) ? $('rg-pauze-alles') : $('rg-reden')) : naar;
+        if (focus) { try { focus.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+      } });
+      return;
+    }
+    if (act === 'cijfer') {
+      if (b.dataset.doe === 'aanmelden') ga('evenement', 'profiel', { bron: b, na: () => {
+        const v = $('evc-registration');
+        if (!v) return;
+        try { v.scrollIntoView({ block: 'center' }); v.focus({ preventScroll: true }); } catch { /* geen focus */ }
+        flits(v.closest('.evc-group') || v);
+      } });
+      return;
+    }
+    if (act === 'checkin') {
+      const id = Number(b.dataset.id);
+      if (!Number.isInteger(id) || !A.checkinTeam) return;
+      b.disabled = true;
+      const ok = await A.checkinTeam(id);
+      if (!ok && b.isConnected) b.disabled = false;
+      if (aan) teken();
       return;
     }
     if (act && act.startsWith('pb-')) return klikBeheer(b, act);
@@ -2087,11 +2205,21 @@
 
   // ── Meelopen met admin.js ────────────────────────────────────────────────
   function tik() {
-    const moet = RG.isOn() && !!R();
+    // De eenvoudige stand (admin-eenvoudig.js) is een eigen schil: dan blijft de hub uit.
+    const E = window.JVO_ADMIN_EENVOUDIG;
+    const eenvoudig = !!(E && E.wil());
+    const moet = RG.isOn() && !!R() && !eenvoudig;
+    // Van eenvoudig naar volledig: eerst zet de schil zijn blokken terug, dan pakt de hub ze.
+    if (moet && !aan && E && E.actief()) E.uit();
     if (moet && !aan) zetAan();
-    else if (!moet && aan && !RG.isOn()) zetUit();
-    if (!aan && R()) document.body.classList.remove('ah-wacht');   // gegevens zijn er en de hub hoort uit: oude indeling tonen
+    else if (!moet && aan && (eenvoudig || !RG.isOn())) zetUit();
+    if (!aan && (R() || eenvoudig)) document.body.classList.remove('ah-wacht');   // gegevens zijn er en de hub hoort uit: oude indeling tonen
     if (aan) { teken(); laadCrew(false); laadAanwezig(false); if (route.afd === 'veiligheid' && route.t === 'profielen') laadBeheer(false); }
+    if (aan && route.afd === 'evenement' && (route.t === 'klaar' || route.t === 'profiel')) {
+      // Dezelfde, net ververste lijst als de tellers: zo staat een opgelost punt er niet meer.
+      if (route.t === 'klaar' && A.tekenChecks && R()) A.tekenChecks(R().checks);
+      if (A.laadEvenement && A.evenementOud() > 20000 && !A.userIsBusy()) A.laadEvenement({ zacht: true });
+    }
   }
   A.onRender(tik);
   // De hartslag meldt een gewijzigde toegang of een dichte poort: de hub tekent mee. Wie
@@ -2106,10 +2234,14 @@
     if (stondOpen && !hierOpen && route.afd && metPas() && !wisselBezig && A.hasToken()) { A.wisWijkData(route.afd); A.refreshAll(); }
     stondOpen = hierOpen;
     if (route.afd && metPas() && !magIn(route.afd) && !wisselBezig) {
-      A.showToast(`Je mag niet meer in ${afdVan(route.afd).naam}. Vraag iemand van Veiligheid om toegang.`, 'error');
+      const naam = afdVan(route.afd).naam, wie = Array.isArray(ik && ik.vraag) ? ik.vraag : [];
       A.wisWijkData(route.afd);
       history.replaceState(null, '', '#/');
       zetRoute(null, null, true);
+      PAS().paneel({
+        soort: 'bord', knop: 'Terug naar het plein', kop: `Je mag niet meer in ${naam}`,
+        regel: wie.length ? `Je toegang is zojuist ingetrokken. Vraag ${wie.join(' of ')} om toegang: dat wordt in Veiligheid geregeld.` : 'Je toegang is zojuist ingetrokken. Vraag iemand van Veiligheid om toegang.',
+      });
       return;
     }
     if (!wisselBezig) teken();
@@ -2141,7 +2273,9 @@
 
   window.JVO_ADMIN_HUB = {
     actief: () => aan,
-    ga, toon, naarTab, uitleg, naAankomst, teken: () => { if (aan) teken(); },
+    // Voor admin-eenvoudig.js: de hub zet zijn blokken terug voordat de eenvoudige schil ze pakt.
+    uit: () => zetUit(),
+    ga, toon, naarTab, uitleg, naAankomst, teken: () => { if (aan) teken(); }, dagLoopt: () => !!(aan && R() && dagLoopt(R())),
     route: () => ({ ...route }),
   };
 })();

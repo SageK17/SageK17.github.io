@@ -10,6 +10,11 @@
 //   jvo_mijn_kaarten  { v:1, at, event, account, cards:[…] }   laatste goede antwoord (bron voor offline, mét QR)
 //   jvo_mijn_meld     [team_id]   teams waarvoor meldingen zijn klaargezet terwijl ze nog wachten
 //   jvo_mijn_tip_weg  '1' als de beginscherm-uitleg is weggetikt
+//   jvo_stad          [{ id, name, comp, cat, at }]   wat er op dit toestel met "alleen stad" is aangemeld
+//                     (geschreven door app.js; hier bijgehouden zodat de voordeur niets ouds toont)
+// Aangemeld met alleen een stad (card.signup === 'city', card.mail === false): er is geen
+// e-mailadres. Dan belooft deze pagina nergens een mail, is de teamcode de enige reserve en
+// staat de poule met de andere namen erbij zolang de indeling nog kan veranderen.
 // Het bord houdt zijn eigen volglijst bij (jvo_hub_follow / jvo_follow); deze pagina zet
 // het eigen team daarin klaar, zodat "Bekijk het hele bord" het team gemarkeerd toont.
 //
@@ -32,7 +37,10 @@
     set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
     del(k) { try { localStorage.removeItem(k); } catch {} },
   };
-  const KEYS = 'jvo_mijn', CACHE = 'jvo_mijn_kaarten', MELD = 'jvo_mijn_meld', TIP = 'jvo_mijn_tip_weg';
+  const KEYS = 'jvo_mijn', CACHE = 'jvo_mijn_kaarten', MELD = 'jvo_mijn_meld', TIP = 'jvo_mijn_tip_weg', STAD = 'jvo_stad';
+  // Staat "laat je link mailen" op deze pagina? (De server laat het weg als niemand een adres heeft.)
+  const MAIL_KAN = !!$('mt-link-form');
+  const zonderMail = (c) => !!c && c.mail === false;
   const isJwt = (k) => typeof k === 'string' && k.length < 2000 && /^[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/.test(k);
 
   // ── Sleutels ───────────────────────────────────────────────────────────────
@@ -244,16 +252,30 @@
       } else {
         state = { cards, event: event || (cache && cache.event) || null, account: account || (cache && cache.account) || null, at: cache ? cache.at : null, stale: true, druk };
       }
+      if (!stale) houStadBij(cards);
       const op = leesCache();
       bewaard = new Set((op ? op.cards : []).filter(c => c.checkin && typeof c.checkin.qr_svg === 'string').map(c => c.team_id));
       markeerVolgen(cards);
-      if (weg.length && !keys.length) zetMelding(weg.includes('gone') ? 'Deze aanmelding bestaat niet meer.' : 'Deze link werkt niet meer. Vraag hieronder een nieuwe aan.');
+      if (weg.length && !keys.length) zetMelding(weg.includes('gone') ? 'Deze aanmelding bestaat niet meer.' : (MAIL_KAN ? 'Deze link werkt niet meer. Vraag hieronder een nieuwe aan.' : 'Deze sleutel werkt niet meer. Typ hieronder je teamcode.'));
       else if (weg.length && eerste) zetMelding('Eén van je links werkt niet meer en is van dit toestel gehaald.');
       render();
     } finally {
       eerste = false; bezig = false;
       if (nogEens) { nogEens = false; sein(); }
     }
+  }
+
+  // De voordeur onthoudt wat er op dit toestel met "alleen stad" is aangemeld (om te vragen
+  // "nog een?"). Bestaat zo'n aanmelding niet meer, of heet hij anders, dan loopt dat hier mee.
+  function houStadBij(cards) {
+    try {
+      const a = JSON.parse(ls.get(STAD) || '[]');
+      if (!Array.isArray(a) || !a.length) return;
+      const leeft = new Map(cards.filter(c => c.status !== 'rejected' && c.status !== 'revoked').map(c => [c.team_id, c]));
+      const rest = a.filter(x => x && leeft.has(x.id)).map(x => ({ ...x, name: String(leeft.get(x.id).name || x.name) }));
+      if (JSON.stringify(rest) === JSON.stringify(a)) return;
+      if (rest.length) ls.set(STAD, JSON.stringify(rest)); else ls.del(STAD);
+    } catch {}
   }
 
   // ── Bouwstenen ─────────────────────────────────────────────────────────────
@@ -318,10 +340,10 @@
           <p>${c.checkin.checked_in_time ? 'Je bent binnen. De QR blijft hier staan.' : 'Laat de QR zien bij de ingang. Lukt scannen niet? Noem deze code.'}</p>
           <p class="mt-bewaard">${op ? (paginaKlaar === false ? 'Je QR is bewaard, de pagina zelf nog niet. Maak voor de zekerheid een schermafbeelding.' : `${VINK}Staat op dit toestel bewaard`) : 'Niet bewaard op dit toestel: maak een schermafbeelding.'}</p></div>
       </div>
-      <div class="mt-pas-voet"><span class="mt-k">${c.solo ? 'Jouw code' : 'Teamcode'} <b>${esc(c.team_code || '')}</b></span></div>`;
+      <div class="mt-pas-voet"><span class="mt-k">${c.solo ? 'Jouw code' : 'Teamcode'} <b>${esc(c.team_code || '')}</b></span>${own && zonderMail(c) && c.team_code ? '<p class="mt-enige">Bewaar deze code (schermafbeelding): er komt geen mail, dit is je enige sleutel.</p>' : ''}</div>`;
     } else if ((c.status === 'pending' || c.status === 'waitlist') && c.team_code) {
       onder = `<div class="mt-scheur"></div><div class="mt-pas-stub"><span class="mt-k">${c.solo ? 'Jouw code' : 'Teamcode'}</span><b class="mt-code">${esc(c.team_code || '')}</b>
-        <p>Maak een schermafbeelding van deze code. Daarmee open je ${c.solo ? 'je aanmelding' : 'Mijn team'} op elk toestel${c.solo ? '' : ', en je teamgenoten kunnen ermee meekijken'}.</p></div>`;
+        <p>Maak een schermafbeelding van deze code. Daarmee open je ${c.solo ? 'je aanmelding' : 'Mijn team'} op elk toestel${c.solo ? '' : ', en je teamgenoten kunnen ermee meekijken'}.${zonderMail(c) ? ' Er komt geen mail: dit is je enige sleutel.' : ''}</p></div>`;
     }
     return `<article class="mt-pas" aria-label="${esc(c.name)}${sp.name ? `, ${esc(sp.name)}` : ''}">
       <div class="mt-pas-kop${String(c.name || '').length >= 25 ? ' breed' : ''}">
@@ -392,11 +414,29 @@
   const liveHref = () => { const a = $('mt-live'); const h = a ? a.getAttribute('href') : ''; return /^\/(sporten|toernooi)$/.test(h || '') ? h : ''; };
   const welkom = () => `<p>Je bent welkom om te komen kijken.</p>${liveHref() ? `<div class="mt-rij"><a class="mt-knop" href="${esc(liveHref())}">Bekijk het live-bord</a></div>` : ''}`;
   const vragen = () => (CONTACT ? `<p class="klein">Vragen? Mail <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a>.</p>` : '');
+  // "Je zit in Poule B" met de anderen in die poule. Staat er zolang de indeling nog kan
+  // veranderen (schedule.draw_open), en bij een aanmelding met alleen een stad tot de eerste
+  // wedstrijd: daar is dit het antwoord op "in welke poule kom ik?".
+  function pouleStuk(c) {
+    const s = c.schedule;
+    if (!s || s.state !== 'ready' || !s.poule) return '';
+    if (!(s.draw_open || (c.signup === 'city' && !gespeeld(c)))) return '';
+    const anderen = (Array.isArray(s.standings) ? s.standings : []).filter(r => r && !r.me && r.name).map(r => r.name);
+    return `<div class="mt-lbl">${c.solo ? 'Je poule' : 'Jullie poule'}</div>
+      <div class="mt-poule"><b>Poule ${esc(s.poule)}</b>
+        <ul aria-label="In deze poule"><li class="ik" lang="nl">${esc(c.name)}</li>${anderen.map(n => `<li lang="nl">${esc(n)}</li>`).join('')}</ul>
+        ${anderen.length ? '' : '<p class="klein">Je bent de eerste in deze poule.</p>'}
+        ${s.draw_open ? '<p class="klein">De indeling kan nog veranderen tot de start. Hier staat altijd de laatste stand.</p>' : ''}</div>`;
+  }
   function schemaStuk(c, kop) {
     const s = c.schedule;
-    if (!s || s.state === 'none') return '<p>Het schema volgt. Zodra het klaar is, staat je eerste wedstrijd hier.</p>';
+    if (!s || s.state === 'none') {
+      return s && s.reason === 'few'
+        ? '<div class="mt-lbl">Je poule</div><p>Je poule volgt zodra er genoeg aanmeldingen zijn. Dan staat hij hier, met je eerste wedstrijd.</p>'
+        : '<p>Het schema volgt. Zodra het klaar is, staat je eerste wedstrijd hier.</p>';
+    }
     if (s.state === 'not_in_schedule') return `<p>Het schema staat al, maar ${c.solo ? 'je bent' : 'je team is'} nog niet ingedeeld. De organisatie regelt dat.</p>`;
-    const pz = s.paused ? `<div class="mt-pauze" role="status"><b>Pauze</b>${s.pause_message ? `${esc(zin(s.pause_message))} ` : ''}Wat bezig is wordt uitgespeeld. De tijden schuiven mee zodra er weer gespeeld wordt.</div>` : '';
+    const pz = (s.paused ? `<div class="mt-pauze" role="status"><b>Pauze</b>${s.pause_message ? `${esc(zin(s.pause_message))} ` : ''}Wat bezig is wordt uitgespeeld. De tijden schuiven mee zodra er weer gespeeld wordt.</div>` : '') + pouleStuk(c);
     if (s.live) return `${pz}<div class="mt-lbl">Nu bezig</div>${kaartje(c, s.live)}${s.next ? `<div class="mt-lbl">Daarna</div>${kaartje(c, s.next)}` : ''}`;
     if (s.next) return `${pz}<div class="mt-lbl">${esc(kop)}</div>${kaartje(c, s.next)}`;
     return `${pz}<p>${s.group_complete ? 'De poulewedstrijden zitten erop.' : 'Er staat nu geen wedstrijd voor je klaar.'} Je uitslagen en de stand staan hieronder.</p>`;
@@ -411,10 +451,10 @@
     let h = '';
     if (now === 'pending') {
       h = `<div class="mt-lbl">Status</div><h3>Ontvangen<em>.</em></h3>
-        <p>We bekijken ${solo ? 'je aanmelding' : 'je team'}. Het besluit zie je hier, en je krijgt het ook per mail.</p>`;
+        <p>We bekijken ${solo ? 'je aanmelding' : 'je team'}. Het besluit zie je hier${zonderMail(c) ? '' : ', en je krijgt het ook per mail'}.</p>`;
     } else if (now === 'waitlist') {
       h = `<div class="mt-lbl">Status</div><h3>Wachtlijst<em>.</em></h3>
-        <p>Er is nu geen plek. Komt er een plek vrij, dan zie je het hier en krijg je een mail.</p>${reden(c)}`;
+        <p>Er is nu geen plek. ${zonderMail(c) ? 'Komt er een plek vrij, dan schuif je door en zie je het hier. Kijk af en toe even: er komt geen mail.' : 'Komt er een plek vrij, dan zie je het hier en krijg je een mail.'}</p>${reden(c)}`;
     } else if (now === 'rejected') {
       h = `<div class="mt-lbl">Status</div><h3>Afgewezen<em>.</em></h3>
         <p>${solo ? 'Je aanmelding' : 'De aanmelding van je team'} gaat helaas niet door.</p>${reden(c)}${welkom()}${vragen()}`;
@@ -705,12 +745,12 @@
         : 'Dit toestel ondersteunt hier geen meldingen. Je ziet alles ook op deze pagina.';
     } else if (s.alle) {
       t = 'Meldingen staan aan op dit toestel. Uitzetten kan altijd met de knop hieronder.'
-        + (klaar.length ? ` Voor ${klaar.map(c => c.name).join(' en ')} staan ze klaar: het besluit krijg je per mail, vanaf de eerste wedstrijd komen de meldingen vanzelf.` : '');
+        + (klaar.length ? ` Voor ${klaar.map(c => c.name).join(' en ')} staan ze klaar: het besluit ${klaar.every(zonderMail) ? 'zie je hier' : 'krijg je per mail'}, vanaf de eerste wedstrijd komen de meldingen vanzelf.` : '');
     } else if (s.aan.length) {
       t = 'Voor een deel van je aanmeldingen staan meldingen aan. Tik op ‘Zet meldingen aan’ voor de rest.';
     } else {
       t = 'Krijg een seintje op je telefoon als je moet spelen en bij de uitslag. Dat gaat alleen aan als jij op de knop tikt en je browser toestemming geeft; uitzetten kan altijd.'
-        + (wacht ? ' Je kunt ze nu al klaarzetten; het besluit zelf krijg je per mail.' : '');
+        + (wacht ? ` Je kunt ze nu al klaarzetten; het besluit zelf ${s.kaarten.filter(c => c.status !== 'approved').every(zonderMail) ? 'zie je hier' : 'krijg je per mail'}.` : '');
     }
     $('mt-meld-uitleg').textContent = t;
     $('mt-meld-aan').hidden = !pushKan() || s.alle;
@@ -819,10 +859,14 @@
     $('mt-sleutel-uitleg').textContent = a && a.email
       ? `Je bent hier als ${a.name ? `${a.name} (${a.email})` : a.email}. Dit toestel onthoudt je sleutel, zodat je niet hoeft in te loggen.`
       : (kijkt ? 'Je kijkt mee met een teamcode. Dit toestel onthoudt hem, zodat je hem niet opnieuw hoeft te typen.'
-        : 'Dit toestel onthoudt je sleutel, zodat je niet hoeft in te loggen.');
+        : 'Dit toestel onthoudt je sleutel, zodat je niet hoeft in te loggen.' + (alleenCode() ? ' Bewaar ook je teamcode: op een ander toestel, of als dit toestel hem kwijtraakt, kom je er alleen daarmee weer in.' : ''));
   }
+  // Alle eigen aanmeldingen hier zijn zonder e-mail gedaan: dan is de teamcode de enige weg terug.
+  const alleenCode = () => { const eigen = state ? state.cards.filter(c => c._kind === 'own') : []; return eigen.length > 0 && eigen.every(zonderMail); };
   const wegKnoppen = (vraag) => { $('mt-weg').hidden = vraag; $('mt-weg-ja').hidden = !vraag; $('mt-weg-nee').hidden = !vraag; };
-  $('mt-weg').addEventListener('click', () => { wegKnoppen(true); $('mt-weg-msg').textContent = 'Weet je het zeker? Je kaart en QR verdwijnen van dit toestel. Met je link of teamcode kom je er altijd weer in. De link zelf blijft werken; een link in je browsergeschiedenis wis je daar.'; $('mt-weg-nee').focus(); });
+  $('mt-weg').addEventListener('click', () => { wegKnoppen(true); $('mt-weg-msg').textContent = alleenCode()
+    ? 'Weet je het zeker? Je kaart en QR verdwijnen van dit toestel. Alleen met je teamcode kom je er weer in: heb je die bewaard?'
+    : 'Weet je het zeker? Je kaart en QR verdwijnen van dit toestel. Met je link of teamcode kom je er altijd weer in. De link zelf blijft werken; een link in je browsergeschiedenis wis je daar.'; $('mt-weg-nee').focus(); });
   $('mt-weg-nee').addEventListener('click', () => { wegKnoppen(false); $('mt-weg-msg').textContent = ''; $('mt-weg').focus(); });
   $('mt-weg-ja').addEventListener('click', async () => {
     const btn = $('mt-weg-ja'); btn.disabled = true;
@@ -838,12 +882,13 @@
       const l = lijst(kind), rest = l.filter(t => !ids.has(t.id));
       if (rest.length !== l.length) { bewaarLijst(kind, rest); if (!rest.length) ls.del(BORD[kind].push); }
     }
+    const zonder = alleenCode();
     meld = new Set(); bewaarMeld();
-    keys = []; bewaarKeys(); ls.del(CACHE);
+    keys = []; bewaarKeys(); ls.del(CACHE); ls.del(STAD);
     state = null; bewaard = new Set(); sig = ''; vouw.clear();
     await veegLinkCache();   // ook de kopie van de geopende link in de cache van de service worker
     btn.disabled = false; wegKnoppen(false); $('mt-weg-msg').textContent = '';
-    zetMelding('Je sleutel en je kaart zijn van dit toestel verwijderd. Opende je een link uit je mail? Die kan nog in je browsergeschiedenis staan: wis die als je dit toestel deelt.');
+    zetMelding('Je sleutel en je kaart zijn van dit toestel verwijderd.' + (zonder ? ' Met je teamcode kom je er weer in.' : ' Opende je een link uit je mail? Die kan nog in je browsergeschiedenis staan: wis die als je dit toestel deelt.'));
     render();
     try { window.scrollTo(0, 0); } catch {}
   });
@@ -852,7 +897,9 @@
   async function metCode(code, foutEl, knop) {
     foutEl.textContent = '';
     const schoon = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!schoon) { foutEl.textContent = 'Typ je teamcode. Die heeft 8 tekens.'; return false; }
+    // Hoe de code eruitziet zegt de server (bij aanmelden met alleen een stad begint hij met de stad).
+    const vorm = ($('mt-code-form') && $('mt-code-form').dataset.codeHint) || '';
+    if (!schoon) { foutEl.textContent = vorm ? `Typ je teamcode: ${vorm}.` : 'Typ je teamcode. Die heeft 8 tekens.'; return false; }
     if (knop) knop.disabled = true;
     try {
       const r = await fetch('/api/mijn/code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: schoon }) });
@@ -879,7 +926,7 @@
   codeFormulier('mt-code-form', 'mt-code', 'mt-code-fout', 'mt-code-knop');
   codeFormulier('mt-code-form2', 'mt-code2', 'mt-code-fout2', 'mt-code-knop2');
 
-  $('mt-link-form').addEventListener('submit', async (e) => {
+  if (MAIL_KAN) $('mt-link-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fout = $('mt-link-fout'), ok = $('mt-link-ok'), knop = $('mt-link-knop');
     fout.textContent = ''; ok.textContent = '';
@@ -894,7 +941,7 @@
     } catch { fout.textContent = 'Geen verbinding. Probeer het zo opnieuw.'; }
     finally { knop.disabled = false; }
   });
-  $('mt-mail').addEventListener('input', () => { $('mt-link-fout').textContent = ''; });
+  if (MAIL_KAN && $('mt-mail')) $('mt-mail').addEventListener('input', () => { $('mt-link-fout').textContent = ''; });
 
   // ── Verversen: bij terugkomst, elke minuut, en bij een seintje van het bord ──
   let seinTimer = null, wachtOpZicht = false;
@@ -936,7 +983,7 @@
       bewaard = new Set(cards.filter(c => c.checkin && typeof c.checkin.qr_svg === 'string').map(c => c.team_id));
       render();
     }
-    if (linkKapot) zetMelding('Deze link is niet compleet. Open hem opnieuw vanuit je mail, of gebruik je teamcode.');
+    if (linkKapot) zetMelding(MAIL_KAN ? 'Deze link is niet compleet. Open hem opnieuw vanuit je mail, of gebruik je teamcode.' : 'Deze link is niet compleet. Gebruik je teamcode.');
     if (startCode) {
       const ok = await metCode(startCode, $('mt-code-fout'), null);
       if (!ok) { $('mt-code').value = startCode.toUpperCase(); if (keys.length) { const d = $('mt-extra'); d.open = true; $('mt-code2').value = startCode.toUpperCase(); $('mt-code-fout2').textContent = $('mt-code-fout').textContent; } }

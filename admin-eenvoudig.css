@@ -1,0 +1,374 @@
+/* ================================================================
+   JVO Admin — EENVOUDIGE STAND (admin-eenvoudig.js)
+   ----------------------------------------------------------------
+   Vier onderdelen in plaats van de hub of de tabs. ALLES hier staat
+   onder body.ae-aan (of in #ae, dat in de volledige stand leeg en
+   verborgen is): zonder de eenvoudige stand verandert er niets.
+
+   Kleuren komen uit de variabelen van de pagina (--midnight, --ice,
+   --gold …), zodat de schil onder elke stijl leesbaar is. Sectie 9
+   voegt toe wat bij de stijl Sporthub hoort.
+
+   Opbouw
+     1. Aan/uit en variabelen      6. Wedstrijddag
+     2. Bovenbalk en navigatie     7. Instellingen
+     3. Startscherm                8. Telefoon
+     4. Aanmeldingen               9. Stijl Sporthub
+     5. Poules en schema          10. Minder beweging
+   ================================================================ */
+
+/* ── 1. Aan/uit en variabelen ───────────────────────────────────────────── */
+.ae [hidden] { display: none !important; }
+/* Zinnen die naar een plek verwijzen: een eigen versie voor de eenvoudige stand. */
+.ae-alleen { display: none; }
+body.ae-aan .ae-alleen { display: inline; }
+body.ae-aan .ae-niet, body.ae-aan .ah-niet-hub, body.ae-aan .ah-alleen-hub { display: none; }
+/* Het inlogscherm vraagt in deze stand alleen de admincode. */
+.login-card.ae-login .ae-login-naam { display: none; }
+body.ae-wacht .tabs, body.ae-wacht .tab-pane, body.ae-wacht #rg-bar, body.ae-wacht #ah { visibility: hidden; }
+body.ae-aan .tabs, body.ae-aan .tab-pane, body.ae-aan #rg-bar, body.ae-aan #ah { display: none !important; }
+body.ae-aan .admin-shell { max-width: 1120px; }
+body.ae-aan {
+  --ae-vlak: var(--midnight-2);
+  --ae-in: var(--midnight);
+  --ae-rand: var(--line-strong);
+  --ae-rand-2: var(--ice-faint);
+  --ae-tekst: var(--ice);
+  --ae-tekst-2: var(--ice-muted);
+  --ae-actie: var(--gold);
+  --ae-op-actie: var(--midnight);
+  --ae-kop: var(--display);
+  --ae-r: 14px;
+  /* De blokken van de regie-laag rekenen met de namen van de hub. */
+  --ah-vlak: var(--ae-vlak);
+  --ah-in: var(--ae-in);
+  --ah-rand: var(--ae-rand);
+  --ah-tekst: var(--ae-tekst);
+  --ah-tekst-2: var(--ae-tekst-2);
+  --ah-actie: var(--ae-actie);
+  --ah-op-actie: var(--ae-op-actie);
+}
+.ae-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ae { margin-top: 14px; color: var(--ae-tekst); }
+.ae-main { min-width: 0; }
+.ae :is(.ae-titel, .ae-cat, .ae-tegel, .ae-nav-a, .ae-link, .ae-meer-knop, .ae-catrij-weg):focus-visible { outline: 3px solid var(--ae-tekst); outline-offset: 3px; }
+.ae-titel:focus { outline: none; }
+
+/* ── 2. Bovenbalk en navigatie ──────────────────────────────────────────── */
+body.ae-aan #dash > .topbar { flex-wrap: nowrap; align-items: center; gap: 10px; }
+body.ae-aan #dash > .topbar .brand-badge { flex: 1 1 auto; min-width: 0; }
+body.ae-aan #dash > .topbar > nav { order: 6; flex: none; width: auto; }
+body.ae-aan #dash > .topbar > nav a:not(#logout-btn) { display: none; }
+/* "Ingelogd als …" zegt hier niets (je logt in met alleen de code): alleen Live, Vernieuw en de hulp blijven. */
+body.ae-aan #dash > .topbar > .who { order: 5; flex: none; flex-wrap: nowrap; gap: 8px; margin: 0 0 0 auto; white-space: nowrap; font-size: 0 !important; }
+body.ae-aan #dash > .topbar > .who > #who { display: none; }
+body.ae-aan #dash > .topbar > .who > :is(.live-status, .refresh-btn) { font-size: 13px; }
+body.ae-aan #dash > .topbar > .who > #admin-help-fab.adm-help-vast { margin: 0 !important; width: 44px; height: 44px; }
+
+.ae-nav { display: flex; gap: 6px; padding: 6px; margin: 0 0 22px; border-radius: 999px; border: 1px solid var(--ae-rand); background: var(--ae-vlak); }
+.ae-nav-a {
+  position: relative; flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; padding: 0 14px;
+  border-radius: 999px; border: 1px solid transparent; color: var(--ae-tekst-2); font-size: 14.5px; font-weight: 600; line-height: 1.2; text-decoration: none; white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.ae-nav-a:hover { color: var(--ae-tekst); background: var(--ae-in); }
+.ae-nav-a[aria-current="page"] { background: var(--ae-tekst); color: var(--ae-in); font-weight: 700; }
+.ae-nav-i { flex: none; display: flex; }
+.ae-nav-i svg { width: 20px; height: 20px; }
+.ae-nav-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ae-nav-kort { display: none; }
+.ae-nav-n { flex: none; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--ae-actie); color: var(--ae-op-actie); font-family: var(--mono); font-size: 11.5px; font-weight: 700; line-height: 22px; text-align: center; }
+.ae-nav-n:empty { display: none; }
+
+/* ── Gedeeld: koppen, kaarten, knoppen ──────────────────────────────────── */
+.ae-kop { margin: 0 0 18px; }
+.ae-titel { width: fit-content; max-width: 100%; margin: 0; font-family: var(--ae-kop); font-weight: 900; font-size: 30px; line-height: 1.05; letter-spacing: -.01em; color: var(--ae-tekst); overflow-wrap: anywhere; }
+.ae-sub { margin: 8px 0 0; font-size: 15px; line-height: 1.5; color: var(--ae-tekst-2); }
+.ae-sub:empty { display: none; }
+.ae-tussenkop { margin: 0 0 10px; font-family: var(--mono); font-size: 11.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ae-tekst-2); }
+.ae-kaart { margin: 0 0 16px; padding: 18px 20px 20px; border-radius: var(--ae-r); border: 1px solid var(--ae-rand); background: var(--ae-vlak); }
+.ae-kaart:empty { display: none; }
+.ae-kaart-h { margin: 0; font-family: var(--ae-kop); font-weight: 800; font-size: 18px; line-height: 1.2; color: var(--ae-tekst); }
+.ae-kaart-s { margin: 6px 0 14px; font-size: 14px; line-height: 1.5; color: var(--ae-tekst-2); }
+.ae-kaart-k { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 14px; }
+.ae .ae-knop { width: auto; min-height: 46px; white-space: nowrap; }
+.ae .ae-knop.is-klaar { gap: 6px; }
+.ae-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--ae-tekst); font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.ae-status { font-size: 13.5px; color: var(--ae-tekst-2); }
+.ae-leeg { margin: 0 0 16px; padding: 16px 18px; border-radius: var(--ae-r); border: 1px dashed var(--ae-rand); font-size: 14.5px; line-height: 1.5; color: var(--ae-tekst-2); }
+.ae-stip { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ae-actie); }
+.ae-label { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--ae-tekst); }
+.ae :is(input[type="text"], input[type="number"], input[type="time"], select) {
+  width: 100%; min-height: 46px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--ae-rand-2); background: var(--ae-in); color: var(--ae-tekst);
+  font-family: var(--body); font-size: 16px; line-height: 1.2;
+}
+.ae :is(input, select):focus-visible { outline: 3px solid var(--ae-tekst); outline-offset: 2px; }
+.ae-slot > .section, .ae-slot > details.section { margin-bottom: 16px; }
+.ae-acties { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.ae-acties:empty { display: none; }
+
+/* De keuze van de categorie, met tellers. */
+.ae-cats { display: flex; gap: 10px; margin: 0 0 16px; overflow-x: auto; scrollbar-width: none; padding: 3px; }
+.ae-cats::-webkit-scrollbar { display: none; }
+.ae-cats:empty { display: none; }
+.ae-cat {
+  flex: 1 1 0; min-width: 132px; display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 10px 16px; text-align: left; cursor: pointer;
+  border-radius: var(--ae-r); border: 1.5px solid var(--ae-rand); background: var(--ae-vlak); color: var(--ae-tekst); font-family: var(--body);
+  transition: background .15s ease, border-color .15s ease;
+}
+.ae-cat:hover { border-color: var(--ae-rand-2); }
+.ae-cat-vast, .ae-cat-vast:hover { cursor: default; border-color: var(--ae-rand); }
+.ae-cat[aria-pressed="true"] { background: var(--ae-tekst); border-color: var(--ae-tekst); color: var(--ae-in); }
+.ae-cat img { flex: none; width: 30px; height: 30px; object-fit: contain; }
+.ae-cat-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ae-cat-naam { font-size: 13.5px; font-weight: 700; opacity: .86; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ae-cat-n { font-family: var(--ae-kop); font-weight: 800; font-size: 19px; line-height: 1.1; white-space: nowrap; }
+.ae-cat-s { font-size: 12.5px; line-height: 1.3; opacity: .86; }
+.ae-cats-een .ae-cat { min-height: 58px; }
+
+/* ── 3. Startscherm ─────────────────────────────────────────────────────── */
+.ae-kop-home { margin-bottom: 22px; }
+.ae-oog { margin-bottom: 8px; }
+.ae-titel-home { font-size: clamp(28px, 3.4vw, 42px); }
+.ae-tegels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0 0 22px; }
+.ae-tegel {
+  position: relative; display: flex; align-items: flex-start; gap: 16px; min-height: 156px; padding: 22px 22px 20px; text-decoration: none;
+  border-radius: calc(var(--ae-r) + 4px); border: 1.5px solid var(--ae-rand); background: var(--ae-vlak); color: var(--ae-tekst);
+  transition: border-color .15s ease, transform .15s ease;
+}
+.ae-tegel:hover { border-color: var(--ae-tekst); transform: translateY(-2px); }
+.ae-tegel.is-nu, .ae-tegel.is-let { border-color: var(--ae-actie); }
+.ae-tegel-i { flex: none; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid var(--ae-rand-2); color: var(--ae-tekst); }
+.ae-tegel.is-nu .ae-tegel-i { background: var(--ae-actie); border-color: var(--ae-actie); color: var(--ae-op-actie); }
+.ae-tegel-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ae-tegel-naam { font-size: 15px; font-weight: 700; color: var(--ae-tekst-2); }
+.ae-tegel-groot { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.ae-tegel-groot b { font-family: var(--ae-kop); font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: -.02em; }
+.ae-tegel-groot i { font-style: normal; font-size: 15.5px; font-weight: 600; color: var(--ae-tekst-2); }
+.ae-tegel-regel { font-size: 14px; line-height: 1.45; color: var(--ae-tekst-2); }
+.ae-let { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ae-tekst); }
+.ae-tegel-pijl { flex: none; align-self: center; display: flex; color: var(--ae-tekst-2); }
+.ae-open { margin: 0 0 22px; }
+.ae-punten { list-style: none; margin: 0; padding: 0; border-radius: var(--ae-r); border: 1px solid var(--ae-rand); background: var(--ae-vlak); }
+.ae-punten li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 6px 18px; font-size: 14.5px; line-height: 1.45; color: var(--ae-tekst); }
+.ae-punten li + li { border-top: 1px solid var(--ae-rand); }
+.ae-punten li > span { padding: 8px 0; }
+.ae-punten .ae-link { flex: none; }
+.ae-voet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--ae-rand); }
+.ae-voet:empty { display: none; }
+.ae-voet-links { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.ae-voet-stand { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: 13.5px; line-height: 1.45; color: var(--ae-tekst-2); }
+.ae-voet-stand > span { flex: 1 1 240px; max-width: 460px; }
+
+/* ── 4. Aanmeldingen ────────────────────────────────────────────────────── */
+.ae-nieuw-vouw { margin: 0 0 16px; border-radius: var(--ae-r); border: 1px solid var(--ae-rand); background: var(--ae-vlak); }
+.ae-nieuw-vouw > summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 18px; font-size: 14.5px; font-weight: 700; color: var(--ae-tekst); cursor: pointer; list-style: none; border-radius: var(--ae-r); }
+.ae-nieuw-vouw > summary::-webkit-details-marker { display: none; }
+.ae-nieuw-vouw > summary:focus-visible { outline: 3px solid var(--ae-tekst); outline-offset: 2px; }
+.ae-plus { position: relative; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ae-rand-2); }
+.ae-plus::before, .ae-plus::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.5px; margin: -.75px 0 0 -5px; background: currentColor; }
+.ae-plus::after { transform: rotate(90deg); transition: transform .15s ease; }
+.ae-nieuw-vouw[open] .ae-plus::after { transform: rotate(0deg); }
+.ae-nieuw { padding: 2px 18px 16px; }
+.ae-nieuw-rij { display: flex; gap: 10px; }
+.ae-nieuw-rij > input[type="text"] { flex: 2 1 220px; }
+.ae-nieuw-rij > select { flex: 1 1 150px; }
+.ae-nieuw-rij > .ae-knop { flex: none; }
+.ae-nieuw-uit { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: var(--ae-tekst); }
+.ae-nieuw-uit:empty { display: none; }
+.ae-nieuw-uit code { font-family: var(--mono); font-size: 14.5px; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1.5px solid var(--ae-rand-2); white-space: nowrap; }
+
+/* De bestaande teamlijst, als rustige rijen. */
+body.ae-aan .ae-slot-teams > .section { margin: 0; }
+body.ae-aan .ae-slot-teams .section-head { display: none; }
+body.ae-aan .ae-slot-teams .admin-search { margin: 0 0 12px; }
+body.ae-aan .ae-slot-teams .filters { margin: 0 0 12px; }
+body.ae-aan .ae-slot-teams .filter-pill.ae-nul { display: none; }
+body.ae-aan .ae-slot-teams .tm-cards { display: flex; flex-direction: column; gap: 8px; }
+body.ae-aan .ae-slot-teams .tm-card {
+  display: grid; grid-template-columns: 30% minmax(0, 1fr) auto; align-items: center; gap: 6px 18px; padding: 10px 14px 10px 18px; border-radius: 14px;
+}
+body.ae-aan .ae-slot-teams .tm-card:hover { transform: none; box-shadow: none; }
+body.ae-aan .ae-slot-teams .tm-card > * { margin: 0 !important; min-width: 0; }
+body.ae-aan .ae-slot-teams .tm-card-head { flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; }
+body.ae-aan .ae-slot-teams .tm-card-head .tm-card-name { flex: 0 1 auto; font-size: 17px; line-height: 1.15; overflow-wrap: anywhere; }
+body.ae-aan .ae-slot-teams .tm-card.s-approved .pill.approved { display: none; }
+body.ae-aan .ae-slot-teams .tm-card-cap { display: none; }
+body.ae-aan .ae-slot-teams .tm-card-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; }
+body.ae-aan .ae-slot-teams .tm-card-tags .tm-tag { margin: 0; }
+body.ae-aan .ae-slot-teams .tm-card-actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 6px; }
+body.ae-aan .ae-slot-teams .tm-card-actions [data-act="revoke"] { display: none; }
+body.ae-aan .ae-slot-teams .tm-card-actions .btn-sm { min-height: 40px; white-space: nowrap; }
+body.ae-aan .ae-slot-teams .tm-card-actions [data-act="stad-naam"] .tm-lbl { display: none; }
+body.ae-aan .ae-slot-teams .tm-card-actions [data-act="stad-naam"] { min-width: 40px; justify-content: center; padding-left: 10px; padding-right: 10px; }
+
+/* ── 5. Poules en schema ────────────────────────────────────────────────── */
+body.ae-aan #rg-sportpaneel .tc-head .card-eyebrow { display: none; }
+body.ae-aan #rg-sportpaneel [data-rg="bewerk"] { display: none; }
+body.ae-aan #rg-sportpaneel #rg-p-form:empty, body.ae-aan #rg-sportpaneel .rg-eerlijk:empty { display: none; }
+body.ae-aan #rg-sportpaneel .tc-links { display: none; }
+.ae-velden { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ae-velden label { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--ae-tekst-2); }
+.ae-velden .ae-veld-breed { grid-column: 1 / -1; max-width: 420px; }
+/* Let op bij een kaart of een rij: twee categorieën op dezelfde plek, of het hoofdtoernooi als categorie. */
+.ae-kaart-let { display: flex; align-items: baseline; gap: 9px; margin: 14px 0 0; font-size: 14px; line-height: 1.45; font-weight: 600; color: var(--ae-tekst); }
+.ae-catrij-let { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin: 0 0 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--ae-actie); background: var(--ae-in); }
+.ae-catrij-let p { display: flex; align-items: baseline; gap: 9px; margin: 0; flex: 1 1 280px; font-size: 14px; line-height: 1.45; color: var(--ae-tekst); }
+
+/* ── 6. Wedstrijddag ────────────────────────────────────────────────────── */
+body.ae-aan [data-rg="dag-uit"], body.ae-aan #rg-snel { display: none; }
+body.ae-aan .rg-spring:not(:empty) { display: flex; max-width: 560px; }
+body.ae-aan :is(#rg-nood, #rg-rijen, #rg-h-nu, #rg-h-straks, #rg-h-uit, #teams-cards, #rg-p-schema) { scroll-margin-top: 88px; }
+body.ae-aan #rg-dag { margin-bottom: 20px; }
+/* "Nu bezig" naast "Straks", de uitslagen eronder: drie kolommen maken de namen te smal. */
+@media (min-width: 900px) {
+  body.ae-aan #rg-dag .rg-kolommen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.ae-aan #rg-dag .rg-kolommen > section:nth-child(3) { grid-column: 1 / -1; }
+  body.ae-aan #rg-dag #rg-uit { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; }
+}
+.rg-dag-crew-t { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14.5px; font-weight: 700; color: var(--ae-tekst); }
+.ae-code { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--ae-rand); background: var(--ae-in); color: var(--ae-tekst); }
+.ae-code.is-let { border: 1.5px solid var(--ae-actie); }
+.ae-schermen { list-style: none; margin: 0; padding: 0; }
+.ae-scherm { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 18px; padding: 14px 0; border-top: 1px solid var(--ae-rand); }
+.ae-scherm-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ae-scherm-t b { font-size: 16px; color: var(--ae-tekst); }
+.ae-scherm-t span { font-size: 13.5px; line-height: 1.45; color: var(--ae-tekst-2); }
+.ae-scherm-k { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.ae-scherm-qr { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 14px; border-radius: 12px; background: #fff; color: #06193A; }
+.ae-scherm-qr p { margin: 0; font-size: 14px; line-height: 1.5; }
+.ae-qr { flex: none; width: 168px; height: 168px; }
+.ae-prints { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; padding-top: 12px; border-top: 1px solid var(--ae-rand); font-size: 13.5px; color: var(--ae-tekst-2); }
+
+/* ── 7. Instellingen ────────────────────────────────────────────────────── */
+.ae-open-rij { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
+.ae-open-t { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 280px; }
+.ae-open-t > div { display: flex; flex-direction: column; gap: 3px; }
+.ae-open-t b { font-family: var(--ae-kop); font-weight: 800; font-size: 19px; line-height: 1.2; }
+.ae-open-t span { font-size: 14px; line-height: 1.45; color: var(--ae-tekst-2); }
+.ae-open-stip { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ae-tekst-2); }
+.ae-open-rij.is-open .ae-open-stip { background: var(--ae-actie); border-color: var(--ae-actie); }
+.ae-catrijen { display: flex; flex-direction: column; }
+.ae-catrij { display: grid; grid-template-columns: minmax(0, 1.6fr) 150px minmax(0, 1fr) auto auto; align-items: center; gap: 10px 12px; padding: 10px 0; border-top: 1px solid var(--ae-rand); }
+.ae-catrij label { display: block; margin: 0; }
+.ae-catrij-max { display: flex !important; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--ae-tekst-2); }
+.ae-catrij-n { font-size: 13.5px; color: var(--ae-tekst-2); }
+.ae-catrij-weg { min-height: 44px; padding: 0 6px; border: 0; background: none; color: var(--ae-tekst); font: inherit; font-size: 13.5px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ae-catrij-nieuw { grid-template-columns: minmax(0, 1.6fr) 150px minmax(0, 1fr) auto; }
+.ae #ae-i-cats-uit { display: block; margin: 8px 0 0; }
+.ae #ae-i-cats-uit:empty { display: none; }
+/* Het evenement-formulier: een vaste kaart, met alleen de kern in beeld. */
+body.ae-aan details.ae-vast > summary { cursor: default; pointer-events: none; }
+body.ae-aan details.ae-vast > summary .fold-chev, body.ae-aan details.ae-vast > summary .evc-badge { display: none; }
+body.ae-aan #evc-checks-wrap { display: none !important; }
+body.ae-aan #evc-fold .section-sub { display: none; }
+body.ae-aan:not(.ae-meer-open) .ae-extra { display: none !important; }
+body.ae-aan:not(.ae-meer-open) #evc-stad { margin-top: 0; padding-top: 0; border-top: 0; }
+body.ae-aan:not(.ae-meer-open) #evc-stad > .evc-grid { grid-template-columns: minmax(0, 1fr); }
+.ae-meer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 16px; font-size: 13.5px; color: var(--ae-tekst-2); }
+.ae-meer-knop { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1.5px solid var(--ae-rand-2); background: transparent; color: var(--ae-tekst); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ae-meer-knop:hover { border-color: var(--ae-tekst); }
+body.ae-aan .evc-savebar.is-vuil { position: sticky; bottom: 12px; z-index: 5; }
+
+/* De knop terug naar eenvoudig, onderaan het startscherm van de volledige Admin Hub (admin-hub.js). */
+.ah-stand { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 22px 0 0; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--ah-rand, var(--line-strong)); font-size: 14px; line-height: 1.5; color: var(--ah-tekst-2, var(--ice-muted)); }
+.ah-stand p { flex: 1 1 320px; margin: 0; }
+.ah-stand .rg-knop { width: auto; white-space: nowrap; }
+
+/* ── 8. Telefoon ────────────────────────────────────────────────────────── */
+@media (max-width: 899px) {
+  body.ae-aan { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .ae { margin-top: 10px; }
+  .ae-nav {
+    position: fixed; z-index: 70; left: 0; right: 0; bottom: 0; margin: 0; gap: 0; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    border-radius: 0; border: 0; border-top: 1px solid var(--ae-rand); background: var(--ae-in); box-shadow: 0 -10px 24px -16px rgba(0, 0, 0, .8);
+  }
+  .ae-nav-a { flex-direction: column; gap: 3px; min-height: 60px; padding: 4px 1px; border-radius: 14px; font-size: 11.5px; }
+  .ae-nav-lang { display: none; }
+  .ae-nav-kort { display: inline; }
+  .ae-nav-n { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; line-height: 18px; }
+  body.ae-aan #admin-help-fab:not(.adm-help-vast) { bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important; }
+  body.ae-aan .toast-host { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  body.ae-aan #dash > .topbar .brand-text-long, body.ae-aan #dash > .topbar .brand-text-short { display: none; }
+  body.ae-aan #dash > .topbar .brand-text-hub { display: inline-block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+  body.ae-aan #dash > .topbar > .who > .refresh-btn { display: none; }
+
+  .ae-titel { font-size: 25px; }
+  .ae-kop { margin-bottom: 14px; }
+  .ae-kop-home { margin-bottom: 16px; }
+  .ae-tegels { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-bottom: 18px; }
+  .ae-tegel { min-height: 0; padding: 14px 14px 14px 16px; gap: 14px; align-items: center; }
+  .ae-tegel-i { width: 42px; height: 42px; }
+  .ae-tegel-t { gap: 3px; }
+  .ae-tegel-naam { font-size: 13.5px; }
+  .ae-tegel-groot b { font-size: 26px; }
+  .ae-tegel-groot i { font-size: 14px; }
+  .ae-tegel-regel { font-size: 13px; }
+  .ae-voet { margin-top: 18px; }
+  .ae-cats { gap: 6px; }
+  .ae-cat { min-width: 104px; min-height: 62px; padding: 8px 10px; gap: 8px; }
+  .ae-cat img { width: 24px; height: 24px; }
+  .ae-cat-n { font-size: 15px; }
+  .ae-cat-s { font-size: 11.5px; }
+  .ae-kaart { padding: 16px 16px 18px; }
+  .ae-nieuw { padding: 2px 14px 14px; }
+  .ae-nieuw-vouw > summary { padding: 0 14px; }
+  .ae-nieuw-rij { flex-wrap: wrap; }
+  .ae-nieuw-rij > input[type="text"] { flex: 1 1 100%; }
+  .ae-nieuw-rij > select { flex: 1 1 0; }
+  .ae-velden { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ae-scherm { grid-template-columns: minmax(0, 1fr); }
+  .ae-scherm-k { justify-content: flex-start; }
+  .ae-scherm-qr { flex-direction: column; align-items: flex-start; }
+  /* Twee regels per categorie: naam + maximum, daaronder de teller en de knoppen. */
+  .ae-catrij, .ae-catrij-nieuw { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 10px; }
+  .ae-catrij > label:first-child { grid-column: 1; }
+  .ae-catrij-max { grid-column: 2 / -1; justify-content: flex-end; }
+  .ae-catrij-max input { width: 76px; }
+  .ae-catrij-n { grid-column: 1; }
+  .ae-catrij-nieuw .ae-catrij-n { display: none; }
+  .ae-catrij-nieuw .ae-knop { grid-column: 1 / -1; justify-self: start; }
+  .ae-voet-stand .ae-knop { flex: 1 1 100%; }
+
+  body.ae-aan .ae-slot-teams > .section { padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+  body.ae-aan .ae-slot-teams .tm-card { grid-template-columns: minmax(0, 1fr); gap: 7px; padding: 11px 12px 11px 14px; }
+  body.ae-aan .ae-slot-teams .tm-card-actions { justify-content: flex-start; flex-wrap: nowrap; }
+  body.ae-aan .ae-slot-teams .tm-card-actions .btn-sm { min-height: 44px; flex: 1 1 auto; justify-content: center; }
+  /* Potlood en prullenbak als icoon: zo passen alle knoppen op één regel (de naam staat in aria-label). */
+  body.ae-aan .ae-slot-teams .tm-card-actions :is([data-act="stad-naam"], [data-act="delete"]) { flex: 0 0 48px; padding-left: 0; padding-right: 0; }
+  body.ae-aan .ae-slot-teams .tm-card-actions [data-act="delete"] .tm-lbl { display: none; }
+  body.ae-aan .ae-slot-teams .filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  body.ae-aan .ae-slot-teams .filters::-webkit-scrollbar { display: none; }
+  body.ae-aan .ae-slot-teams .filter-pill { flex: none; }
+}
+
+/* ── 9. Stijl Sporthub ──────────────────────────────────────────────────── */
+html[data-theme="sporthub"] body.ae-aan {
+  --ae-vlak: var(--adm-vlak, #0D2550);
+  --ae-in: var(--adm-vlak-in, #06193A);
+  --ae-rand: var(--adm-rand, rgba(246, 247, 251, .2));
+  --ae-rand-2: var(--adm-rand-2, rgba(246, 247, 251, .46));
+  --ae-tekst: #F6F7FB;
+  --ae-tekst-2: rgba(246, 247, 251, .84);
+  --ae-actie: #FF6B1A;
+  --ae-op-actie: #06193A;
+  --ae-kop: var(--sh-rond, 'Unbounded', 'Geist', system-ui, sans-serif);
+  --ae-r: 18px;
+}
+html[data-theme="sporthub"] .ae-nav-a[aria-current="page"],
+html[data-theme="sporthub"] .ae-cat[aria-pressed="true"] { background: #F6F7FB; border-color: #F6F7FB; color: #06193A; }
+html[data-theme="sporthub"] .ae-tegel-i { border-color: #C4382E; }
+html[data-theme="sporthub"] .ae-tegel.is-nu .ae-tegel-i { border-color: #FF6B1A; }
+html[data-theme="sporthub"] .ae-tussenkop { position: relative; padding-left: 32px; color: #F6F7FB; }
+html[data-theme="sporthub"] .ae-tussenkop::before { content: ''; position: absolute; left: 0; top: 50%; width: 22px; height: 1.5px; background: #F0685E; }
+html[data-theme="sporthub"] .ae-titel { text-transform: none; }
+html[data-theme="sporthub"] body.adm.ae-aan .ae :is(input[type="text"], input[type="number"], input[type="time"], select) { border-radius: 12px; }
+@media (max-width: 899px) {
+  html[data-theme="sporthub"] .ae-tegel-groot b { font-size: 24px; }
+}
+
+/* ── 10. Minder beweging ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ae-nav-a, .ae-cat, .ae-tegel, .ae-plus::after { transition: none !important; }
+  .ae-tegel:hover { transform: none; }
+}

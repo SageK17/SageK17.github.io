@@ -259,23 +259,32 @@
         blok = true; zetUit(true); P.classList.add('is-blok');
         const tot = Number(b && b.tot_ms) || (nuServer() + 5 * 60000);
         if (b && b.server_nu) klok = b.server_nu - Date.now();
+        // Wie kan helpen staat er met naam bij (de server geeft de namen mee met de blokkade).
+        const wie = Array.isArray(b && b.vraag) && b.vraag.length ? b.vraag.slice(0, 2).join(' of ') : '';
         hulp.textContent = soort === 'wachtwoord'
           ? 'Wachtwoord vergeten? Vraag de eigenaar. Weet niemand het meer, dan kan het alleen via het noodherstel op de server.'
-          : 'Pas vergeten? Vraag iemand die in Veiligheid mag om hem opnieuw in te stellen.';
+          : `Pas vergeten? Vraag ${wie || 'iemand die in Veiligheid mag'} om hem opnieuw in te stellen.`;
         hulp.hidden = false;
         zeg(tekst || 'Geblokkeerd. Probeer het over een paar minuten opnieuw.');
+        const vrij = (zin) => {
+          clearInterval(blokTimer); blok = false; P.classList.remove('is-blok'); zetUit(false);
+          melding.classList.add('is-rustig');      // goed nieuws: niet in de foutkleur
+          melding.textContent = zin; hulp.hidden = true;
+          zeg(zin);
+          if (inp) inp.focus();
+        };
+        // Heft iemand in Veiligheid de blokkade op, dan komt het paneel binnen een paar seconden
+        // vanzelf vrij (o.blokCheck → null = geen blokkade meer; undefined = onbekend, niets doen).
+        let gevraagd = Date.now();
         const tik = () => {
           const s = Math.ceil((tot - nuServer()) / 1000);
-          if (s <= 0) {
-            clearInterval(blokTimer); blok = false; P.classList.remove('is-blok'); zetUit(false);
-            melding.classList.add('is-rustig');      // goed nieuws: niet in de foutkleur
-            melding.textContent = 'Je kunt het weer proberen.'; hulp.hidden = true;
-            zeg('Je kunt het weer proberen.');
-            if (inp) inp.focus();
-            return;
-          }
+          if (s <= 0) return vrij('Je kunt het weer proberen.');
           melding.classList.remove('is-rustig');
           melding.textContent = `Geblokkeerd. Probeer het over ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} opnieuw.`;
+          if (o.blokCheck && Date.now() - gevraagd >= 4000) {
+            gevraagd = Date.now();
+            Promise.resolve().then(() => o.blokCheck()).then((t) => { if (!dicht && blok && t === null) vrij('De blokkade is opgeheven. Je kunt het weer proberen.'); }).catch(() => { /* geen verbinding: het aftellen loopt door */ });
+          }
         };
         clearInterval(blokTimer); tik(); blokTimer = setInterval(tik, 500);
       }
@@ -379,13 +388,22 @@
   function uitkomst(r) {
     const j = r.j || {};
     if (r.ok) return { ok: true, data: j };
-    if (j.code === 'geblokkeerd') return { blok: { tot_ms: j.tot_ms, server_nu: j.server_nu }, fout: j.error };
+    if (j.code === 'geblokkeerd') return { blok: { tot_ms: j.tot_ms, server_nu: j.server_nu, vraag: j.vraag }, fout: j.error };
     if (j.code === 'te_veel_pogingen') return { fout: j.error || 'Te veel pogingen vanaf dit netwerk. Wacht een kwartier.', vast: true, schud: false };
     if (j.code === 'geen_toegang' || j.code === 'profiel_onbekend' || j.code === 'profielen_uit' || j.code === 'profielen_inactief') return { sluit: true, fout: j.error };
     if (j.code === 'wachtwoord_ontbreekt') return { fout: j.error, vast: true, schud: false };
     if (r.status >= 500 || r.status === 0) return { fout: 'Er ging iets mis. Probeer het opnieuw.', schud: false };
     return { fout: j.error || 'Dat lukte niet. Probeer het opnieuw.' };
   }
+  // Loopt de blokkade nog? → tijd (ja), null (nee) of undefined (onbekend). `tok` = het voortoken
+  // van de kiezer; zonder `tok` gaat het over de eigen sessie.
+  const blokVan = (soort, pid, tok) => async () => {
+    try {
+      const pad = `/api/admin/blokkade?soort=${soort}${pid ? `&profiel_id=${encodeURIComponent(pid)}` : ''}`;
+      const r = await haal(pad, tok === undefined ? {} : { tok });
+      return r.ok ? (r.j.tot_ms || null) : undefined;
+    } catch { return undefined; }
+  };
   const veilig = async (fn) => {
     try { return await fn(); }
     catch (e) { return e && e.message === 'Sessie verlopen' ? { sluit: true } : { fout: 'Geen verbinding. Probeer het opnieuw.', schud: false }; }
@@ -444,6 +462,7 @@
       soort: ww ? 'wachtwoord' : 'pas', lamp: true, plaats: o.plaats, geenFocusTerug: o.geenFocusTerug, opOpen: o.opOpen,
       kop: o.kop || `Poort ${WIJKNAAM[wijk] || ''}`,
       regel: o.regel || (ww ? 'Hier heb je geen pas maar het wachtwoord van Veiligheid nodig.' : 'Toets je pas van 4 cijfers in.'),
+      blokCheck: blokVan(ww ? 'veiligheid' : 'poort'),
       verstuur: (v) => veilig(async () => uitkomst(await poortVraag(wijk, v))),
     }).then(r => !!r);
   }
@@ -505,8 +524,9 @@
   // ── Hartslag en aanwezigheid ─────────────────────────────────────────────
   function neemOver(j) {
     if (!ik || !j) return;
-    const was = JSON.stringify([ik.sessie, ik.toegang, ik.profiel && ik.profiel.is_hoofd, ik.aanmaken, ik.pas]);
+    const was = JSON.stringify([ik.sessie, ik.toegang, ik.profiel && ik.profiel.is_hoofd, ik.aanmaken, ik.pas, ik.geblokkeerd]);
     if (j.server_nu) klok = j.server_nu - Date.now();
+    if (j.ok) ik.geblokkeerd = Array.isArray(j.geblokkeerd) ? j.geblokkeerd : undefined;   // wie er nu geblokkeerd is (alleen voor wie in Veiligheid mag)
     if (j.sessie) ik.sessie = j.sessie;
     if (j.pas) zetPas(j.pas);
     if (j.toegang) ik.toegang = j.toegang;
@@ -515,7 +535,7 @@
       ik.mag = { ...(ik.mag || {}), aanwezigheid: j.is_hoofd || !!ik.profiel.is_eigenaar };
     }
     if (j.aanmaken) ik.aanmaken = j.aanmaken;
-    if (was !== JSON.stringify([ik.sessie, ik.toegang, ik.profiel && ik.profiel.is_hoofd, ik.aanmaken, ik.pas])) meld();
+    if (was !== JSON.stringify([ik.sessie, ik.toegang, ik.profiel && ik.profiel.is_hoofd, ik.aanmaken, ik.pas, ik.geblokkeerd])) meld();
   }
   async function hartslag() {
     if (!token || !heeftProfiel() || document.hidden || !ADM()) return;
@@ -664,7 +684,7 @@
       if (r.status === 401) return { sluit: true, fout: 'Dat duurde te lang. Vul de admin-code opnieuw in.', code: true };
       return uitkomst(r);
     });
-    let res = await paneel({ soort: 'pas', profiel: p, kop: `Hoi ${p.naam}`, regel: 'Toets je pas van 4 cijfers in.', verstuur: (pas) => stuur({ profiel_id: p.id, pas }) });
+    let res = await paneel({ soort: 'pas', profiel: p, kop: `Hoi ${p.naam}`, regel: 'Toets je pas van 4 cijfers in.', blokCheck: blokVan('kiezer', p.id, tok), verstuur: (pas) => stuur({ profiel_id: p.id, pas }) });
     if (res && res.tijdelijk) {
       const oud = res.tijdelijk;
       res = await paneel({
@@ -707,10 +727,21 @@
     try { await fetch('/api/admin/uitloggen', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'x-admin-token': t }, body: '{}' }); }
     catch { /* de sessie verloopt anders vanzelf */ }
   }
+  // Wissel van profiel: de server stopt deze sessie en geeft de kiezer terug (met een vers
+  // voortoken), dus je komt altijd bij "Wie ben je?" uit, hoe lang de pagina ook open stond.
+  // Lukt dat niet (oudere server, geen verbinding), dan zoals vroeger: uitloggen.
   async function wisselProfiel() {
     const A = ADM();
     const v = voor && voor.tot > Date.now() ? voor.tok : null;
     sluitKaart();
+    let r = null;
+    if (token && heeftProfiel()) { try { r = await haal('/api/admin/profielen/wissel', { method: 'POST', body: {} }); } catch { r = null; } }
+    if (r && r.ok && r.j.voortoken && A && A.naarLogin) {
+      A.naarLogin('');                 // lokaal uit: de sessie is op de server al gestopt
+      zetToken(null);
+      toonKiezer({ tok: r.j.voortoken, profielen: r.j.profielen, aanmaken: r.j.aanmaken });
+      return;
+    }
     if (A && A.uitloggen) await A.uitloggen();
     if (v) herlaadKiezer(v);
   }
@@ -731,6 +762,9 @@
       const laag = document.createElement('div');
       laag.className = 'pf-laag pf-plaats-venster pf-laag-form';
       const kleur0 = KLEUREN[Math.floor(Math.random() * KLEUREN.length)];
+      // De alinea over meldingen zegt alleen iets tegen wie al eerder met een naam inlogde.
+      let hadNaam = !!eerste;
+      try { hadNaam = hadNaam || !!(localStorage.getItem('jvo_admin_name') || '').trim(); } catch { /* geen opslag */ }
       laag.innerHTML = `
         <form class="pf-form" role="dialog" aria-modal="true" aria-labelledby="pf-f-kop" novalidate autocomplete="off">
           <div class="pf-f-rol">
@@ -772,13 +806,13 @@
               <p class="pf-f-klein">Tip: geef daarna één ander profiel toegang tot Veiligheid en vertel die het wachtwoord. Dan kan een vergeten pas ook worden hersteld als jij er niet bent.</p>
             </fieldset>` : ''}
             <div class="pf-f-zicht">
-              <p><b>Meldingen.</b> Had je een mail of pushmelding aan staan bij nieuwe aanmeldingen? Die hingen aan de naam waarmee je inlogde en gelden niet voor je profiel. Zet ze daarna opnieuw aan bij Communicatie, Mijn notificaties.</p>
+              ${hadNaam ? '<p><b>Meldingen.</b> Had je een mail of pushmelding aan staan bij nieuwe aanmeldingen? Die hingen aan de naam waarmee je inlogde en gelden niet voor je profiel. Zet ze daarna opnieuw aan bij Communicatie, Mijn notificaties.</p>' : ''}
               <p><b>Goed om te weten.</b> ${esc(ZICHTBAAR)}</p>
-              <label class="pf-vink"><input type="checkbox" id="pf-f-gezien" /><span>Begrepen</span></label>
             </div>
             <p class="pf-f-fout" role="alert" data-fout></p>
           </div>
           <div class="pf-f-k">
+            <label class="pf-vink pf-vink-balk"><input type="checkbox" id="pf-f-gezien" /><span>Begrepen</span></label>
             <button type="button" class="pf-knop pf-knop-rustig" data-annuleer>Annuleer</button>
             <button type="submit" class="pf-knop" data-maak>${eerste ? 'Start met profielen' : 'Maak profiel'}</button>
           </div>
@@ -804,11 +838,20 @@
         const k = (F.querySelector('input[name="pf-kleur"]:checked') || {}).value || kleur0;
         q('[data-voorbeeld]').innerHTML = rondje({ naam: q('#pf-f-naam').value, kleur: k }, 'pf-rond-g');
       };
+      // De melding staat direct onder het veld waar hij over gaat (en dus in beeld), niet onderaan.
+      const foutThuis = fout.parentNode;
       const zegFout = (t, veld) => {
         fout.textContent = t || '';
+        laag.querySelectorAll('.is-fout').forEach(x => x.classList.remove('is-fout'));
         if (!t) return;
-        if (veld) { try { veld.focus({ preventScroll: true }); veld.scrollIntoView({ block: 'center' }); } catch { /* geen focus */ } }
-        else fout.scrollIntoView({ block: 'nearest' });
+        const inBalk = !!(veld && veld.closest('.pf-f-k'));
+        const anker = veld && !inBalk ? (veld.closest('.pf-ww-rij, .pf-f-pas-rij') || veld) : null;
+        if (anker) anker.insertAdjacentElement('afterend', fout); else foutThuis.appendChild(fout);
+        if (veld) {
+          (veld.closest('.pf-vink') || veld).classList.add('is-fout');
+          try { veld.focus({ preventScroll: true }); } catch { /* geen focus */ }
+        }
+        try { fout.scrollIntoView({ block: inBalk || !veld ? 'nearest' : 'center' }); } catch { /* oudere browser */ }
       };
       q('#pf-f-naam').addEventListener('input', tekenVoorbeeld);
       F.addEventListener('change', (e) => { if (e.target.name === 'pf-kleur') tekenVoorbeeld(); });

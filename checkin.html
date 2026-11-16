@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/kaartje-klein.webp');--werk-icoon-groot:url('/sport/werk/kaartje.webp')">
+<html lang="nl" data-theme="sporthub" data-sport="voetbal" style="--sport-icoon:url('/sport/voetbal-klein.webp');--sport-icoon-groot:url('/sport/voetbal.webp');--werk-icoon:url('/sport/werk/kaartje-klein.webp');--werk-icoon-groot:url('/sport/werk/kaartje.webp')">
 <head>
   <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>Check-in — JVO Sportdag</title>
+  <title>Check-in — Benefiet Zaalvoetbal</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/refined.css" />
   <link rel="manifest" href="/checkin.webmanifest" />
@@ -21,7 +21,21 @@
        Byte-for-byte identical to html5-qrcode@2.3.8 (verified against its SRI hash). -->
   <script src="/vendor/html5-qrcode.min.js" defer></script>
   <!-- Lijst "gescand op dit toestel": alleen in de stijl 'sporthub' (thema-sporthub-beheer.css zet hem aan). -->
-  <style>.ci-recent { display: none; }</style>
+  <style>.ci-recent { display: none; }
+    /* Zoek op naam in het invoervenster */
+    .manual-modal { overflow-y: auto; }
+    .ci-zoek { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+    .ci-zoek label { display: block; font-size: 13px; color: var(--ice-muted, #9fb4d0); margin-bottom: 6px; }
+    .ci-zoek input[type="text"] { font-family: var(--body); font-size: 16px; }
+    .ci-zoek-status { font-size: 12.5px; color: var(--ice-muted, #9fb4d0); min-height: 17px; margin-top: 6px; }
+    .ci-zoek-res { display: grid; gap: 6px; margin-top: 4px; max-height: 240px; overflow-y: auto; }
+    .ci-zoek-rij { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: 100%; text-align: left; min-height: 52px; padding: 8px 12px;
+      border-radius: 10px; border: 1px solid var(--line-strong); background: var(--midnight); color: var(--ice); font: inherit; cursor: pointer; }
+    .ci-zoek-rij b { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+    .ci-zoek-rij span { grid-column: 1; font-size: 12.5px; color: var(--ice-muted, #9fb4d0); }
+    .ci-zoek-rij em { grid-row: 1 / span 2; grid-column: 2; font-style: normal; font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .ci-zoek-rij:hover, .ci-zoek-rij:focus-visible { border-color: var(--ember); }
+</style>
   <link rel="stylesheet" href="/thema-sporthub.css" />
   <link rel="stylesheet" href="/thema-sporthub-beheer.css" />
 </head>
@@ -30,7 +44,7 @@
 <!-- LOGIN (crew code — same login as de wedstrijdbediening) -->
 <div id="login" class="login-wrap">
   <div class="login-card card">
-    <div class="card-eyebrow">Check-in · JVO Sportdag</div>
+    <div class="card-eyebrow">Check-in · Benefiet Zaalvoetbal</div>
     <h2>Inloggen</h2>
     <form id="login-form">
       <div class="field">
@@ -53,7 +67,7 @@
   <header class="topbar">
     <div class="brand-badge">
       <span class="badge-circle">JVO</span>
-      <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; Sportdag · Check-in</span>
+      <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; Zaalvoetbal · Check-in</span>
       <span class="brand-text-short"><b>JVO</b> · Check-in</span>
     </div>
     <nav>
@@ -80,10 +94,11 @@
   <details class="help">
     <summary>Hoe werkt dit?</summary>
     <div class="help-body">
-      <p>Hiermee check je teams in bij de JVO Sportdag. Goedgekeurde teams kregen een <strong>QR-code per mail</strong>.</p>
+      <p>Hiermee check je teams in bij het Benefiet Zaalvoetbal. Elk team heeft zijn <strong>QR-code in Mijn team</strong> op de telefoon.</p>
       <ul>
         <li>Richt de camera op de QR-code van het team. Het systeem controleert of de code geldig is en het team is <strong>goedgekeurd</strong>.</li>
-        <li>Geen camera, of lukt scannen niet? Tik <strong>“Check-in-code invoeren”</strong> en typ de check-in-code van 6 tekens. Die staat in de QR-mail van de captain en in Mijn team (of plak de check-in-link). De teamcode van 8 tekens is voor meekijken en werkt hier niet.</li>
+        <li>Geen camera, of lukt scannen niet? Tik <strong>“Check-in-code invoeren”</strong> en typ de check-in-code van 6 tekens. Die staat in Mijn team (of plak de check-in-link). De teamcode is voor meekijken en werkt hier niet.</li>
+        <li>Heeft het team zijn telefoon of code niet bij de hand? Tik <strong>“Zoek op naam”</strong>, typ een stuk van de naam en tik het team aan.</li>
         <li><strong>“Al ingecheckt”</strong> betekent dat dit team al eerder is gescand.</li>
       </ul>
       <p class="off"><svg class="off-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> <b>Geen internet?</b> Check-ins worden opgeslagen en <b>pas gecontroleerd zodra de verbinding terug is</b> — onderaan zie je hoeveel er in de wachtrij staan. Let op: een offline check-in is <b>voorlopig</b>. Wordt een team bij synchronisatie alsnog geweigerd (bijv. niet goedgekeurd), dan krijg je dat te zien — controleer dat team dan handmatig.</p>
@@ -93,9 +108,10 @@
   <div class="ci-scan">
   <div id="qr-reader"></div>
 
-  <div style="display:flex; gap:8px; margin-bottom:16px;">
+  <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
     <button class="btn-sm" id="restart-btn">Scanner opnieuw starten</button>
     <button class="btn-sm" id="manual-btn">Check-in-code invoeren</button>
+    <button class="btn-sm" id="zoek-btn">Zoek op naam</button>
   </div>
 
   <div id="result"></div>
@@ -109,15 +125,26 @@
 <div id="manual-modal" class="manual-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="manual-modal-title">
   <div class="manual-modal-content">
     <h3 id="manual-modal-title">Check-in-code invoeren</h3>
-    <p style="margin-bottom:10px;">Vraag het team om de <b>check-in-code</b> (6 tekens) uit de QR-mail of Mijn team en typ 'm hier — hoofdletters en het streepje gaan vanzelf.</p>
+    <p style="margin-bottom:10px;">Vraag het team om de <b>check-in-code</b> (6 tekens) uit Mijn team en typ 'm hier — hoofdletters en het streepje gaan vanzelf.</p>
     <input type="text" id="manual-code-input" autocomplete="off" autocapitalize="characters" autocorrect="off"
            spellcheck="false" placeholder="K7M-3PA" maxlength="7" aria-label="Check-in-code, 6 tekens"
            style="width:100%; text-align:center; font-family:var(--mono, monospace); font-size:30px; font-weight:700; letter-spacing:.18em; padding:14px 10px; text-transform:uppercase; border-radius:12px;" />
     <div id="manual-code-hint" style="margin-top:8px; font-size:12.5px; color:var(--ice-muted, #9fb4d0); text-align:center; min-height:17px;">Nog 6 tekens</div>
+    <!-- Zoeken op naam (bv. de stad bij aanmelden zonder e-mail): GET /api/checkin/zoek.
+         Geen persoonsgegevens in het antwoord: alleen naam, competitie en poule. -->
+    
+    <div class="ci-zoek">
+      <label for="zoek-input">Of zoek het team op naam</label>
+      <input type="text" id="zoek-input" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="words" autocorrect="off"
+             spellcheck="false" placeholder="Typ een stuk van de naam…" maxlength="60" aria-label="Zoek een team op naam" aria-describedby="zoek-status" />
+      <div id="zoek-status" class="ci-zoek-status" role="status" aria-live="polite"></div>
+      <div id="zoek-res" class="ci-zoek-res"></div>
+    </div>
+    
     <details style="margin-top:12px;">
       <summary style="cursor:pointer; font-size:13px; color:var(--ice-muted, #9fb4d0);">Liever de check-in-link plakken?</summary>
       <input type="text" id="manual-token-input" autocomplete="off" autocapitalize="off"
-             spellcheck="false" placeholder="Plak hier de check-in-link uit de mail…" style="margin-top:8px; width:100%;" />
+             spellcheck="false" placeholder="Plak hier de check-in-link…" style="margin-top:8px; width:100%;" />
     </details>
     <div style="display:flex; gap:8px; margin-top:14px;">
       <button class="btn-sm" id="manual-cancel">Annuleren</button>

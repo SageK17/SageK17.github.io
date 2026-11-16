@@ -125,6 +125,7 @@ function openManualModal() {
   document.body.style.overflow = 'hidden';   // lock the page behind the modal
   if (code) code.value = '';
   if (link) link.value = '';
+  zoekLeeg();
   updateManualState();
   setTimeout(() => (code || link)?.focus(), 50);
 }
@@ -134,6 +135,60 @@ function closeManualModal() {
 }
 
 document.getElementById('manual-btn')?.addEventListener('click', openManualModal);
+// "Zoek op naam": hetzelfde venster, met de cursor meteen in het zoekveld.
+document.getElementById('zoek-btn')?.addEventListener('click', () => { openManualModal(); setTimeout(() => document.getElementById('zoek-input')?.focus(), 80); });
+
+// Zoeken op naam (GET /api/checkin/zoek, crew of admin). Voor wie zijn telefoon of code niet
+// bij de hand heeft, en voor aanmeldingen met alleen een stad: de crew zoekt de naam op en tikt
+// het team aan. Het antwoord bevat geen persoonsgegevens; alles gaat via textContent.
+let zoekTimer = null, zoekNr = 0;
+function zoekLeeg() {
+  clearTimeout(zoekTimer); zoekNr++;
+  const i = document.getElementById('zoek-input'), r = document.getElementById('zoek-res'), st = document.getElementById('zoek-status');
+  if (i) i.value = ''; if (r) r.textContent = ''; if (st) st.textContent = '';
+}
+async function zoekTeams() {
+  const inp = document.getElementById('zoek-input'), box = document.getElementById('zoek-res'), st = document.getElementById('zoek-status');
+  if (!inp || !box || !st) return;
+  const q = inp.value.replace(/\s+/g, ' ').trim();
+  const nr = ++zoekNr;
+  if (q.length < 2) { box.textContent = ''; st.textContent = q ? 'Typ minstens 2 letters.' : ''; return; }
+  if (!navigator.onLine) { box.textContent = ''; st.textContent = 'Zoeken lukt alleen met verbinding. Gebruik de check-in-code.'; return; }
+  st.textContent = 'Zoeken…';
+  try {
+    const res = await api('/api/checkin/zoek?q=' + encodeURIComponent(q));
+    const json = await res.json().catch(() => ({}));
+    if (nr !== zoekNr) return;   // er is intussen verder getypt
+    if (!res.ok) { box.textContent = ''; st.textContent = json.error || 'Zoeken lukte niet. Probeer het opnieuw.'; return; }
+    const lijst = Array.isArray(json.results) ? json.results : [];
+    box.textContent = '';
+    st.textContent = lijst.length ? `${lijst.length} gevonden. Tik het team aan om in te checken.` : 'Niets gevonden. Alleen goedgekeurde teams staan hier.';
+    lijst.forEach((t) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ci-zoek-rij';
+      const naam = document.createElement('b'); naam.textContent = t.name || '';
+      const onder = document.createElement('span'); onder.textContent = [t.competition, t.poule ? `Poule ${t.poule}` : ''].filter(Boolean).join(' · ');
+      b.appendChild(naam); b.appendChild(onder);
+      if (t.checked_in) { const al = document.createElement('em'); al.textContent = 'al binnen'; b.appendChild(al); }
+      b.addEventListener('click', async () => {
+        if (!Number.isInteger(t.id)) return;
+        closeManualModal();
+        scanCooldown = true;
+        await processToken('T:' + t.id);
+        setTimeout(() => { scanCooldown = false; }, 2500);
+      });
+      box.appendChild(b);
+    });
+  } catch (e) {
+    if (e && e.auth) return;
+    if (nr === zoekNr) { box.textContent = ''; st.textContent = 'Geen verbinding. Gebruik de check-in-code.'; }
+  }
+}
+document.getElementById('zoek-input')?.addEventListener('input', () => { clearTimeout(zoekTimer); zoekTimer = setTimeout(zoekTeams, 250); });
+document.getElementById('zoek-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); clearTimeout(zoekTimer); zoekTeams(); }
+  if (e.key === 'Escape') document.getElementById('manual-cancel').click();
+});
 document.getElementById('manual-cancel')?.addEventListener('click', closeManualModal);
 // Click on the dim backdrop (outside the content) closes the modal.
 document.getElementById('manual-modal')?.addEventListener('click', (e) => {
@@ -273,9 +328,13 @@ function saveQueue(q) {
 
 window.addEventListener('online', flushOfflineQueue);
 
-// Queue entries are either a raw QR token, or 'C:XXXXXX' for a typed check-in-code.
+// Queue entries are either a raw QR token, 'C:XXXXXX' for a typed check-in-code, or
+// 'T:<id>' for a team picked from the name search.
 function checkinBody(entry) {
-  return String(entry).startsWith('C:') ? { code: entry.slice(2) } : { token: entry };
+  const e = String(entry);
+  if (e.startsWith('C:')) return { code: e.slice(2) };
+  if (/^T:\d{1,9}$/.test(e)) return { team_id: Number(e.slice(2)) };
+  return { token: entry };
 }
 
 let flushingCheckins = false;
@@ -389,8 +448,8 @@ async function processToken(token) {
       <h3>${head}</h3>
       <h2 class="h-display" style="font-size:48px; margin-bottom:16px;">${escapeHtml(t.name)}</h2>
       <dl>
-        <dt>Captain</dt><dd>${escapeHtml(t.captain_name)}</dd>
-        <dt>Spelers</dt><dd>${t.expected_players}</dd>
+        ${t.signup === 'city' || !t.captain_name ? '' : `<dt>Captain</dt><dd>${escapeHtml(t.captain_name)}</dd>
+        <dt>Spelers</dt><dd>${escapeHtml(t.expected_players)}</dd>`}
         <dt>Tijd</dt><dd class="mono small">${formatDate(t.checked_in_at)}</dd>
       </dl>
     </div>`;

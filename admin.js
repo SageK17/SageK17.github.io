@@ -108,7 +108,7 @@
   // Toast with live countdown + undo button
   // Used when an admin action triggers a deferred mail (currently 8s window).
   // Returns the toast element so caller can dismiss it on success.
-  function showUndoToast({ message, actionId, undoWindowMs, onUndo }) {
+  function showUndoToast({ message, actionId, undoWindowMs, onUndo, onKlaar }) {
     let host = $('toast-host');
     if (!host) {
       host = document.createElement('div');
@@ -149,6 +149,8 @@
       t.classList.remove('toast-show');
       t.classList.add('toast-undo-expired');
       setTimeout(() => t.remove(), 400);
+      // De wachttijd is om en er is niet geannuleerd: nu is het echt gebeurd. Zeg dat.
+      if (typeof onKlaar === 'function') { try { onKlaar(); } catch { /* een melding mag niets breken */ } }
     }, undoWindowMs);
 
     // Undo button click
@@ -176,6 +178,56 @@
   }
 
 
+  // De Admin Hub (meerdere sporten) staat aan: alleen dan gelden de extra's hieronder.
+  const hubAan = () => !!(window.JVO_ADMIN_HUB && window.JVO_ADMIN_HUB.actief());
+  // De eenvoudige stand (admin-eenvoudig.js): dezelfde blokken in een rustige schil. hubAan()
+  // is dan ook waar (de schil gedraagt zich voor dit bestand als de hub).
+  const eenvoudigAan = () => !!(window.JVO_ADMIN_EENVOUDIG && window.JVO_ADMIN_EENVOUDIG.actief());
+
+  // Eigen bevestigvenster, in plaats van het kale venster van de browser. → true / false.
+  function bevestig({ titel, tekst, ja = 'Ja', nee = 'Annuleren' }) {
+    return new Promise((klaar) => {
+      const vorig = document.activeElement;
+      const m = document.createElement('div');
+      m.className = 'modal-backdrop show adm-bevestig';
+      m.innerHTML = `<div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="adm-bev-titel" aria-describedby="adm-bev-tekst">
+        <h3 id="adm-bev-titel"></h3><p class="adm-bev-tekst" id="adm-bev-tekst"></p>
+        <div class="modal-actions"><button type="button" class="btn-sm" data-nee></button><button type="button" class="btn-sm primary" data-ja></button></div></div>`;
+      m.querySelector('#adm-bev-titel').textContent = titel || '';
+      m.querySelector('#adm-bev-tekst').textContent = tekst || '';
+      m.querySelector('#adm-bev-tekst').hidden = !tekst;
+      m.querySelector('[data-nee]').textContent = nee;
+      m.querySelector('[data-ja]').textContent = ja;
+      const slot = document.body.style.overflow;
+      let dicht = false;
+      const sluit = (v) => {
+        if (dicht) return;
+        dicht = true;
+        document.removeEventListener('keydown', toets, true);
+        m.remove();
+        document.body.style.overflow = slot;
+        if (vorig && vorig.isConnected && typeof vorig.focus === 'function') { try { vorig.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+        klaar(v);
+      };
+      const toets = (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sluit(false); return; }
+        if (e.key !== 'Tab') return;
+        const f = [...m.querySelectorAll('button')];
+        if (!m.contains(document.activeElement)) { e.preventDefault(); f[0].focus(); }
+        else if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+      };
+      m.addEventListener('click', (e) => {
+        if (e.target === m || e.target.closest('[data-nee]')) sluit(false);
+        else if (e.target.closest('[data-ja]')) sluit(true);
+      });
+      document.addEventListener('keydown', toets, true);
+      document.body.appendChild(m);
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => { try { m.querySelector('[data-ja]').focus({ preventScroll: true }); } catch { /* geen focus */ } }, 30);
+    });
+  }
+
   // ===== LOGIN ===================================================
   const loginForm = $('login-form');
   const loginAlert = $('login-alert');
@@ -184,16 +236,32 @@
   // op de server is PAS().actief() onwaar en loopt alles hieronder zoals altijd.
   const PAS = () => window.JVO_PAS || null;
 
+  // De stand van de admin (admin-eenvoudig.js): 'eenvoudig' of 'volledig'. Vóór het inloggen
+  // komt hij uit de pagina (de server zet de regel hieronder alleen in de eenvoudige stand) en
+  // uit /api/config; het antwoord van het inloggen is leidend. In de eenvoudige stand vraagt
+  // het inlogscherm alleen de admincode (in het logboek heet je dan zoals de server je noemt).
+  let standHint = document.querySelector('meta[name="jvo-admin-stand"][content="eenvoudig"]') ? 'eenvoudig' : null;
+  function loginVorm() {
+    const P = PAS(), metProfielen = !!(P && P.modus() === true);
+    const eenv = standHint === 'eenvoudig' && !metProfielen;
+    const kaart = document.querySelector('#login .login-card');
+    if (kaart) kaart.classList.toggle('ae-login', eenv);
+    const naam = $('admin-name');
+    if (naam && !metProfielen) naam.required = !eenv;
+    return eenv;
+  }
+
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginAlert.innerHTML = '';
     const P = PAS();
     // Met profielen op de server vraagt het formulier alleen de code; je naam kies je daarna.
     const metProfielen = !!(P && P.modus() === true);
-    const name = metProfielen ? '' : $('admin-name').value.trim();
+    const zonderNaam = !metProfielen && loginVorm();
+    const name = metProfielen || zonderNaam ? '' : $('admin-name').value.trim();
     const code = $('admin-code').value;
-    if (!code || (!metProfielen && !name)) {
-      loginAlert.innerHTML = `<div class="alert error">${metProfielen ? 'Vul de admincode in.' : 'Vul beide velden in.'}</div>`;
+    if (!code || (!metProfielen && !zonderNaam && !name)) {
+      loginAlert.innerHTML = `<div class="alert error">${metProfielen || zonderNaam ? 'Vul de admincode in.' : 'Vul beide velden in.'}</div>`;
       return;
     }
     try {
@@ -204,6 +272,8 @@
       });
       const json = await res.json();
       if (!res.ok) {
+        // De stand is intussen volledig geworden: dan wil de server ook je naam. Toon dat veld.
+        if (zonderNaam && res.status === 400) { standHint = 'volledig'; loginVorm(); if (P) P.opLogin(); }
         loginAlert.innerHTML = `<div class="alert error">${escape(json.error || 'Inloggen mislukt')}</div>`;
         return;
       }
@@ -212,7 +282,10 @@
         P.naLogin(json);
         return;
       }
-      startSessie(json.token, name);
+      if (json.admin_stand) standHint = json.admin_stand;
+      // Zonder naamveld is de code het enige dat je typt: die blijft na het inloggen niet in het veld staan.
+      if (zonderNaam) $('admin-code').value = '';
+      startSessie(json.token, name || (typeof json.name === 'string' ? json.name : ''));
     } catch (err) {
       loginAlert.innerHTML = '<div class="alert error">Netwerkfout.</div>';
     }
@@ -244,13 +317,20 @@
     $('login').style.display = 'grid';
     $('dash').style.display = 'none';
     const P = PAS();
-    if (P) P.opLogin();     // kijkt of de server profielen heeft en past het formulier daarop aan
-    if (adminName) {
+    // kijkt of de server profielen heeft en past het formulier daarop aan; daarna de stand
+    Promise.resolve(P ? P.opLogin() : null).then(loginVorm, loginVorm);
+    loginVorm();
+    fetch('/api/config', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((d) => {
+      if (!d || !d.flags || token) return;
+      standHint = d.flags.adminSimple ? 'eenvoudig' : 'volledig';
+      loginVorm();
+    }).catch(() => { /* geen verbinding: het formulier blijft zoals het stond */ });
+    if (adminName && standHint !== 'eenvoudig') {
       $('admin-name').value = adminName;
       // Focus password field directly if name is already known
       setTimeout(() => $('admin-code').focus(), 50);
     } else {
-      setTimeout(() => { const n = $('admin-name'); (n && !n.closest('.field')?.hidden ? n : $('admin-code')).focus(); }, 50);
+      setTimeout(() => { const n = $('admin-name'); (n && !n.closest('.field')?.hidden && standHint !== 'eenvoudig' ? n : $('admin-code')).focus(); }, 50);
     }
   }
 
@@ -339,7 +419,8 @@
       // Detect newly arrived audit entries
       const newCount = auditLog.findIndex(a => a.id === prevTopId);
       const added = newCount === -1 ? auditLog.length - prevAuditLen : newCount;
-      if (added > 0 && prevTopId) {
+      // In de eenvoudige stand is er geen logboek in beeld: dan zegt deze melding niets.
+      if (added > 0 && prevTopId && !eenvoudigAan()) {
         showToast(`${added} nieuwe ${added === 1 ? 'gebeurtenis' : 'gebeurtenissen'} in logboek`, 'info');
       }
       // F1/T4: fresh data is already in memory; only rebuild the DOM when the
@@ -382,11 +463,16 @@
   });
 
 
+  // Woorden uit het evenement ("sport" of "categorie"): uit /api/config, zelfde als de site.
+  let cfgText = {};
+  const groepWoord = () => String(cfgText.groupNoun || 'sport');
+  const groepWoorden = () => String(cfgText.groupNounPlural || 'sporten');
   async function loadConfig() {
     try {
       const r = await fetch('/api/config');
       const data = await r.json();
       cfg = data.event || {};
+      cfgText = data.text || {};
       freezeInfo = data.freeze || { frozen: false, since: null };
       countChangeEnabled = !!data.countChangeEnabled;
       $('ov-max').textContent = ` / ${cfg.maxTeams}`;
@@ -507,6 +593,7 @@
     if (!token) return;
     if (wijk === 'mensen') await Promise.all([loadTeams(), loadSignups()]);
     else if (wijk === 'veiligheid') await loadAudit();
+    else if (wijk === 'evenement') loadEventConfig({ zacht: true });
     else if (wijk === 'communicatie') {
       loadReminderStatus();
       if (typeof loadPushPrefs === 'function') loadPushPrefs();
@@ -634,7 +721,10 @@
   function renderFreezeBanner() {
     const banner = $('freeze-banner');
     if (!banner) return;
-    banner.style.display = freezeInfo.frozen ? 'flex' : 'none';
+    // Gaat over captains die zelf hun teamnaam of aantal wijzigen. Bij aanmelden met alleen een
+    // stad zijn er geen captains: dan zegt de balk niets (tenzij er nog teams mét e-mailadres zijn).
+    const alleenStad = !!(cfg && cfg.signupForm === 'city') && !teams.some(t => !t.no_email && !t.kort);
+    banner.style.display = freezeInfo.frozen && !alleenStad ? 'flex' : 'none';
   }
 
   // ===== RENDER ===================================================
@@ -686,6 +776,7 @@
       banner.style.display = 'none';
     }
 
+    renderFreezeBanner();
     renderTeams();
     renderSignups();
     renderAudit();
@@ -717,7 +808,18 @@
     return (window.JVO_HUB_NAMES && window.JVO_HUB_NAMES[t.competition_id]) || '';
   }
 
+  // Aangemeld met alleen een stad (aanmeldvorm "Alleen stad"): geen aanvoerder en geen
+  // e-mailadres. Zo'n team krijgt geen mailknoppen; wel de teamcode (om iemand te helpen die
+  // hem kwijt is), "Naam aanpassen" en een snelle "Verwijder" die opnieuw indeelt.
+  const zonderMail = (t) => !!(t && t.no_email);
+  const stadWoord = () => { const l = evcData && evcData.event && evcData.event.cityLabel; return String(l || 'Stad').toLowerCase(); };
+  const GEEN_MAIL = 'geen e-mailadres';
+  // Bij elk mailscherm: wie de mail NIET krijgt omdat er geen adres is (de server telt ze: no_email).
+  const zmTekst = (n) => `${n} team${n === 1 ? '' : 's'} zonder e-mailadres (aangemeld met alleen ${stadWoord()}) ${n === 1 ? 'krijgt' : 'krijgen'} deze mail niet; ${n === 1 ? 'dat team ziet' : 'die zien'} alles in Mijn team.`;
+  const zmNoot = (j) => (j && j.no_email > 0 ? ` <span class="zm-noot">${escape(zmTekst(j.no_email))}</span>` : '');
+
   function teamCard(t) {
+    if (zonderMail(t)) return stadTeamCard(t);
     const waiting = [
       t.rename_requested_at ? `<button class="pill waiting-rename" data-act="rename-waiting" title="Wacht op naamswijziging — klik voor opties">${ICON.clock} wacht op naam</button>` : '',
       t.count_requested_at ? `<button class="pill waiting-count" data-act="count-waiting" title="Wacht op aantal spelers — klik voor opties">${ICON.clock} wacht op aantal</button>` : '',
@@ -725,6 +827,7 @@
     ].join('');
     const actions = [
       t.status === 'approved' ? `<button class="btn-sm qr" data-act="qr">QR ↗</button>` : '',
+      t.status === 'approved' && !t.checked_in_at && !t.kort && hubAan() ? `<button class="btn-sm" data-act="checkin">Check in</button>` : '',
       t.status !== 'rejected' ? `<button class="btn-sm btn-icon" data-act="adjust" title="Captain laten aanpassen (teamnaam of aantal spelers)">${ICON.pencil} Aanpassen</button>` : '',
       t.status !== 'approved' ? `<button class="btn-sm primary" data-act="approve">Goedkeuren</button>` : '',
       (t.status === 'pending' || t.status === 'rejected') ? `<button class="btn-sm" data-act="waitlist">Wachtlijst</button>` : '',
@@ -750,18 +853,60 @@
       </div>`;
   }
 
+  function stadTeamCard(t) {
+    const actions = [
+      t.status === 'approved' ? `<button class="btn-sm qr" data-act="qr">QR ↗</button>` : '',
+      t.status === 'approved' && !t.checked_in_at && !t.kort && hubAan() ? `<button class="btn-sm" data-act="checkin">Check in</button>` : '',
+      t.status !== 'rejected' ? `<button class="btn-sm btn-icon" data-act="stad-naam" title="Een typfout in de naam herstellen" aria-label="Naam aanpassen">${ICON.pencil}<span class="tm-lbl"> Naam aanpassen</span></button>` : '',
+      t.status !== 'approved' ? `<button class="btn-sm primary" data-act="approve">${t.status === 'waitlist' && eenvoudigAan() ? 'Toelaten' : 'Goedkeuren'}</button>` : '',
+      (t.status === 'pending' || t.status === 'rejected') ? `<button class="btn-sm" data-act="waitlist">Wachtlijst</button>` : '',
+      t.status === 'approved' ? `<button class="btn-sm" data-act="revoke">Intrekken</button>` : '',
+      t.status === 'pending' ? `<button class="btn-sm danger" data-act="reject">Afwijzen</button>` : '',
+      `<button class="btn-sm danger btn-icon" data-act="delete" title="Verwijderen (8 seconden ongedaan te maken); de indeling wordt opnieuw gemaakt zolang er nog niet gespeeld is" aria-label="Verwijder ${escape(t.team_name)}">${ICON.trash}<span class="tm-lbl"> Verwijder</span></button>`,
+    ].join('');
+    return `
+      <div class="tm-card s-${t.status} tm-stad" data-id="${t.id}" tabindex="0" role="button" aria-label="Open team ${escape(t.team_name)}">
+        <div class="tm-card-head">
+          ${teamLogoHtml(t)}
+          <div class="tm-card-name">${escape(t.team_name)}</div>
+          <span class="pill ${t.status}">${STATUS_NL[t.status] || t.status}</span>
+        </div>
+        <div class="tm-card-cap"><span class="nm">Alleen ${escape(stadWoord())}</span><span class="em">${GEEN_MAIL}</span></div>
+        <div class="tm-card-tags">
+          ${sportNameOf(t) ? `<span class="tm-tag">${escape(sportNameOf(t))}</span>` : ''}
+          ${t.poule ? `<span class="tm-tag">Poule ${escape(t.poule)}</span>` : (t.status === 'approved' ? '<span class="tm-tag">nog geen poule</span>' : '')}
+          ${t.mijn_code ? `<span class="tm-tag tm-code" title="De teamcode waarmee de deelnemer Mijn team opent">code ${escape(t.mijn_code)}</span>` : ''}
+          ${t.checked_in_at ? '<span class="tm-tag ci">' + ICON.check + ' ingecheckt</span>' : ''}
+        </div>
+        <div class="tm-card-actions" data-actions>${actions}</div>
+      </div>`;
+  }
+
   function renderTeams() {
     const wrap = $('teams-cards');
     if (!wrap) return;
     let visible = currentFilter === 'all' ? teams : teams.filter(t => t.status === currentFilter);
     visible = visible.filter(inSport);
+    let elders = '';
     if (teamSearch) {
       const q = teamSearch.toLowerCase();
-      visible = visible.filter(t =>
+      const raak = (t) =>
         (t.team_name || '').toLowerCase().includes(q) ||
         (t.captain_name || '').toLowerCase().includes(q) ||
-        (t.captain_email || '').toLowerCase().includes(q)
-      );
+        (t.captain_email || '').toLowerCase().includes(q) ||
+        (t.mijn_code || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(q.replace(/[^a-z0-9]/g, '') || '\u0000');
+      visible = visible.filter(raak);
+      // Niets in dit filter of bij deze sport, maar het team bestaat wel: toon het dan gewoon,
+      // en zeg erbij waar het staat. Zo zegt zoeken nooit "niet gevonden" over een team dat er is.
+      if (visible.length === 0 && hubAan()) {
+        const alle = teams.filter(raak);
+        if (alle.length) {
+          visible = alle;
+          const sc0 = hubComp(selSport);
+          const waar = [currentFilter !== 'all' ? `“${(STATUS_NL[currentFilter] || currentFilter)}”` : '', sc0 ? escape(sc0.name) : ''].filter(Boolean).join(' bij ');
+          elders = `<p class="tm-elders" style="grid-column:1/-1;" role="status">Niets bij ${waar || 'dit filter'}. Wel gevonden bij een ander filter:</p>`;
+        }
+      }
     }
     if (visible.length === 0) {
       const sc = hubComp(selSport);
@@ -778,7 +923,7 @@
       wrap.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">${teamSearch ? `Geen teams gevonden voor "${escape(teamSearch)}".` : 'Geen teams in deze filter.'}</div>`;
       return;
     }
-    wrap.innerHTML = visible.map(teamCard).join('');
+    wrap.innerHTML = elders + visible.map(teamCard).join('');
 
     // Action buttons act in place; their clicks never bubble up to open the modal.
     wrap.querySelectorAll('button[data-act]').forEach(btn => {
@@ -802,15 +947,24 @@
     $('team-modal-status').innerHTML =
       `<span class="pill ${t.status}">${STATUS_NL[t.status] || t.status}</span>` +
       (t.checked_in_at ? ' <span class="pill checked-in">ingecheckt</span>' : '');
-    $('team-modal-captain').textContent = t.captain_name;
-    $('team-modal-email').textContent = t.captain_email;
+    // Aangemeld met alleen een stad: geen aanvoerder, geen adres, geen aantal spelers. Dan staat
+    // er eerlijk "geen e-mailadres", met de teamcode en de poule, en zijn de mailknoppen weg.
+    const zm = zonderMail(t);
+    const rij = (id, toon) => { const dd = $(id); if (!dd) return; dd.hidden = !toon; const dt = dd.previousElementSibling; if (dt && dt.tagName === 'DT') dt.hidden = !toon; };
+    $('team-modal-captain').textContent = zm ? `Alleen ${stadWoord()} (geen aanvoerder)` : t.captain_name;
+    $('team-modal-email').textContent = zm ? `${GEEN_MAIL} (aangemeld met alleen ${stadWoord()})` : t.captain_email;
     $('team-modal-players').textContent = t.expected_players;
+    rij('team-modal-players', !zm);
+    if ($('team-modal-code')) { $('team-modal-code').textContent = zm && t.mijn_code ? t.mijn_code : ''; rij('team-modal-code', zm && !!t.mijn_code); }
+    if ($('team-modal-poule')) { $('team-modal-poule').textContent = t.poule ? `Poule ${t.poule}` : 'Nog niet ingedeeld'; rij('team-modal-poule', zm && t.status === 'approved'); }
     $('team-modal-checkin').textContent = t.checked_in_at ? fmtTime(t.checked_in_at) : 'Nog niet';
     // Per-captain schedule only makes sense once a team is approved (+ generated).
-    $('team-modal-schema').classList.toggle('off', t.status !== 'approved');
+    $('team-modal-schema').classList.toggle('off', t.status !== 'approved' || zm);
     $('team-modal-schema-result').textContent = '';
     $('team-modal-qr').style.display = t.status === 'approved' ? '' : 'none';
-    $('team-modal-mailto').href = `mailto:${t.captain_email}`;
+    $('team-modal-mailto').href = zm ? '#' : `mailto:${t.captain_email}`;
+    $('team-modal-mailto').hidden = zm;
+    if ($('team-modal-geenmail')) $('team-modal-geenmail').hidden = !zm;
     fillTeamSport(t);
     $('team-modal').classList.add('show');
     document.body.style.overflow = 'hidden';
@@ -882,6 +1036,7 @@
     if (!teamModalId) return;
     const t = teams.find(x => x.id === teamModalId);
     if (!t) return;
+    if (zonderMail(t)) { $('team-modal-schema-result').textContent = `Dit team heeft ${GEEN_MAIL}. Het schema staat in Mijn team.`; return; }
     if (!confirm(`Het persoonlijke speelschema mailen naar ${t.captain_name} (${t.captain_email})?\n\nNa bevestigen heb je 8 seconden om dit ongedaan te maken.`)) return;
     const btn = $('team-modal-schema-send'); const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Versturen…';
     const res = $('team-modal-schema-result'); res.textContent = '';
@@ -963,10 +1118,12 @@
         mailBtnDisabled = 'disabled';
         mailBtnClass = 'btn-sm muted-btn';
       }
+      // Aangemeld met alleen een stad: er is geen adres om een ronde-mail naartoe te sturen.
+      if (zonderMail(t)) { mailBtnLabel = '—'; mailBtnDisabled = 'disabled'; mailBtnClass = 'btn-sm muted-btn'; }
       return `
         <tr data-team-id="${t.id}">
           <td><b>${escape(t.team_name)}</b></td>
-          <td>${escape(t.captain_name)}<br><span class="small muted">${escape(t.captain_email)}</span></td>
+          <td>${zonderMail(t) ? `<span class="small muted">${GEEN_MAIL}<br>(alleen ${escape(stadWoord())})</span>` : `${escape(t.captain_name)}<br><span class="small muted">${escape(t.captain_email)}</span>`}</td>
           <td>
             <select class="tournament-status-select" data-team-id="${t.id}" style="background: var(--midnight); border: 1px solid var(--line-strong); color: var(--ice); padding: 6px 8px; border-radius: 4px; font-size: 13px;">
               ${optionsHtml}
@@ -1108,6 +1265,9 @@
       $('signups-list-heading').textContent = 'Volledige aanmeldlijst';
       $('signups-list-sub').textContent = 'Alle aanmeldingen in chronologische volgorde. Klik op een naam voor details.';
     }
+    // Aangemeld met alleen een stad: geen naam en geen adres, dus niet in deze lijst.
+    const nStad = teams.filter(zonderMail).length;
+    if (nStad) $('signups-list-sub').textContent += ` ${nStad} team${nStad === 1 ? '' : 's'} ${nStad === 1 ? 'is' : 'zijn'} aangemeld met alleen ${stadWoord()} (zonder naam of e-mailadres): ${nStad === 1 ? 'dat staat' : 'die staan'} bij Teams, niet hier.`;
 
     $('signups-tbody').innerHTML = filtered.map(r => `
       <tr class="clickable" data-signup-id="${r.id}">
@@ -1264,6 +1424,7 @@
     team_count_request_undone: 'Aantal-link ongedaan gemaakt',
     team_count_cancelled: 'Aantal-verzoek geannuleerd',
     team_deleted: 'Team definitief verwijderd',
+    team_added: 'Met de hand toegevoegd',
     team_delete_queued: 'Team verwijderd (undo-venster)',
     team_delete_undone: 'Team-verwijdering ongedaan gemaakt',
     team_checked_in: 'Team ingecheckt',
@@ -1389,19 +1550,21 @@
       const auto = json.auto !== false;
       renderReminderWave('week', json.waves.week, auto);
       renderReminderWave('day', json.waves.day, auto);
-      renderRemindersAuto(auto);
+      renderRemindersAuto(auto, json.no_email);
     } catch (e) { /* niet kritisch */ }
   }
 
   // Schakelaar "Automatische herinneringen" (GET/PUT /api/admin/reminders-auto).
   // De uitleg zegt precies wat er wel en niet vanzelf gebeurt.
-  function renderRemindersAuto(on) {
+  function renderRemindersAuto(on, geenMail) {
     const cb = $('rem-auto'), txt = $('rem-auto-uitleg'), lead = $('rem-intro-auto');
     if (cb) cb.checked = !!on;
     if (lead) lead.textContent = on ? 'Gaan automatisch uit' : 'Zijn bedoeld voor';
-    if (txt) txt.textContent = on
+    // Teams zonder e-mailadres (aangemeld met alleen een stad) krijgen geen herinnering: zeg dat erbij.
+    const zm = geenMail > 0 ? ` ${geenMail} team${geenMail === 1 ? '' : 's'} zonder e-mailadres (aangemeld met alleen ${stadWoord()}) ${geenMail === 1 ? 'krijgt' : 'krijgen'} geen herinnering.` : '';
+    if (txt) txt.textContent = (on
       ? 'Staat aan. De server verstuurt beide golven zelf, rond 1 week en rond 24 uur vooraf. Dat gebeurt alleen als de datum is ingevuld en e-mail echt aan staat. Niemand krijgt een golf dubbel.'
-      : 'Staat uit. Er gaat niets vanzelf weg: jij verstuurt elke golf zelf met de knoppen hieronder, op het moment dat jij kiest.';
+      : 'Staat uit. Er gaat niets vanzelf weg: jij verstuurt elke golf zelf met de knoppen hieronder, op het moment dat jij kiest.') + zm;
   }
   $('rem-auto')?.addEventListener('change', async (e) => {
     const cb = e.target, want = cb.checked;
@@ -2434,8 +2597,16 @@
     }).join('');
     host.querySelectorAll('.pt-opt').forEach(b => b.addEventListener('click', () => ptChoose(b.dataset.cat, b.dataset.style)));
     host.querySelectorAll('[data-pttest]').forEach(b => b.addEventListener('click', () => testPushCat(b.dataset.pttest)));
-    host.querySelectorAll('[data-ptsave]').forEach(b => b.addEventListener('click', () => savePushTexts()));
-    PT_META.forEach(m => ['title', 'body'].forEach(f => $(`pt-${m.key}-${f}`)?.addEventListener('input', () => ptUpdatePreview(m))));
+    host.querySelectorAll('[data-ptsave]').forEach(b => b.addEventListener('click', () => savePushTexts(b)));
+    PT_META.forEach(m => ['title', 'body'].forEach(f => $(`pt-${m.key}-${f}`)?.addEventListener('input', () => { ptVuil.add(`pt-${m.key}-${f}`); ptUpdatePreview(m); })));
+    // "Eigen tekst" klapt vaak net onder de rand open: breng de velden in beeld en zet de cursor erin.
+    host.querySelectorAll('details').forEach(d => d.addEventListener('toggle', () => {
+      if (!d.open) return;
+      const rustig = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      try { d.scrollIntoView({ block: 'center', behavior: rustig ? 'auto' : 'smooth' }); } catch { /* oudere browser */ }
+      const v = d.querySelector('input');
+      if (v) { try { v.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+    }));
   }
   function ptHighlight() {
     PT_META.forEach(m => {
@@ -2467,11 +2638,16 @@
         : (j.error || 'Versturen mislukt');
     } catch { if (hint) hint.textContent = 'Versturen mislukt'; }
   }
+  // Velden waarin je zelf hebt getypt en die nog niet zijn opgeslagen: een verversing op de
+  // achtergrond (bv. na het opnieuw intoetsen van je pas) schrijft daar niet overheen.
+  const ptVuil = new Set();
   function ptFill(texts) {
     PT_META.forEach(m => {
       const t = texts[m.key] || {};
-      if ($(`pt-${m.key}-title`)) $(`pt-${m.key}-title`).value = t.title || '';
-      if ($(`pt-${m.key}-body`)) $(`pt-${m.key}-body`).value = t.body || '';
+      for (const f of ['title', 'body']) {
+        const el = $(`pt-${m.key}-${f}`);
+        if (el && !ptVuil.has(el.id)) el.value = t[f] || '';
+      }
       ptUpdatePreview(m);
     });
     ptHighlight();
@@ -2488,15 +2664,28 @@
       ptFill(data.texts || {});
     } catch {}
   }
-  async function savePushTexts() {
+  // `knop` = de aangetikte knop "Eigen tekst opslaan": de bevestiging komt dáár te staan (de regel
+  // onderaan de kaart staat vaak ver buiten beeld).
+  async function savePushTexts(knop) {
     const texts = {};
     PT_META.forEach(m => { texts[m.key] = { title: ($(`pt-${m.key}-title`) || {}).value || '', body: ($(`pt-${m.key}-body`) || {}).value || '' }; });
     const hint = $('pt-hint');
+    const bij = (tekst, goed) => {
+      if (!knop || !knop.isConnected) return;
+      if (!knop.dataset.tekst) knop.dataset.tekst = knop.textContent;
+      knop.innerHTML = goed ? `Opgeslagen ${ICON.check}` : escape(tekst);
+      clearTimeout(knop.__pt);
+      knop.__pt = setTimeout(() => { if (knop.isConnected) knop.textContent = knop.dataset.tekst; }, 2200);
+    };
     try {
       const r = await api('/api/admin/push-texts', { method: 'POST', body: JSON.stringify({ texts }) });
-      if (r.ok) { const j = await r.json(); ptFill(j.texts || texts); if (hint) { hint.innerHTML = `Opgeslagen ${ICON.check}`; setTimeout(() => { if (hint) hint.textContent = ''; }, 1800); } }
-      else if (hint) hint.textContent = 'Opslaan mislukt';
-    } catch { if (hint) hint.textContent = 'Opslaan mislukt'; }
+      if (r.ok) {
+        const j = await r.json(); ptVuil.clear(); ptFill(j.texts || texts);
+        if (hint) { hint.innerHTML = `Opgeslagen ${ICON.check}`; setTimeout(() => { if (hint) hint.textContent = ''; }, 1800); }
+        bij('', true);
+        if (knop) showToast('Eigen pushtekst opgeslagen');
+      } else { if (hint) hint.textContent = 'Opslaan mislukt'; bij('Opslaan mislukt', false); }
+    } catch { if (hint) hint.textContent = 'Opslaan mislukt'; bij('Opslaan mislukt', false); }
   }
   async function ptApplyAll(style) {
     const p = ptPresets[style]; if (!p) return;
@@ -2631,24 +2820,117 @@
     } catch (e) { alert('Netwerkfout — probeer opnieuw.'); }
     finally { btn.disabled = false; btn.textContent = 'Genereer schema'; renderTournDashboard(); }
   });
-  $('tourn-send')?.addEventListener('click', async () => {
-    if (!confirm('Elke captain een mail sturen met z\'n persoonlijke schema + live-link?\n\nNa bevestigen heb je 8 seconden om dit ongedaan te maken.')) return;
-    const btn = $('tourn-send'); btn.disabled = true; btn.textContent = 'Versturen…';
+  // Met meerdere sporten kies je eerst WELKE sporten hun schema krijgen (voorstel: de sporten die
+  // het nog niet kregen). Het venster noemt het aantal captains en zegt of mail in proefmodus staat.
+  // → lijst met competitie-ids, of null (geannuleerd). `alleen` = alleen die sport(en) aangevinkt.
+  function kiesSchemaSporten(alleen) {
+    return new Promise((klaar) => {
+      const RG = window.JVO_REGIE, d = RG && RG.data();
+      const lijst = ((d && d.competitions) || []).filter(c => c.active && c.matches && c.matches.total > 0)
+        .map(c => {
+          // Teams zonder e-mailadres (aangemeld met alleen een stad) tellen niet mee als ontvanger.
+          const ok = teams.filter(t => t.status === 'approved' && t.competition_id === c.id);
+          const zm = ok.filter(zonderMail).length;
+          const inSchema = Math.max(0, (c.teams.approved || 0) - (c.teams.unscheduled || 0));
+          return { id: c.id, naam: c.name, n: ok.length ? Math.min(inSchema, ok.length - zm) : inSchema, zm, mail: c.schedule_mail || null, solo: !!c.solo };
+        });
+      const zmTotaal = lijst.reduce((s, c) => s + c.zm, 0);
+      const metSchema = lijst.length;
+      lijst.splice(0, lijst.length, ...lijst.filter(c => c.n > 0));
+      if (!lijst.length) {
+        showToast(!metSchema ? `Er is nog geen ${groepWoord()} met een schema.` : zmTotaal ? `Er is niemand om te mailen: ${zmTekst(zmTotaal)}` : `Er is nog geen ${groepWoord()} met een schema.`, 'info');
+        return klaar(null);
+      }
+      const nog = lijst.filter(c => !c.mail);
+      const aan = new Set(Array.isArray(alleen) && alleen.length ? alleen : (nog.length ? nog : []).map(c => c.id));
+      const proef = !!d && d.mail_live === false;
+      const om = (v) => { const t = new Date(alsUtc(v)); return Number.isNaN(t.getTime()) ? '' : `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; };
+      const vorig = document.activeElement;
+      const m = document.createElement('div');
+      m.className = 'modal-backdrop show adm-bevestig';
+      m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="adm-sm-titel">
+        <button type="button" class="modal-close" aria-label="Sluiten">×</button>
+        <div class="card-eyebrow">Schema’s mailen</div>
+        <h3 id="adm-sm-titel">Wie krijgt zijn schema?</h3>
+        ${proef ? '<p class="adm-proef"><b>Proefmodus</b> Er gaat niets echt de deur uit.</p>' : ''}
+        <ul class="adm-sm-lijst">${lijst.map(c => `<li><label><input type="checkbox" value="${c.id}"${aan.has(c.id) ? ' checked' : ''} /><span><b>${escape(c.naam)}</b><em>${c.n} ${c.n === 1 ? (c.solo ? 'deelnemer' : 'captain') : (c.solo ? 'deelnemers' : 'captains')}${c.mail && om(c.mail.at) ? ` · al gemaild om ${om(c.mail.at)}` : ''}</em></span></label></li>`).join('')}</ul>
+        <p class="adm-bev-tekst">${!nog.length && !(Array.isArray(alleen) && alleen.length) ? 'Iedereen heeft zijn schema al. Vink aan wie het opnieuw moet krijgen. ' : ''}Elke captain krijgt het schema van de eigen ${escape(groepWoord())}, met de live-link. Daarna heb je 8 seconden om te annuleren.${zmTotaal ? ` <span class="zm-noot">${escape(zmTekst(zmTotaal))}</span>` : ''}</p>
+        <div class="modal-actions"><button type="button" class="btn-sm" data-nee>Annuleren</button><button type="button" class="btn-sm primary" data-ja></button></div></div>`;
+      const ja = m.querySelector('[data-ja]');
+      const gekozen = () => [...m.querySelectorAll('input:checked')].map(i => Number(i.value));
+      const tel = () => {
+        const ids = gekozen(), n = lijst.filter(c => ids.includes(c.id)).reduce((s, c) => s + c.n, 0);
+        ja.disabled = !n;
+        ja.textContent = n ? `Mail ${n} ${n === 1 ? 'schema' : 'schema’s'}` : `Kies een ${groepWoord()}`;
+      };
+      const slot = document.body.style.overflow;
+      let dicht = false;
+      const sluit = (v) => {
+        if (dicht) return;
+        dicht = true;
+        document.removeEventListener('keydown', toets, true);
+        m.remove(); document.body.style.overflow = slot;
+        if (vorig && vorig.isConnected && typeof vorig.focus === 'function') { try { vorig.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+        klaar(v);
+      };
+      const toets = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sluit(null); } };
+      m.addEventListener('change', tel);
+      m.addEventListener('click', (e) => {
+        if (e.target === m || e.target.closest('[data-nee], .modal-close')) sluit(null);
+        else if (e.target.closest('[data-ja]') && !ja.disabled) sluit(gekozen());
+      });
+      document.addEventListener('keydown', toets, true);
+      document.body.appendChild(m);
+      document.body.style.overflow = 'hidden';
+      tel();
+      setTimeout(() => { try { (ja.disabled ? m.querySelector('input') : ja).focus({ preventScroll: true }); } catch { /* geen focus */ } }, 30);
+    });
+  }
+  // Blijvende regel onder de verstuurknoppen: wat er als laatste is verstuurd (of klaargezet).
+  function schemaMailKlaar(tekst) {
+    const host = $('tc-mails-fold') && $('tc-mails-fold').querySelector('.tc-links');
+    if (!host) return;
+    let p = $('tourn-send-klaar');
+    if (!p) { p = document.createElement('p'); p.id = 'tourn-send-klaar'; p.className = 'adm-klaar'; p.setAttribute('role', 'status'); host.insertAdjacentElement('afterend', p); }
+    p.textContent = tekst;
+  }
+  async function mailSchemas(alleen) {
+    const hub = hubAan();
+    let ids = null;
+    if (hub) { ids = await kiesSchemaSporten(alleen); if (!ids || !ids.length) return; }
+    else if (!confirm('Elke captain een mail sturen met z\'n persoonlijke schema + live-link?\n\nNa bevestigen heb je 8 seconden om dit ongedaan te maken.')) return;
+    const btn = $('tourn-send'); if (btn) { btn.disabled = true; btn.textContent = 'Versturen…'; }
     try {
-      const r = await api('/api/admin/tournament/send-schedules', { method: 'POST', body: JSON.stringify({}) });
+      const r = await api('/api/admin/tournament/send-schedules', { method: 'POST', body: JSON.stringify(ids ? { competition_ids: ids } : {}) });
       const json = await r.json();
-      if (!r.ok) alert('Fout: ' + (json.error || r.status));
+      // Niemand met een adres, of de indeling staat nog open: dat is geen storing maar uitleg.
+      if (!r.ok && (json.code === 'no_email' || json.code === 'draw_open')) { showToast(json.error, 'info'); if (hub) schemaMailKlaar(json.error); }
+      else if (!r.ok) alert('Fout: ' + (json.error || r.status));
       else if (json.actionId && json.undoWindowMs) {
+        const RG = window.JVO_REGIE, d = RG && RG.data();
+        const namen = ids && d ? d.competitions.filter(c => ids.includes(c.id)).map(c => c.name) : [];
+        const voor = namen.length ? ` van ${namen.length > 3 ? `${namen.length} sporten` : namen.join(', ')}` : '';
+        const n = json.count, proef = !!d && d.mail_live === false;
+        let geannuleerd0 = false;
         showUndoToast({
-          message: `${json.count} schema-mail${json.count === 1 ? '' : 's'} gaat naar de captains`,
+          message: (hub ? `${n} ${n === 1 ? 'schema-mail gaat' : 'schema-mails gaan'} naar de captains${voor}` : `${json.count} schema-mail${json.count === 1 ? '' : 's'} gaat naar de captains`) + (json.no_email > 0 ? ` · ${json.no_email} zonder e-mailadres ${json.no_email === 1 ? 'krijgt' : 'krijgen'} hem niet` : ''),
           actionId: json.actionId,
           undoWindowMs: json.undoWindowMs,
-          onUndo: async (actionId) => { const rr = await api(`/api/admin/undo/${actionId}`, { method: 'POST' }); if (!rr.ok) throw new Error('Undo failed'); },
+          onUndo: async (actionId) => { const rr = await api(`/api/admin/undo/${actionId}`, { method: 'POST' }); if (!rr.ok) throw new Error('Undo failed'); geannuleerd0 = true; if (hub) schemaMailKlaar('Geannuleerd: er is niets verstuurd.'); },
+          onKlaar: hub ? () => {
+            if (geannuleerd0) return;
+            const t = new Date(), hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+            const zin = proef ? `Proef: ${n} ${n === 1 ? 'schema-mail' : 'schema-mails'} klaargezet om ${hm}${voor}, niets echt verstuurd.` : `${n} ${n === 1 ? 'schema-mail' : 'schema-mails'} verstuurd om ${hm}${voor}.`;
+            schemaMailKlaar(zin);
+            showToast(zin);
+            if (RG && RG.refresh) RG.refresh();
+          } : undefined,
         });
       } else showToast(`${json.sent ?? json.count ?? 0} schema-mails verstuurd${json.failed ? `, ${json.failed} mislukt` : ''}`);
     } catch (e) { alert('Netwerkfout — probeer opnieuw.'); }
-    finally { btn.disabled = false; btn.textContent = 'Mail schema\'s naar captains'; }
-  });
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Mail schema\'s naar captains'; } }
+  }
+  $('tourn-send')?.addEventListener('click', () => mailSchemas());
   // Sponsor- & prijzen-aankondiging — preview + send live together in a modal, with
   // a real Send button (no confirm()/new-tab dialogs, which a backgrounded tab or a
   // "block more dialogs" browser would silently swallow). De sponsor komt uit het
@@ -2671,6 +2953,7 @@
       send.textContent = `Verstuur naar ${n} team${n === 1 ? '' : 's'} →`;
       const who = evcSponsor.enabled && evcSponsor.name ? ` over <b>${escape(evcSponsor.name)}</b> en de prijzen` : '';
       sub.innerHTML = `Deze aankondiging${who} gaat naar <b>${n}</b> goedgekeurde team${n === 1 ? '' : 's'}. Bekijk eerst het voorbeeld, en verstuur dan. Teams die 'm al kregen, slaan we over.`;
+      sub.insertAdjacentHTML('beforeend', zmNoot(j));
     } catch { sub.innerHTML = '<span style="color:var(--danger)">Netwerkfout — probeer opnieuw.</span>'; }
   }
   function closePrizeModal() { $('prize-modal')?.classList.remove('show'); document.body.style.overflow = ''; }
@@ -2728,6 +3011,7 @@
       send.disabled = n < 1;
       send.textContent = `Verstuur naar ${n} team${n === 1 ? '' : 's'} →`;
       sub.innerHTML = `Deze mail met dagprogramma, tijdschema en poule-indeling gaat naar <b>${n}</b> goedgekeurde team${n === 1 ? '' : 's'}. Bekijk eerst het voorbeeld, en verstuur dan.`;
+      sub.insertAdjacentHTML('beforeend', zmNoot(j));
     } catch { sub.innerHTML = '<span style="color:var(--danger)">Netwerkfout — probeer opnieuw.</span>'; }
   }
   function closeProgramModal() { $('program-modal')?.classList.remove('show'); document.body.style.overflow = ''; }
@@ -2767,6 +3051,7 @@
       send.disabled = n < 1;
       send.textContent = `Verstuur naar ${n} team${n === 1 ? '' : 's'} →`;
       sub.innerHTML = `Elke captain krijgt (nogmaals) de <b>team-QR als bijlage</b> + de <b>teamcode</b> als reserve voor de handmatige check-in. Gaat naar <b>${n}</b> goedgekeurde team${n === 1 ? '' : 's'}; bestaande QR's blijven gewoon geldig.`;
+      sub.insertAdjacentHTML('beforeend', zmNoot(j));
     } catch { sub.innerHTML = '<span style="color:var(--danger)">Netwerkfout — probeer opnieuw.</span>'; }
   }
   function closeQrmailModal() { $('qrmail-modal')?.classList.remove('show'); document.body.style.overflow = ''; }
@@ -2808,6 +3093,7 @@
       send.disabled = (n + nv) < 1;
       send.textContent = `Verstuur naar ${n} teams + ${nv} bezoekers →`;
       sub.innerHTML = `De ochtend-mail voor de dag zelf, in twee versies: <b>${n} teams</b> krijgen de gepersonaliseerde mail (dagprogramma, wees-op-tijd, QR-bijlage + teamcode, persoonlijke app-link) en <b>${nv} bezoekers</b> de algemene versie (dagprogramma + volg het toernooi live in de app).`;
+      sub.insertAdjacentHTML('beforeend', zmNoot(j));
     } catch { sub.innerHTML = '<span style="color:var(--danger)">Netwerkfout — probeer opnieuw.</span>'; }
   }
   function closeEventdayModal() { $('eventday-modal')?.classList.remove('show'); document.body.style.overflow = ''; }
@@ -2859,6 +3145,7 @@
       const wie = hubComps.length > 1 ? `deelnemer${n === 1 ? '' : 's'}` : 'teams';
       send.textContent = `Verstuur naar ${n} ${wie} + ${nv} bezoekers →`;
       sub.innerHTML = `Bedankmail met de feedbackvraag (“beantwoord deze mail”): <b>${n} ${wie}</b> gepersonaliseerd + <b>${nv} bezoekers</b> algemeen.`;
+      sub.insertAdjacentHTML('beforeend', zmNoot(j));
     } catch { sub.innerHTML = '<span style="color:var(--danger)">Netwerkfout — probeer opnieuw.</span>'; }
   }
   function closeFeedbackModal() { $('feedback-modal')?.classList.remove('show'); document.body.style.overflow = ''; }
@@ -3011,6 +3298,7 @@
         tekst += ` <b>Let op:</b> het bord met alle sporten toont geen logo's. Een logo is te zien ${hoofd && hoofd.active && !hoofd.solo ? `op het bord van ${escape(hoofd.name)} (/toernooi) en ` : ''}hier bij Teams. De mail belooft “op het live-scorebord”: lees het voorbeeld voordat je verstuurt.`;
       }
       sub.innerHTML = tekst;
+      sub.insertAdjacentHTML('beforeend', zmNoot(j));
     } catch { sub.innerHTML = '<span style="color:var(--danger)">Netwerkfout — probeer opnieuw.</span>'; }
   }
   function closeLogomailModal() { $('logomail-modal')?.classList.remove('show'); document.body.style.overflow = ''; }
@@ -3271,7 +3559,25 @@
   // geheel en geeft de nieuwe stand terug — daaruit vullen we het formulier
   // opnieuw, zodat je altijd ziet wat er écht is opgeslagen.
   const EVC_TEXT = ['name', 'shortName', 'audience', 'priceText', 'location', 'address',
-    'tournamentName', 'tournamentShort', 'intro', 'calloutTitle', 'calloutText', 'sideProgram', 'cateringText'];
+    'tournamentName', 'tournamentShort', 'intro', 'calloutTitle', 'calloutText', 'sideProgram', 'cateringText',
+    'heroSub', 'cityLabel', 'cityLabelPlural'];
+  // Voordeur + aanmeldvorm (zie de fold "Evenement"): de kop is een tekstvak met een regel per
+  // kopregel (de server bewaart ze met een | ertussen); de lijst is een tekstvak met één naam
+  // per regel; "direct toelaten" en "automatisch indelen" zijn true, false of null (= volgt de vorm).
+  const EVC_KOPPEN = ['heroTitle', 'heroTitleMulti'];
+  const EVC_VORMEN = ['full', 'city'];
+  let evcAuto = { autoApprove: null, autoDraw: null };   // wat JIJ hebt gekozen (null = niet aangeraakt)
+  const evcRegels = (id) => String(evcVal(id) || '').split(/\r?\n|\|/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const evcKopNaarVak = (v) => String(v == null ? '' : v).split('|').map(x => x.trim()).filter(Boolean).join('\n');
+  const evcVorm = () => { const v = evcVal('evc-signupForm'); return EVC_VORMEN.includes(v) ? v : 'full'; };
+  // De lijst zoals de server hem bewaart: ontdubbeld (hoofdletters tellen niet), in jouw volgorde.
+  function evcLijst() {
+    const gezien = new Set(), uit = [];
+    for (const naam of evcRegels('evc-cityList')) { const k = naam.toLowerCase(); if (!gezien.has(k)) { gezien.add(k); uit.push(naam); } }
+    return uit;
+  }
+  // Schakelaar met drie standen: zolang je hem niet aanraakt volgt hij de vorm.
+  const evcAutoAan = (k) => (evcAuto[k] == null ? evcVorm() === 'city' : !!evcAuto[k]);
   const EVC_TIMES = ['teamArrivalTime', 'doorsTime', 'startTime', 'endTime'];
   const EVC_INTS = {
     minTeams: 'Teams minimaal', maxTeams: 'Teams maximaal',
@@ -3348,17 +3654,41 @@
   }
 
   // "Klaar voor de start?" — wat de server nog mist of wil laten nalopen.
+  // In de Admin Hub: elke open regel heeft een knop naar de plek waar je het oplost, de regels
+  // voor de hosting staan in gewone taal bij elkaar (ingeklapt), en wat in orde is ook.
+  const EVC_GA = { 'evenement/profiel': 'Naar het profiel', 'evenement/spelregels': 'Naar spelregels', 'communicatie/mails': 'Naar de mails',
+    'veiligheid/gevaar': 'Naar schone start', 'mensen/teams': 'Beoordeel', 'toernooi/schema': 'Naar het schema', 'toernooi/genereren': 'Naar het schema', 'sport/opzet': 'Naar de opzet' };
+  function evcChecksHub(sorted, lv) {
+    const rij = ({ c }) => {
+      const ga = c.level !== 'ok' && EVC_GA[c.ga] ? c.ga : '';
+      return `<li class="evc-check ${lv(c).cls}${ga ? ' heeft-knop' : ''}">
+        <span class="evc-check-tag"><span class="d" aria-hidden="true"></span>${lv(c).label}</span>
+        <span>${escape(c.kort || c.text)}</span>
+        ${ga ? `<button type="button" class="btn-sm evc-check-ga" data-evc-ga="${ga}"${Number.isInteger(c.competition_id) ? ` data-sport="${c.competition_id}"` : ''}>${EVC_GA[ga]}</button>` : ''}
+      </li>`;
+    };
+    const open = sorted.filter(x => x.c.level !== 'ok' && !x.c.host), host = sorted.filter(x => x.c.level !== 'ok' && x.c.host), ok = sorted.filter(x => x.c.level === 'ok');
+    const groep = (naam, rijen, id) => (rijen.length ? `<li class="evc-check-groep"><details data-groep="${id}"><summary>${naam} <span class="evc-check-n">${rijen.length}</span></summary><ul class="evc-checklist">${rijen.map(rij).join('')}</ul></details></li>` : '');
+    return (open.length ? open.map(rij).join('') : '<li class="evc-check lv-ok"><span class="evc-check-tag"><span class="d" aria-hidden="true"></span>In orde</span><span>Voor het evenement zelf staat er niets meer open.</span></li>')
+      + groep('Voor wie bij de hosting kan', host, 'host') + groep('In orde', ok, 'ok');
+  }
   function evcRenderChecks(checks) {
-    const list = (Array.isArray(checks) ? checks : []).filter(c => c && c.text);
+    // Eenvoudige stand: regels die alleen over e-mail gaan horen daar niet (er zijn geen adressen).
+    const list = (Array.isArray(checks) ? checks : []).filter(c => c && c.text && !(eenvoudigAan() && c.mail));
     const wrap = $('evc-checks-wrap'), ul = $('evc-checks'), badge = $('evc-badge');
     if (!wrap || !ul) return;
     const lv = (c) => EVC_LEVELS[c.level] || EVC_LEVELS['let-op'];
     const sorted = list.map((c, i) => ({ c, i })).sort((a, b) => (lv(a.c).rank - lv(b.c).rank) || (a.i - b.i));
-    ul.innerHTML = sorted.map(({ c }) => `
+    const html = hubAan() ? evcChecksHub(sorted, lv) : sorted.map(({ c }) => `
       <li class="evc-check ${lv(c).cls}">
         <span class="evc-check-tag"><span class="d" aria-hidden="true"></span>${lv(c).label}</span>
         <span>${escape(c.text)}</span>
       </li>`).join('');
+    if (ul.__evc !== html) {
+      const open = new Set([...ul.querySelectorAll('details[open]')].map(d => d.dataset.groep));
+      ul.__evc = html; ul.innerHTML = html;
+      ul.querySelectorAll('details').forEach(d => { if (open.has(d.dataset.groep)) d.open = true; });
+    }
     wrap.hidden = !list.length;
     const fouten = list.filter(c => c.level === 'fout').length;
     if (badge) {
@@ -3390,6 +3720,7 @@
 
   function evcUpdatePreviews() {
     if (!evcData) return;
+    evcVormBeeld();
     const ev = evcData.event || {}, stored = evcData.stored || {};
     const art = evcVal('evc-article');
     const name = evcNorm(evcVal('evc-name')) || ev.name || '';
@@ -3412,10 +3743,91 @@
       pv.textContent = txt;
     }
 
+    // Naam gewijzigd, maar de korte naam (bovenbalk, bord, tabblad) is nog de oude: zeg het bij het
+    // naamveld, met één knop die hem meeneemt.
+    if (hubAan() && $('evc-name') && $('evc-shortName')) {
+      const kort = evcNorm(evcVal('evc-shortName'));
+      const moet = !!name && name !== evcNorm(ev.name) && !!kort && kort === evcNorm(ev.shortName) && kort !== name;
+      let h = $('evc-naam-kort');
+      if (!moet) { if (h) h.remove(); }
+      else {
+        if (!h) {
+          h = document.createElement('p'); h.id = 'evc-naam-kort'; h.className = 'evc-naam-kort';
+          h.innerHTML = '<span></span> <button type="button" class="btn-sm">Neem de nieuwe naam over</button>';
+          h.querySelector('button').addEventListener('click', () => {
+            const nu = evcNorm(evcVal('evc-name')), veld = $('evc-shortName'), tn = $('evc-tournamentName');
+            veld.value = nu.slice(0, veld.maxLength > 0 ? veld.maxLength : 60);
+            if (tn && evcData && evcNorm(tn.value) === evcNorm((evcData.event || {}).name)) tn.value = nu.slice(0, tn.maxLength > 0 ? tn.maxLength : 60);
+            evcUpdatePreviews(); evcUpdateStatus();
+            try { veld.focus({ preventScroll: true }); } catch { /* geen focus */ }
+          });
+          ($('evc-name-hint') || $('evc-name')).insertAdjacentElement('afterend', h);
+        }
+        h.firstChild.textContent = `De korte naam blijft “${kort}”: die staat in de bovenbalk, op het bord en in het tabblad.`;
+      }
+    }
+
     const rs = $('evc-reg-status');
     if (rs) {
       const changed = evcVal('evc-registration') !== (ev.registration || 'auto');
       rs.textContent = evcRegStatusText(evcData.registration) + (changed ? ' Je nieuwe keuze gaat in zodra je opslaat.' : '');
+    }
+  }
+
+  // Voordeur + aanmeldvorm: het voorbeeld van de kop, wat er bij "alleen stad" zichtbaar is,
+  // en het voorbeeld van het formulier. Alles via textContent (het zijn jouw eigen teksten).
+  function evcVormBeeld() {
+    if (!$('evc-signupForm') || !evcData) return;
+    const ev = evcData.event || {};
+    const mk = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    // De kop: wat je typt, anders (bij verschillende sporten) de kop daarvoor, anders de standaard.
+    const vb = $('evc-kop-vb');
+    if (vb) {
+      const eigen = evcRegels('evc-heroTitle');
+      const meer = hubComps.filter(c => c.active !== false);
+      const multi = new Set(meer.map(c => c.sport)).size > 1;
+      const regels = eigen.length ? eigen : (multi ? evcRegels('evc-heroTitleMulti') : []);
+      vb.textContent = '';
+      if (regels.length) {
+        regels.slice(0, 3).forEach((r, i, alle) => {
+          const b = mk('b', null, r);
+          if (i === alle.length - 1 && !/[.!?\u2026:;,]$/.test(r)) b.appendChild(mk('i', null, '.'));
+          vb.appendChild(b);
+        });
+        const sub = evcNorm(evcVal('evc-heroSub'));
+        if (sub) vb.appendChild(mk('span', null, sub));
+      } else {
+        vb.appendChild(mk('em', null, 'Je hebt geen eigen kop: de pagina toont de standaardkop.'));
+      }
+    }
+    const stad = evcVorm() === 'city';
+    const hint = $('evc-signupForm-hint');
+    if (hint) {
+      hint.textContent = evcData.schema_ok === false && !stad
+        ? 'De vorm “Alleen stad” kan op deze installatie nog niet: de database is niet omgebouwd. Zie “Klaar voor de start?”.'
+        : stad ? 'De deelnemer kiest zijn categorie (als er meer dan één is) en vult één ding in. Meer niet.'
+          : 'Zoals altijd: een aanvoerder meldt zich aan met naam en e-mailadres. Jij keurt goed; de QR-code komt per mail.';
+    }
+    if ($('evc-stad')) $('evc-stad').hidden = !stad;
+    if ($('evc-stad-noot')) $('evc-stad-noot').hidden = !stad;
+    const aa = $('evc-autoApprove'), ad = $('evc-autoDraw');
+    if (aa) aa.checked = stad && evcAutoAan('autoApprove');
+    if (ad) ad.checked = evcAutoAan('autoDraw');
+    const enkel = evcNorm(evcVal('evc-cityLabel')) || 'Stad';
+    const klein = enkel.toLowerCase();
+    document.querySelectorAll('#evc-form [data-evc-woord]').forEach(el => { el.textContent = klein; });
+    const lijst = evcLijst();
+    const teller = $('evc-cityList-n');
+    if (teller) teller.textContent = lijst.length ? `(${lijst.length})` : '';
+    const sv = $('evc-stad-vb');
+    if (sv && stad) {
+      sv.textContent = '';
+      sv.appendChild(mk('span', 'vb-l', enkel));
+      const veld = mk('span', 'vb-veld', lijst.length ? `Kies je ${klein}…` : `Typ je ${klein}`);
+      if (lijst.length) veld.appendChild(mk('span', null, '▾'));
+      sv.appendChild(veld);
+      sv.appendChild(mk('span', 'vb-knop', 'Meld je aan →'));
+      sv.appendChild(mk('span', 'vb-noot', `We vragen alleen je ${klein}. Geen naam, geen e-mail.`));
     }
   }
 
@@ -3445,6 +3857,23 @@
       if (Array.isArray(limInts[k])) { el.min = limInts[k][0]; el.max = limInts[k][1]; }
     }
     $('evc-registration').value = ['auto', 'open', 'closed'].includes(ev.registration) ? ev.registration : 'auto';
+    // Voordeur + aanmeldvorm (oude HTML uit de cache heeft deze velden nog niet).
+    if ($('evc-signupForm')) {
+      const limHero = lim.hero || {}, limSteden = lim.cities || {};
+      for (const k of EVC_KOPPEN) { const el = $('evc-' + k); if (el) { el.value = evcKopNaarVak(ev[k]); if (limText[k]) el.maxLength = limText[k] + 4; } }
+      $('evc-signupForm').value = EVC_VORMEN.includes(ev.signupForm) ? ev.signupForm : 'full';
+      // De vorm "alleen stad" kan alleen als de database daarvoor is omgebouwd (zie "Klaar voor de start?").
+      const stadOptie = $('evc-signupForm').querySelector('option[value="city"]');
+      if (stadOptie) stadOptie.disabled = d.schema_ok === false && ev.signupForm !== 'city';
+      $('evc-cityList').value = (Array.isArray(ev.cityList) ? ev.cityList : []).join('\n');
+      $('evc-cityList').dataset.max = limSteden.max || 300;
+      $('evc-cityList').dataset.item = limSteden.item || 40;
+      $('evc-heroTitle').dataset.regels = limHero.lines || 3;
+      $('evc-heroTitle').dataset.regel = limHero.line || 24;
+      $('evc-cityMulti').checked = ev.cityMulti !== false;
+      evcAuto = { autoApprove: typeof ev.autoApprove === 'boolean' ? ev.autoApprove : null, autoDraw: typeof ev.autoDraw === 'boolean' ? ev.autoDraw : null };
+      evcVormBeeld();
+    }
     // Stijl van de publiekspagina's (oude HTML uit de cache heeft dit veld nog niet).
     if ($('evc-theme')) $('evc-theme').value = EVC_THEMES.includes(ev.theme) ? ev.theme : 'schemering';
     if ($('evc-sportIcon')) $('evc-sportIcon').value = EVC_SPORT_ICONS.includes(ev.sportIcon) ? ev.sportIcon : 'beker';
@@ -3510,6 +3939,39 @@
     const reg = evcVal('evc-registration');
     if (reg !== (ev.registration || 'auto')) { out.registration = reg; n++; }
 
+    // Voordeur + aanmeldvorm
+    if ($('evc-signupForm')) {
+      const maxRegels = parseInt($('evc-heroTitle').dataset.regels, 10) || 3, maxRegel = parseInt($('evc-heroTitle').dataset.regel, 10) || 24;
+      for (const k of EVC_KOPPEN) {
+        if (!$('evc-' + k)) continue;
+        const regels = evcRegels('evc-' + k);
+        const v = regels.join('|');
+        if (v === String(ev[k] == null ? '' : ev[k]).split('|').map(x => x.trim()).filter(Boolean).join('|')) continue;
+        n++;
+        if (regels.length > maxRegels) { fail(`De kop mag hooguit ${maxRegels} regels hebben.`); continue; }
+        const lang = regels.find(r => r.length > maxRegel);
+        if (lang) { fail(`Een regel van de kop mag hooguit ${maxRegel} tekens hebben (“${lang.slice(0, 30)}” heeft er ${lang.length}).`); continue; }
+        out[k] = v;
+      }
+      const vorm = evcVorm();
+      if (vorm !== (EVC_VORMEN.includes(ev.signupForm) ? ev.signupForm : 'full')) { out.signupForm = vorm; n++; }
+      const lijst = evcLijst();
+      if (JSON.stringify(lijst) !== JSON.stringify(Array.isArray(ev.cityList) ? ev.cityList : [])) {
+        n++;
+        const maxN = parseInt($('evc-cityList').dataset.max, 10) || 300, maxItem = parseInt($('evc-cityList').dataset.item, 10) || 40;
+        const fout = lijst.find(x => x.length < 2 || x.length > maxItem);
+        if (lijst.length > maxN) fail(`De lijst mag hooguit ${maxN} regels hebben (nu ${lijst.length}).`);
+        else if (fout) fail(`In de lijst: elke naam heeft 2 tot ${maxItem} tekens (“${fout.slice(0, 30)}”).`);
+        else out.cityList = lijst;
+      }
+      const multi = !!$('evc-cityMulti').checked;
+      if (multi !== (ev.cityMulti !== false)) { out.cityMulti = multi; n++; }
+      for (const k of ['autoApprove', 'autoDraw']) {
+        const was = typeof ev[k] === 'boolean' ? ev[k] : null;
+        if (evcAuto[k] !== was) { out[k] = evcAuto[k]; n++; }
+      }
+    }
+
     if ($('evc-theme')) {
       const theme = evcVal('evc-theme');
       if (EVC_THEMES.includes(theme) && theme !== (EVC_THEMES.includes(ev.theme) ? ev.theme : 'schemering')) { out.theme = theme; n++; }
@@ -3550,6 +4012,44 @@
     if (!st || !evcData) return;
     const n = evcDiff().n;
     st.textContent = n ? `${n} wijziging${n === 1 ? '' : 'en'} nog niet opgeslagen` : '';
+    // In de hub loopt de opslaan-balk mee zodra er iets gewijzigd is (het formulier is lang).
+    const balk = st.closest('.evc-savebar');
+    if (balk) balk.classList.toggle('is-vuil', n > 0);
+  }
+  // Een fout hoort bij het veld waar hij over gaat: erheen scrollen, markeren en de cursor erin.
+  const evcVeldBij = (msg) => (/sponsor/i.test(msg) ? 'evc-sp-name' : /datum/i.test(msg) ? 'evc-date'
+    : /lijst/i.test(msg) ? 'evc-cityList' : /\bkop\b/i.test(msg) ? 'evc-heroTitle' : /label/i.test(msg) ? 'evc-cityLabel' : /aanmeldvorm|alleen stad/i.test(msg) ? 'evc-signupForm'
+    : /naam/i.test(msg) ? 'evc-name'
+    : /tijd/i.test(msg) ? `evc-${EVC_TIMES[0]}` : /locatie/i.test(msg) ? 'evc-location' : /adres/i.test(msg) ? 'evc-address' : null);
+  function evcWisVeldfout() {
+    document.querySelectorAll('#evc-form .evc-veldfout').forEach(x => x.remove());
+    document.querySelectorAll('#evc-form .is-evc-fout').forEach(x => x.classList.remove('is-evc-fout'));
+  }
+  function evcToonFout(msg, id) {
+    const errEl = $('evc-error');
+    if (errEl) { errEl.textContent = ''; errEl.textContent = msg || ''; }
+    evcWisVeldfout();
+    const veld = msg ? $(id || evcVeldBij(msg) || '') : null;
+    if (!veld || !veld.closest('#evc-form')) return;
+    veld.classList.add('is-evc-fout');
+    const s = document.createElement('span');
+    s.className = 'evc-veldfout'; s.textContent = msg;
+    veld.insertAdjacentElement('afterend', s);
+    try { veld.scrollIntoView({ block: 'center' }); veld.focus({ preventScroll: true }); } catch { /* geen focus */ }
+  }
+  // Iemand anders heeft het evenement gewijzigd terwijl jij nog niet-opgeslagen wijzigingen hebt.
+  let evcNieuw = null;
+  function evcToonNieuw() {
+    const balk = document.querySelector('#evc-form .evc-savebar');
+    if (!balk) return;
+    let p = $('evc-nieuw');
+    if (!evcNieuw) { if (p) p.remove(); return; }
+    if (!p) {
+      p = document.createElement('p'); p.id = 'evc-nieuw'; p.className = 'evc-nieuw'; p.setAttribute('role', 'status');
+      p.innerHTML = '<span>Intussen heeft iemand anders dit evenement gewijzigd.</span> <button type="button" class="btn-sm">Laad de nieuwe stand</button>';
+      p.querySelector('button').addEventListener('click', () => { const j = evcNieuw; evcNieuw = null; if (j) evcFill(j); evcToonNieuw(); showToast('De nieuwe stand is geladen. Je eigen wijzigingen zijn vervallen.', 'info'); });
+      balk.insertAdjacentElement('beforebegin', p);
+    }
   }
 
   async function loadEventConfig(opts = {}) {
@@ -3566,10 +4066,24 @@
         // eventuele niet-opgeslagen wijzigingen) blijft zoals het is.
         evcData.checks = j.checks;
         evcData.registration = j.registration;
+        evcData.admin = j.admin;
         evcRenderChecks(j.checks);
         evcUpdatePreviews();
+      } else if (opts.zacht && evcData && evcDirty()) {
+        // Je bent iets aan het wijzigen: het formulier blijft staan. Is de stand op de server
+        // intussen anders, dan zeggen we dat en kies jij of je hem laadt.
+        const zelfde = JSON.stringify([j.event, j.sponsor]) === JSON.stringify([evcData.event, evcData.sponsor]);
+        evcData.checks = j.checks;
+        evcData.registration = j.registration;
+        evcData.admin = j.admin;
+        evcRenderChecks(j.checks);
+        evcUpdatePreviews();
+        evcNieuw = zelfde ? null : j;
+        evcToonNieuw();
       } else {
+        evcNieuw = null;
         evcFill(j);
+        evcToonNieuw();
       }
       if (loadEl) loadEl.hidden = true;
       if (retry) retry.hidden = true;
@@ -3593,14 +4107,18 @@
       const r = await api('/api/admin/event-config', { method: 'PUT', body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.event) {
-        if (errEl) errEl.textContent = j.error || `Opslaan mislukt (${r.status}). Er is niets gewijzigd — probeer het opnieuw.`;
+        if (hubAan() && j.error) evcToonFout(j.error);
+        else if (errEl) errEl.textContent = j.error || `Opslaan mislukt (${r.status}). Er is niets gewijzigd — probeer het opnieuw.`;
         return false;
       }
       if (btn) { btn.disabled = false; btn.textContent = orig; }   // vóór evcFill: die zet de reset-knop zelf goed
+      evcNieuw = null; evcWisVeldfout();
       evcFill(j);
+      evcToonNieuw();
       showToast(okMsg);
       loadConfig();            // kerncijfers (max. teams) + wijzig-slot volgen het evenement
       loadReminderStatus();    // herinneringen hangen aan de datum
+      await evcNaOpslaan(body && body.event ? body.event : {});
       return true;
     } catch (e) {
       if (errEl && !(e && e.message === 'Sessie verlopen')) errEl.textContent = 'Netwerkfout — er is niets opgeslagen. Probeer het opnieuw.';
@@ -3608,6 +4126,39 @@
     } finally {
       if (btn && btn.textContent === busyLabel) { btn.disabled = false; btn.textContent = orig; }
     }
+  }
+
+  // Na het opslaan van het evenement:
+  //  1. Eenvoudige stand: er is één veld "Icoon van de sport". Hebben de categorieën allemaal
+  //     hetzelfde icoon, dan gaat een nieuw icoon naar allemaal (anders krijgt de ene een bal en
+  //     houdt de andere de beker, en noemt de site ze ineens "sporten").
+  //  2. De aanmeldvorm of de stand van de admin is gewijzigd: meteen de goede schil tonen, zonder
+  //     dat je zelf hoeft te herladen. Wordt het de eenvoudige stand, dan sta je bij de categorieën.
+  async function evcNaOpslaan(ev) {
+    const RG = window.JVO_REGIE, E = () => window.JVO_ADMIN_EENVOUDIG;
+    if (!RG || !RG.refresh) return;
+    try {
+      const wasEenvoudig = !!(E() && E().actief());
+      if (wasEenvoudig && EVC_SPORT_ICONS.includes(ev.sportIcon)) {
+        const d = RG.data(), los = ((d && d.competitions) || []).filter(c => !c.is_default);
+        if (los.length && new Set(los.map(c => c.sport)).size === 1 && los[0].sport !== ev.sportIcon) {
+          for (const c of los) await api(`/api/admin/competitions/${c.id}`, { method: 'PUT', body: JSON.stringify({ sport: ev.sportIcon }) });
+          if (window.JVO_HUB && window.JVO_HUB.load) window.JVO_HUB.load();
+        }
+      }
+      if (!('signupForm' in ev) && !('adminStand' in ev) && !('sportIcon' in ev)) return;
+      await RG.refresh();
+      if (E()) E().opData();
+      if (!wasEenvoudig && E() && E().actief() && ev.signupForm === 'city') {
+        const H = window.JVO_ADMIN_HUB;
+        if (H && H.ga) H.ga('evenement', 'profiel');
+        setTimeout(() => {
+          const c = $('ae-i-cats');
+          if (c) { try { c.scrollIntoView({ block: 'start' }); const i = c.querySelector('.ae-catrij-nieuw input[name="name"]'); if (i) i.focus({ preventScroll: true }); } catch { /* geen focus */ } }
+          showToast('Opgeslagen. Dit is de eenvoudige weergave: maak hier je categorieën.', 'info');
+        }, 350);
+      }
+    } catch (e) { /* het evenement is opgeslagen; de schil volgt bij de volgende verversing */ }
   }
 
   // Sponsorlogo / deelafbeelding uploaden. De server slaat het bestand op en zet
@@ -3656,7 +4207,7 @@
     if (!evcData) return;
     const diff = evcDiff();
     const errEl = $('evc-error');
-    if (diff.error) { if (errEl) { errEl.textContent = ''; errEl.textContent = diff.error; } return; }
+    if (diff.error) { if (hubAan()) evcToonFout(diff.error); else if (errEl) { errEl.textContent = ''; errEl.textContent = diff.error; } return; }
     if (!diff.n) { showToast('Er is niets gewijzigd', 'info'); return; }
     await evcPut({ event: diff.event }, 'Evenement opgeslagen', $('evc-save'), 'Opslaan…');
   }
@@ -3678,10 +4229,12 @@
     const onEdit = (e) => {
       if (!e.target.closest || !e.target.closest('#evc-form')) return;
       if ($('evc-error')) $('evc-error').textContent = '';
+      evcWisVeldfout();
       evcUpdatePreviews();
       evcUpdateStatus();
     };
     $('evc-sp-enabled')?.addEventListener('change', evcToggleSponsorFields);   // vóór onEdit (target vóór bubble)
+    ['autoApprove', 'autoDraw'].forEach((k) => $('evc-' + k)?.addEventListener('change', (e) => { evcAuto[k] = !!e.target.checked; }));
     fold.addEventListener('input', onEdit);
     fold.addEventListener('change', onEdit);
     // Bij openklappen de stand verversen — behalve als je net iets aan het wijzigen bent.
@@ -3706,6 +4259,16 @@
       evcRenderActs(list);
       $('evc-act-add')?.focus();
       evcUpdateStatus();
+    });
+    $('evc-checks')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-evc-ga]');
+      const H = window.JVO_ADMIN_HUB;
+      if (!b || !H || !H.actief()) return;
+      const [afd, t] = b.dataset.evcGa.split('/');
+      const sport = b.dataset.sport ? Number(b.dataset.sport) : null;
+      if (afd === 'mensen' && t === 'teams') { if (sport != null) setSelSport(sport); setFilter('pending'); H.ga(afd, t); return; }
+      if (sport != null) setSelSport(sport);
+      H.ga(afd, t, { bron: b });
     });
     $('evc-save')?.addEventListener('click', evcSave);
     $('evc-reset')?.addEventListener('click', evcReset);
@@ -3886,6 +4449,55 @@
   });
 
   // ===== ACTIONS ==================================================
+  // Een team zonder e-mailadres verwijderen: één tik, 8 seconden ongedaan te maken. Er is geen
+  // mail om in te trekken; de server maakt de indeling opnieuw zolang er nog niet gespeeld is.
+  // Is het team al binnen (ingecheckt), dan vragen we het eerst.
+  async function stadVerwijder(team, btn) {
+    if (team.checked_in_at && !(await bevestig({ titel: `${team.team_name} verwijderen?`, tekst: 'Dit team is al ingecheckt. Na 8 seconden is verwijderen definitief en werkt de teamcode niet meer.', ja: 'Verwijder', nee: 'Laat staan' }))) return;
+    const oud = btn.innerHTML;
+    btn.disabled = true; btn.textContent = '…';
+    const scrollY = window.scrollY;
+    try {
+      const res = await api(`/api/admin/teams/${team.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(json.error || 'Verwijderen lukte niet.', 'error'); btn.disabled = false; btn.innerHTML = oud; return; }
+      const wat = `${team.team_name} verwijderd${json.redrawn ? ' · opnieuw ingedeeld' : ''}`;
+      if (json.actionId && json.undoWindowMs) {
+        showUndoToast({
+          message: wat, actionId: json.actionId, undoWindowMs: json.undoWindowMs,
+          onUndo: async (actionId) => {
+            const r = await api(`/api/admin/undo/${actionId}`, { method: 'POST' });
+            if (!r.ok) throw new Error('Undo failed');
+            await refreshAll();
+          },
+        });
+      } else showToast(wat);
+      await refreshAll();
+      window.scrollTo(0, scrollY);
+    } catch (e) {
+      if (!e || e.message !== 'Sessie verlopen') showToast('Netwerkfout: er is niets verwijderd.', 'error');
+      btn.disabled = false; btn.innerHTML = oud;
+    }
+  }
+  // Een typfout in de naam herstellen (de link per mail bestaat voor deze teams niet).
+  async function stadNaam(team, btn) {
+    const woord = stadWoord();
+    const nieuw = prompt(`Nieuwe naam voor "${team.team_name}".\n\nTyp alleen de ${woord}; een volgnummer zet het systeem er zelf achter als de naam al bestaat.`, team.city || team.team_name);
+    if (nieuw == null) return;
+    const city = nieuw.replace(/\s+/g, ' ').trim();
+    if (!city || city === (team.city || '')) return;
+    btn.disabled = true;
+    try {
+      const res = await api(`/api/admin/teams/${team.id}/stad`, { method: 'POST', body: JSON.stringify({ city }) });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(json.error || 'De naam aanpassen lukte niet.', 'error'); return; }
+      showToast(`Heet nu ${json.team_name}${json.numbered ? ' (die naam bestond al)' : ''}`);
+      await refreshAll();
+    } catch (e) {
+      if (!e || e.message !== 'Sessie verlopen') showToast('Netwerkfout: de naam is niet aangepast.', 'error');
+    } finally { btn.disabled = false; }
+  }
+
   async function handleAction(btn) {
     const id = parseInt(btn.closest('[data-id]').dataset.id, 10);
     const act = btn.dataset.act;
@@ -3894,11 +4506,16 @@
 
     if (act === 'qr') { openQR(team); return; }
 
+    if (act === 'checkin') { btn.disabled = true; await checkinTeam(team.id); return; }
+
     if (act === 'rename-info') { openRenameModal(team); return; }
 
     if (act === 'rename-waiting') { openWaitingModal(team); return; }
 
     if (act === 'count-waiting') { openCountWaitingModal(team); return; }
+
+    if (act === 'stad-naam') { stadNaam(team, btn); return; }
+    if (act === 'delete' && zonderMail(team)) { stadVerwijder(team, btn); return; }
 
     if (act === 'delete') {
       const ok = confirm(
@@ -3955,7 +4572,9 @@
     } else if (act === 'revoke') {
       const ok = confirm(
         `Goedkeuring intrekken voor "${team.team_name}"?\n\n` +
-        `De huidige QR-code werkt direct niet meer. De captain krijgt een mail dat de goedkeuring is ingetrokken.`
+        (zonderMail(team)
+          ? `De huidige QR-code werkt direct niet meer. Dit team heeft ${GEEN_MAIL}: er gaat geen bericht uit, de deelnemer ziet het in Mijn team.`
+          : `De huidige QR-code werkt direct niet meer. De captain krijgt een mail dat de goedkeuring is ingetrokken.`)
       );
       if (!ok) return;
     }
@@ -3963,12 +4582,36 @@
     btn.disabled = true; btn.textContent = '…';
     const scrollY = window.scrollY;
     try {
-      const res = await api(`/api/admin/teams/${id}/decision`, {
+      // `verwacht` = de status die jij op je scherm zag. Heeft een collega het team intussen al
+      // beoordeeld, dan weigert de server (409) en zeggen we eerst wie wat deed.
+      const stuur = (toch) => api(`/api/admin/teams/${id}/decision`, {
         method: 'POST',
-        body: JSON.stringify({ decision, reason, admin_message: adminMessage }),
+        body: JSON.stringify({ decision, reason, admin_message: adminMessage, verwacht: team.status, ...(toch ? { toch: true } : {}) }),
       });
+      let res = await stuur(false);
+      if (res.status === 409) {
+        const err = await res.clone().json().catch(() => ({}));
+        if (err.code === 'intussen_gewijzigd') {
+          await refreshAll();
+          window.scrollTo(0, scrollY);
+          if (err.status === decision) { showToast(`${err.error} Er is niets dubbel verstuurd.`, 'info'); return; }
+          const DOEN = { approved: 'goedkeuren', waitlist: 'op de wachtlijst zetten', rejected: 'afwijzen', pending: 'terugzetten naar wachten' };
+          const ok = await bevestig({ titel: err.error, tekst: zonderMail(team) ? `Toch ${DOEN[decision]}? Er gaat geen mail uit (dit team heeft ${GEEN_MAIL}); de deelnemer ziet het in Mijn team.` : `Toch ${DOEN[decision]}? De captain krijgt dan een tweede mail, met een andere uitkomst.`, ja: `Toch ${DOEN[decision]}`, nee: 'Laat het zo' });
+          if (!ok) return;
+          res = await stuur(true);
+        }
+      }
       if (!res.ok) {
         const err = await res.json();
+        // Van de wachtlijst toelaten terwijl het vol zit (aangemeld met alleen een stad): zeg wat
+        // er wél kan, in plaats van "zet team op wachtlijst" over een team dat daar al staat.
+        if (res.status === 409 && decision === 'approved' && team.status === 'waitlist' && zonderMail(team) && /maximum/i.test(String(err.error || ''))) {
+          const c = hubComp(team.competition_id);
+          showToast(`${c ? c.name : 'Het toernooi'} zit vol${c ? ` (${c.max_teams})` : ''}. Zet eerst het maximum hoger${eenvoudigAan() ? ' bij Instellingen' : ''}: dan schuift de wachtlijst vanzelf door.`, 'info');
+          await refreshAll();
+          window.scrollTo(0, scrollY);
+          return;
+        }
         alert('Fout: ' + (err.error || res.status));
         return;
       }
@@ -4391,6 +5034,16 @@
       ? 'Deze QR is al gebruikt. Een tweede scan zal "al ingecheckt" melden.'
       : 'Het team kan inchecken op de dag zelf met deze QR.';
 
+    // Geen QR bij de hand? Hier check je het team met één tik in; de code van 6 tekens staat erbij
+    // voor wie hem op het scanscherm wil intypen.
+    const ci = $('btn-modal-checkin'), code = $('modal-code');
+    if (ci) { ci.hidden = !hubAan(); ci.disabled = false; ci.textContent = checkedIn ? 'Check-in terugdraaien' : 'Check nu in'; ci.classList.toggle('primary', !checkedIn); }
+    if (code) {
+      const c = String(team.checkin_code || '');
+      code.hidden = c.length !== 6 || !hubAan();
+      if (c.length === 6) code.textContent = `Check-in-code: ${c.slice(0, 3)}-${c.slice(3)}`;
+    }
+
     drawQR(team.checkin_url);
     $('qr-modal').classList.add('show');
     document.body.style.overflow = 'hidden';
@@ -4425,6 +5078,31 @@
     document.body.style.overflow = '';
     modalTeam = null;
   }
+
+  // Met de hand inchecken (of dat terugdraaien). Eén weg voor de teamkaart, het QR-venster en de
+  // Check-in-kaart van de hub. → true als het gelukt is.
+  async function checkinTeam(id, ongedaan) {
+    const team = teams.find(t => t.id === id);
+    try {
+      const res = await api(`/api/admin/teams/${id}/checkin`, { method: 'POST', body: JSON.stringify(ongedaan ? { ongedaan: true } : {}) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(j.error || 'Inchecken lukte niet.', 'error'); return false; }
+      const naam = team ? team.team_name : 'Het team';
+      showToast(ongedaan ? `Check-in van ${naam} teruggedraaid` : j.already_checked_in ? `${naam} was al binnen` : `${naam} is binnen`);
+      await refreshAll();
+      return true;
+    } catch (e) {
+      if (!e || e.message !== 'Sessie verlopen') showToast('Geen verbinding — probeer het zo opnieuw.', 'error');
+      return false;
+    }
+  }
+  $('btn-modal-checkin')?.addEventListener('click', async () => {
+    if (!modalTeam) return;
+    const id = modalTeam.id, terug = !!modalTeam.checked_in_at;
+    $('btn-modal-checkin').disabled = true;
+    if (await checkinTeam(id, terug)) closeModal();
+    else if ($('btn-modal-checkin')) $('btn-modal-checkin').disabled = false;
+  });
 
   $('btn-download-qr').addEventListener('click', () => {
     if (!modalTeam) return;
@@ -4484,10 +5162,22 @@
   });
   window.JVO_ADMIN = {
     api, escape, showToast, switchTab, setFilter, refreshAll, userIsBusy, showPendingTeams,
+    // Voor de Admin Hub en de Regie-laag: eigen bevestigvenster, inchecken met de hand, schema's
+    // mailen per sport, en het evenement (klaar-lijst + profiel) vers houden.
+    bevestig, checkinTeam, mailSchemas,
+    tekenChecks: (checks) => { if (evcData) evcData.checks = checks; evcRenderChecks(checks); },
+    laadEvenement: (opts) => loadEventConfig(opts || { zacht: true }),
+    evenementOud: () => Date.now() - evcLoadedAt,
+    zoekTeam: (naam) => { teamSearch = String(naam || '').trim(); const z = $('team-search'); if (z) z.value = teamSearch; setFilter('all'); },
     getTeams: () => teams,
     getSignups: () => signups,
     getConfig: () => cfg,
     hasToken: () => !!token,
+    // Voor admin-eenvoudig.js: de stand zoals het inloggen hem gaf, het evenement zoals de
+    // server het laatst stuurde (met `admin`: mag de eenvoudige stand hier?) en /api/config opnieuw.
+    standHint: () => standHint,
+    evenement: () => evcData,
+    laadConfig: () => loadConfig(),
     // Profielen en poortjes (admin-profielen.js, admin-hub.js)
     startSessie, uitloggen, wisWijkData, laadWijk, inWijk,
     naarLogin: (tekst) => { localStorage.removeItem('jvo_admin_token'); token = null; stopPoller(); showLogin(); if (tekst) showToast(tekst, 'error'); },

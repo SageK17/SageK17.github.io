@@ -80,6 +80,14 @@
   const tsMs = (s) => (s ? Date.parse(String(s).replace(' ', 'T') + 'Z') : null);
   const setsLine = (sets) => (Array.isArray(sets) && sets.length ? sets.map(s => `${s[0]}–${s[1]}`).join(' · ') : '');
   const compOf = (id) => (data ? data.competitions.find(c => c.id === id) : null);
+  // De woorden voor de competities: "sport/sporten", of wat de server geeft als ze allemaal
+  // dezelfde sport zijn (bv. categorie/categorieën). Een ouder antwoord kent `labels` niet.
+  const LABELS = { one: 'sport', many: 'sporten', choose: 'Kies je sport', all: 'Alle sporten' };
+  const lbl = (k) => { const l = data && data.labels; return l && typeof l[k] === 'string' && l[k].trim() ? l[k] : LABELS[k]; };
+  const hoofd = (t) => { const x = String(t || ''); return x.charAt(0).toUpperCase() + x.slice(1); };
+  // Automatisch ingedeeld en nog niet gestart: de indeling kan nog schuiven als er iemand bijkomt.
+  const VOORLOPIG = 'Voorlopige indeling: die kan nog veranderen tot de start.';
+  const voorlopig = (comp) => (comp && comp.draw_open && comp.configured ? `<p class="voorlopig" role="note">${VOORLOPIG}</p>` : '');
   // Teamlogo's (alleen goedgekeurde, nooit bij een solo-sport): opzoeken op id, of op
   // naam binnen de sport (de kaartjes "nu/straks" dragen alleen namen). Geen logo = ''.
   let logoIdx = { src: null, id: new Map(), naam: new Map() };
@@ -124,12 +132,15 @@
     </article>`;
   }
 
+  // Allemaal dezelfde sport: het icoon zegt dan niet welke competitie het is. Op "Alles" staat
+  // de naam (bv. de categorie) er daarom in tekst bij.
+  const zelfdeIcoon = () => !!(data && data.same_sport && tab === 'alles' && data.competitions.length > 1);
   function straks(list) {
     if (!list.length) return '';
     return `<div class="lbl mono">Straks</div><div class="rijen">` + list.map(c => `
       <div class="sr${isMine(c.comp_id, c.a) || isMine(c.comp_id, c.b) ? ' mijn' : ''}"><b>${esc(c.expected || '')}</b><img src="${esc(safeIcon(c.icon_small))}" alt="${esc(c.comp_name)}" />
         <span>${logoVan(c.comp_id, c.a_id, c.a, 16)}${esc(c.a || 'Nog onbekend')} – ${logoVan(c.comp_id, c.b_id, c.b, 16)}${esc(c.b || 'Nog onbekend')}</span>
-        <i class="mono">${c.field ? `${esc(c.place_noun)} ${esc(c.field)}` : ''}</i></div>`).join('') + `</div>`;
+        <i class="mono">${[zelfdeIcoon() ? esc(c.comp_name) : '', c.field ? `${esc(c.place_noun)} ${esc(c.field)}` : ''].filter(Boolean).join(' · ')}</i></div>`).join('') + `</div>`;
   }
   // Het eerstvolgende stuk schema van één sport (uit comp.upcoming; een ouder antwoord uit
   // de offline-cache heeft dat veld nog niet → dan uit de gedeelde "straks"-lijst).
@@ -199,15 +210,17 @@
   function sportenLijst() {
     const comps = data.competitions;
     if (comps.length < 2) return '';
-    return `<div class="lbl mono">Sporten</div><div class="sporten">` + comps.map(c => {
+    return `<div class="lbl mono">${esc(hoofd(lbl('many')))}</div><div class="sporten">` + comps.map(c => {
       const np = pouleNamen(c).length;
       const live = data.now.filter(x => x.comp_id === c.id).length;
       const klaar = Array.isArray(c.final_standing) && c.final_standing.length;
       const eerst = Array.isArray(c.upcoming) && c.upcoming[0] ? c.upcoming[0].expected : '';
-      const meta = [np ? `${np} ${np === 1 ? 'poule' : 'poules'}` : '', c.approved ? `${c.approved} ${c.unit || ''}`.trim() : ''].filter(Boolean).join(' · ');
+      let meta2 = '';
+      const meta = () => [np ? `${np} ${np === 1 ? 'poule' : 'poules'}` : '', c.approved ? `${c.approved} ${c.unit || ''}`.trim() : '', meta2].filter(Boolean).join(' · ');
       const chip = live ? `<em class="live">${live} live</em>` : (klaar ? '<em>Klaar</em>' : (c.paused ? '<em>Pauze</em>' : (eerst ? `<em>${esc(eerst)}</em>` : (c.configured ? '' : '<em>Schema volgt</em>'))));
+      if (c.draw_open && c.configured) meta2 = 'voorlopige indeling';
       return `<button type="button" class="sportrij" data-tab="${esc(c.id)}"><span class="badge"><img src="${esc(safeIcon(c.icon_small))}" alt="" /></span>
-        <span><b>${esc(c.name)}</b><i>${esc(meta)}</i></span>${chip}</button>`;
+        <span><b>${esc(c.name)}</b><i>${esc(meta())}</i></span>${chip}</button>`;
     }).join('') + `</div>`;
   }
 
@@ -230,6 +243,7 @@
     $('paneel').setAttribute('aria-labelledby', 'tab-' + tab);
     // Eén sport: geen tabs nodig.
     $('tabs').hidden = comps.length < 2;
+    $('tabs').setAttribute('aria-label', lbl('choose'));
     // De strook houdt zijn plek bij het verversen; het gekozen tabblad schuift in beeld
     // (alleen horizontaal, de pagina zelf scrolt niet mee).
     strip.scrollLeft = scrollWas;
@@ -250,7 +264,7 @@
     // Niets live: geen "0 wedstrijden · 0 sporten", maar wat er wél te zien is.
     const klaar = data.competitions.some(c => Array.isArray(c.final_standing) && c.final_standing.length);
     $('sub').textContent = data.now.length
-      ? `${data.now.length} ${data.now.length === 1 ? 'wedstrijd' : 'wedstrijden'} · ${sportsLive} ${sportsLive === 1 ? 'sport' : 'sporten'}`
+      ? `${data.now.length} ${data.now.length === 1 ? 'wedstrijd' : 'wedstrijden'} · ${sportsLive} ${sportsLive === 1 ? lbl('one') : lbl('many')}`
       : (data.next[0] ? (data.next[0].expected ? `Straks · ${data.next[0].expected}` : 'Straks') : (klaar ? 'Uitslagen' : 'Nog geen wedstrijden'));
     const pill = $('pill');
     // "Aanmelden" hoort alleen bij een dag zonder schema; tussen de rondes door en na
@@ -281,6 +295,7 @@
       html += live.length ? `<div class="list breed" style="margin-top:22px">${live.map(kaart).join('')}</div>`
         : `<div style="margin-top:22px">${leeg(comp.configured ? `Bij ${comp.name} wordt nu niets gespeeld.` : `Het schema van ${comp.name} komt hier zodra het klaar is.`)}</div>`;
       html += eindstand(comp);
+      html += voorlopig(comp);
       // Stand, schema en knock-out: op een telefoon onder elkaar, op een breed scherm naast
       // elkaar. Met meer dan twee poules tegelijk in beeld krijgt de stand de volle breedte.
       const poule = gekozenPoule(comp);
@@ -302,7 +317,7 @@
     if (fsel) { const el = $('paneel').querySelector(fsel); if (el) el.focus({ preventScroll: true }); }
     renderRing();
     $('voet').textContent = stale ? 'Geen verbinding — dit is de laatst bekende stand.'
-      : (data.multi ? `${data.competitions.length} sporten · ververst vanzelf` : 'Ververst vanzelf');
+      : (data.multi ? `${data.competitions.length} ${lbl('many')} · ververst vanzelf` : 'Ververst vanzelf');
     renderVolg();
   }
 
@@ -346,7 +361,8 @@
     const ring = $('ring');
     if (!ring || !data) return;
     const comps = data.competitions;
-    const comp = tab === 'alles' ? (comps.length === 1 ? comps[0] : null) : compOf(Number(tab));
+    // Allemaal dezelfde sport (bv. twee categorieën): ook op "Alles" dat ene icoon, niets om af te wisselen.
+    const comp = tab === 'alles' ? (comps.length === 1 || (data.same_sport && comps.length) ? comps[0] : null) : compOf(Number(tab));
     const stil = minderBeweging();
     const iconen = comps.map(c => grootIcon(c.icon));
     const sig = comp ? `s|${comp.sport}|${grootIcon(comp.icon)}` : (stil || iconen.length < 2 ? 'beker' : `a|${iconen.join(',')}`);

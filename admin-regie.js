@@ -32,6 +32,9 @@
   // De Admin Hub (admin-hub.js) doet de indeling: afdelingen i.p.v. tabs.
   const NAV = () => window.JVO_ADMIN_HUB || null;
   const HN = () => { const n = NAV(); return !!(n && n.actief()); };
+  // De eenvoudige stand (admin-eenvoudig.js) is een andere schil om dezelfde blokken: voor dit
+  // bestand gedraagt hij zich als de hub (HN() is dan ook waar), alleen heten de plekken anders.
+  const EV = () => { const e = window.JVO_ADMIN_EENVOUDIG; return !!(e && e.actief()); };
   const isIcon = (u) => /^\/sport\/[a-z]+(-klein)?\.webp$/.test(String(u || ''));
   const icon = (c, cls = 'rg-icoon') => (isIcon(c.icon_small) ? `<img class="${cls}" src="${esc(c.icon_small)}" alt="" width="40" height="40" />` : `<span class="${cls} rg-icoon-leeg" aria-hidden="true"></span>`);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -93,6 +96,8 @@
     }
   }
   const fail = (r, fallback) => { if (!r.net) A.showToast(r.j.error || fallback, 'error'); };
+  // "2026-11-15 20:51:29" (UTC, zonder zone) → "21:51" in de tijd van dit toestel.
+  const tijdVan = (ts) => { try { const d = new Date(String(ts).replace(' ', 'T') + 'Z'); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
   // ── Ophalen ──────────────────────────────────────────────────────────────
   async function load(force) {
@@ -111,6 +116,9 @@
         // maar het scherm blijft staan tot de volgende ronde (zelfde regel als admin.js).
         // Uitzondering: de verbinding is net terug. Dan moet "Geen verbinding" meteen weg.
         if (force || wasWeg || !A.userIsBusy()) apply();
+        // De eenvoudige schil tekent mee met dezelfde, net ververste gegevens (ook met één toernooi,
+        // als deze laag zelf uit staat).
+        { const e = window.JVO_ADMIN_EENVOUDIG; if (e && !A.userIsBusy()) e.opData(); }
       } catch (e) {
         // De laatst bekende stand blijft staan, maar niet stilzwijgend. Een verlopen
         // sessie (401) is geen verbindingsprobleem: api() stuurt dan zelf naar het inlogscherm.
@@ -201,12 +209,15 @@
     bar.hidden = false;
     const sel = A.selSport;
     const chip = (id, label, extra = '') => `<button type="button" role="tab" class="rg-chip" data-sport="${id == null ? '' : esc(id)}" aria-selected="${sel === id ? 'true' : 'false'}" tabindex="${sel === id ? '0' : '-1'}">${label}${extra}</button>`;
+    const opSchema = HN() && NAV().route().t === 'schema';
     const chips = [chip(null, '<span class="rg-chip-t">Alle sporten</span>')].concat(zichtbaar().map(c => {
       const n = c.teams.pending;
+      const moet = opSchema && c.active && stateOf(c).key === 'maak-schema';
       return chip(c.id,
         `${isIcon(c.icon_small) ? `<img src="${esc(c.icon_small)}" alt="" width="22" height="22" />` : ''}<span class="rg-chip-t">${esc(c.name)}</span>`,
         (c.active ? '' : '<span class="rg-chip-uit">inactief</span>')
-        + (n > 0 ? `<span class="rg-chip-n" aria-label="${esc(plural(n, 'aanmelding wacht', 'aanmeldingen wachten'))} op beoordeling">${n}</span>` : ''));
+        + (moet ? '<span class="rg-chip-moet"><i aria-hidden="true"></i>schema maken</span>' : '')
+        + (n > 0 && !opSchema ? `<span class="rg-chip-n" aria-label="${esc(plural(n, 'aanmelding wacht', 'aanmeldingen wachten'))} op beoordeling">${n}</span>` : ''));
     }));
     const live = R.totals.live;
     setHtml(bar, `
@@ -309,6 +320,7 @@
           <div class="card-eyebrow">Wedstrijddag</div>
           <h3 class="rg-titel" id="rg-dag-titel">—</h3>
           <p class="rg-sub" id="rg-dag-sub" aria-live="polite"></p>
+          <p class="rg-dag-crew" id="rg-dag-crew" hidden></p>
         </div>
         <button type="button" class="rg-knop rg-knop-rustig" data-rg="dag-uit">Terug naar de hub</button>
       </div>
@@ -338,7 +350,9 @@
     dag.hidden = !dagAan && !hn;
     if (dag.hidden) return;
     dagSkeleton();
-    const eerlijk = hn ? 'Opnieuw genereren en resetten staan hier bewust niet. Die vind je bij Toernooien, onder Schema per sport.'
+    const ev = EV();
+    const eerlijk = ev ? 'Opnieuw indelen en resetten staan hier bewust niet. Die vind je bij Poules en schema.'
+      : hn ? 'Opnieuw genereren en resetten staan hier bewust niet. Die vind je bij Toernooien, onder Schema per sport.'
       : 'Opnieuw genereren, resetten en wissen staan hier bewust niet. Die vind je op de tab Toernooi.';
     if ($('rg-dag-eerlijk').textContent !== eerlijk) $('rg-dag-eerlijk').textContent = eerlijk;
     const act = actives();
@@ -350,10 +364,10 @@
       : t.live > 0 ? `${t.live} live · ${t.done}/${t.total} gespeeld` : `${t.done}/${t.total} gespeeld`;
     const late = act.filter(c => c.delay_min >= 3 && !c.finished);   // een minuutje is geen nieuws
     const paused = act.filter(c => c.paused);
-    subTekst($('rg-dag-sub'), t.total === 0 ? (hn ? 'Maak eerst een schema bij Schema per sport. Daarna stuur je de dag vanaf hier.' : 'Maak eerst een schema in de Admin Hub. Daarna stuur je de dag vanaf hier.')
+    subTekst($('rg-dag-sub'), t.total === 0 ? (ev ? 'Er is nog geen schema. Dat maak je bij Poules en schema; daarna stuur je de dag vanaf hier.' : hn ? 'Maak eerst een schema bij Schema per sport. Daarna stuur je de dag vanaf hier.' : 'Maak eerst een schema in de Admin Hub. Daarna stuur je de dag vanaf hier.')
       : R.paused_all ? 'Alles staat op pauze. Niemand kan een wedstrijd starten.'
       : paused.length ? `${paused.map(c => c.name).join(', ')} ${paused.length === 1 ? 'staat' : 'staan'} op pauze.`
-      : allDone ? (hn ? 'Tijd om af te ronden. Dat doe je bij Evenement, onder Afronden.' : 'Tijd om af te ronden. Dat doe je in de Admin Hub.')
+      : allDone ? (ev ? 'De eindstand staat op het bord. Corrigeren kan nog bij Poules en schema.' : hn ? 'Tijd om af te ronden. Dat doe je bij Evenement, onder Afronden.' : 'Tijd om af te ronden. Dat doe je in de Admin Hub.')
       : late.length ? `${late.map(c => `${c.name} loopt ${c.delay_min} min uit`).join(' · ')}.`.replace(/^./, m => m.toUpperCase())
       : t.live > 0 ? 'Alles loopt. Niks te doen.' : 'Er is nu niets bezig.');
 
@@ -364,7 +378,8 @@
     pa.classList.toggle('is-pauze', !!R.paused_all);
     $('rg-nood-veld').hidden = !!R.paused_all;
     $('rg-nood-uitleg').textContent = R.paused_all
-      ? (R.pause_message ? `Op het bord staat: "${R.pause_message}". Hervatten zet alle sporten weer aan.` : 'Hervatten zet alle sporten weer aan.')
+      ? (R.pause_message ? `Op het bord staat: "${R.pause_message}". Hervatten zet ${ev ? 'alles' : 'alle sporten'} weer aan.` : `Hervatten zet ${ev ? 'alles' : 'alle sporten'} weer aan.`)
+      : ev ? `Eén tik zet alles stil: niemand kan nog een wedstrijd starten tot je hervat.${paused.length ? ` (${paused.map(c => c.name).join(' en ')} ${paused.length === 1 ? 'staat' : 'staan'} al op pauze.)` : ''}`
       : `Eén tik zet ${multi ? `alle ${act.length} sporten` : 'het toernooi'} stil: niemand kan nog een wedstrijd starten tot je hervat.${paused.length ? ` (${plural(paused.length, 'sport staat', 'sporten staan')} al op pauze.)` : ''}`;
 
     // b. Eén rij per sport
@@ -377,8 +392,9 @@
         bits.push(`${m.done}/${m.total} gespeeld`);
         if (c.finished) bits.push('afgerond');
         else {
-          if (c.delay_min > 0) bits.push(`<b class="rg-laat">loopt ${c.delay_min} min uit</b>`);
-          if (c.shift_min) bits.push(`${c.shift_min > 0 ? '+' : '−'}${Math.abs(c.shift_min)} min verschoven`);
+          // Twee verschillende dingen: hoeveel de sport achterloopt, en hoeveel jij de tijden hebt opgeschoven.
+          if (c.delay_min > 0) bits.push(`<b class="rg-laat">loopt ${c.delay_min} min achter</b>`);
+          if (c.shift_min) bits.push(`tijden ${c.shift_min > 0 ? '+' : '−'}${Math.abs(c.shift_min)} min opgeschoven`);
           if (c.expected_end) bits.push(`klaar rond ${esc(c.expected_end)}`);
         }
       }
@@ -402,14 +418,32 @@
     const next = act.flatMap(c => c.next || []).sort((a, b) => hm(a.expected) - hm(b.expected)).slice(0, 6);
     const recent = act.flatMap(c => (c.recent || [])).sort(nieuwst).slice(0, 6);
     const crew = `<a class="rg-item-a rg-item-open" href="/wedstrijd" target="_blank" rel="noopener" aria-label="Open de wedstrijdbediening in een nieuw tabblad"><span>Bediening</span> ↗</a>`;
-    const item = (x, right) => `<li class="rg-item">
+    // Live zonder bediener (het hoofdtoernooi meldt niet wie bedient, dus dat telt niet mee).
+    const hfd = mainComp();
+    const zonder = ((R.crew && R.crew.zonder_bediener) || []).filter(u => !(hfd && u.competition_id === hfd.id));
+    const zb = new Set(zonder.map(u => u.match_id));
+    const crewEl = $('rg-dag-crew');
+    // In de eenvoudige stand is er geen crew-overzicht: daar staat de link voor de crew er vlak onder.
+    setHtml(crewEl, zonder.length && ev ? `<span class="rg-dag-crew-t"><i class="rg-stip" aria-hidden="true"></i>${plural(zonder.length, 'wedstrijd loopt', 'wedstrijden lopen')} zonder iemand van de crew aan de bediening.</span>`
+      : zonder.length && hn ? `<a href="#/mensen/crew"><i class="rg-stip" aria-hidden="true"></i>${plural(zonder.length, 'wedstrijd loopt', 'wedstrijden lopen')} zonder bediener. Bekijk wie waar staat</a>` : '');
+    crewEl.hidden = !(zonder.length && hn);
+    const item = (x, right, extra = '') => `<li class="rg-item">
         ${isIcon(x.icon_small) ? `<img class="rg-item-i" src="${esc(x.icon_small)}" alt="" width="28" height="28" />` : '<span class="rg-item-i"></span>'}
-        <div class="rg-item-t"><b>${names(x)}</b><span>${metaLine(x, multi, true)}</span></div>
+        <div class="rg-item-t"><b>${names(x)}</b><span>${metaLine(x, multi, true)}${extra}</span></div>
         ${right}
       </li>`;
-    setHtml($('rg-nu'), now.map(x => item(x, `<span class="rg-item-s rg-live">${esc(scoreShort(x))}</span>${crew}`)).join('')
+    setHtml($('rg-nu'), now.map(x => item(x, `<span class="rg-item-s rg-live">${esc(scoreShort(x))}</span>${crew}`, zb.has(x.id) ? '<em class="rg-geen-bed">geen bediener</em>' : '')).join('')
       || '<li class="rg-leeg-li">Er is nu niets bezig.</li>');
-    setHtml($('rg-straks'), next.map(x => item(x, `<span class="rg-item-s rg-tijd">${esc(x.expected || x.time || '')}${x.time && x.expected && x.time !== x.expected ? `<small>was ${esc(x.time)}</small>` : ''}</span>${crew}`)).join('')
+    // Een tijd die al voorbij is zegt niets meer: dan staat er "nu" (de wedstrijd kan beginnen).
+    const d0 = new Date(R.server_now || Date.now()), nuMin = d0.getHours() * 60 + d0.getMinutes();
+    const tijd = (x) => {
+      const e = x.expected || x.time || '';
+      if (e && hm(e) !== 9999 && hm(e) <= nuMin) return `nu<small>stond op ${esc(x.time || e)}</small>`;
+      return `${esc(e)}${x.time && x.expected && x.time !== x.expected ? `<small>was ${esc(x.time)}</small>` : ''}`;
+    };
+    // Komt een team niet opdagen, dan handel je dat hier af (in de hub; daarbuiten de knop Bediening).
+    const ng = (x) => (hn && x.a && x.b ? `<button type="button" class="rg-item-a" data-rg="niet-gekomen" data-match="${esc(x.id)}" aria-label="${esc(x.a)} tegen ${esc(x.b)}: een team is niet op komen dagen">Niet gekomen</button>` : crew);
+    setHtml($('rg-straks'), next.map(x => item(x, `<span class="rg-item-s rg-tijd">${tijd(x)}</span>${ng(x)}`)).join('')
       || `<li class="rg-leeg-li">${allDone ? 'Alles is gespeeld.' : 'Er staat niets klaar.'}</li>`);
     // d. Laatste uitslagen + corrigeren
     setHtml($('rg-uit'), recent.map(x => item(x, `<span class="rg-item-s">${esc(scoreShort(x))}</span><button type="button" class="rg-item-a" data-rg="corrigeer" data-match="${esc(x.id)}" aria-label="Corrigeer de uitslag van ${esc(x.a || '')} tegen ${esc(x.b || '')}">Corrigeer</button>`)).join('')
@@ -417,7 +451,8 @@
     // Hier staan alleen de laatste paar. Oudere uitslagen zijn ook te corrigeren: zeg waar.
     const uitNoot = $('rg-uit-noot');
     uitNoot.hidden = t.done <= recent.length;
-    const uitTekst = hn ? 'Een oudere uitslag corrigeren? Open Schema per sport, kies de sport en open "Alle uitslagen". Het kan ook in de Bediening, onder Klaar.'
+    const uitTekst = ev ? 'Een oudere uitslag corrigeren? Open Poules en schema en daar "Alle uitslagen".'
+      : hn ? 'Een oudere uitslag corrigeren? Open Schema per sport, kies de sport en open "Alle uitslagen".'
       : 'Een oudere uitslag corrigeren? Kies de sport op de tab Toernooi en open "Alle uitslagen". Het kan ook in de Bediening, onder Klaar.';
     if (uitNoot.textContent !== uitTekst) uitNoot.textContent = uitTekst;
     // Telefoon: de drie lijsten staan onder alle sportrijen. Eén tik brengt je erheen.
@@ -438,6 +473,12 @@
       ${prints}`);
   }
 
+  // Enter in het redenveld = pauzeren (bij onweer telt elke seconde).
+  dag.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.target.id !== 'rg-reden' || !R || R.paused_all) return;
+    e.preventDefault();
+    pauseAll($('rg-pauze-alles'));
+  });
   dag.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-rg], #rg-pauze-alles');
     if (!b) return;
@@ -445,6 +486,7 @@
     const act = b.dataset.rg;
     if (act === 'dag-uit') return setDag(false);
     if (act === 'corrigeer') return openFix(Number(b.dataset.match));
+    if (act === 'niet-gekomen') return openNietGekomen(Number(b.dataset.match));
     if (act === 'spring') {
       const doel = $(b.dataset.doel);
       if (!doel) return;
@@ -460,7 +502,7 @@
   async function pauseAll(btn) {
     const on = !R.paused_all;
     // Pauzeren vraagt niets (bij onweer telt elke seconde); hervatten wel.
-    if (!on && !confirm('Alles hervatten?\n\nDe crew kan dan bij elke sport weer wedstrijden starten.')) return;
+    if (!on && !(await A.bevestig({ titel: 'Alles hervatten?', tekst: EV() ? 'De crew kan dan weer wedstrijden starten.' : 'De crew kan dan bij elke sport weer wedstrijden starten.', ja: 'Hervat alles', nee: 'Nog niet' }))) return;
     const message = on ? ($('rg-reden')?.value || '').trim() : undefined;
     btn.disabled = true;
     const r = await call('POST', '/api/admin/tournament/pause-all', on ? { on: true, message } : { on: false });
@@ -481,9 +523,13 @@
       r = await call('POST', `/api/admin/tournament/${act === 'pauze' ? 'pause' : 'resume'}`, idPart);
       okMsg = act === 'pauze' ? `${c.name} staat op pauze` : `${c.name} loopt weer`;
     } else if (act === 'shift') {
-      const d = parseInt(btn.dataset.d, 10);
-      r = await call('POST', '/api/admin/tournament/schedule-shift', { ...idPart, delta: d });
-      okMsg = `${c.name}: alles ${Math.abs(d)} min ${d > 0 ? 'later' : 'eerder'}`;
+      const d = parseInt(btn.dataset.d, 10), was = c.shift_min | 0;
+      // `van` = de verschuiving die jij zag. Schoof een collega intussen ook, dan weigert de server
+      // (409) en schuift er niets dubbel.
+      r = await call('POST', '/api/admin/tournament/schedule-shift', { ...idPart, delta: d, van: was });
+      if (!r.ok && r.status === 409 && r.j.code === 'intussen_gewijzigd') { if (btn) btn.disabled = false; A.showToast(r.j.error, 'info'); await refresh(); return; }
+      const nu = was + d;
+      okMsg = `${c.name}: alles ${Math.abs(d)} min ${d > 0 ? 'later' : 'eerder'}${was ? `. Staat nu op ${nu > 0 ? '+' : nu < 0 ? '−' : ''}${Math.abs(nu)} min` : ''}`;
     } else if (act === 'shift-reset') {
       r = await call('POST', '/api/admin/tournament/schedule-shift', { ...idPart, reset: true });
       okMsg = `${c.name}: verschuiving hersteld`;
@@ -530,7 +576,18 @@
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
     m.querySelector('.modal-close').addEventListener('click', close);
-    m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-rg="fix-sluit"]')) close(); });
+    // In een scoreveld tikken en typen vervangt de oude waarde (anders wordt 1 → "31").
+    m.addEventListener('focusin', (e) => {
+      const v = e.target;
+      if (!v || v.tagName !== 'INPUT' || v.type !== 'number') return;
+      const kies = () => { try { v.select(); } catch { /* dit veld kan niet selecteren */ } };
+      kies(); setTimeout(kies, 0);
+    });
+    m.addEventListener('click', (e) => {
+      if (e.target === m || e.target.closest('[data-rg="fix-sluit"]')) return close();
+      const k = e.target.closest('[data-rg="ng-kies"]');
+      if (k) kiesNietGekomen(k.dataset.wie);
+    });
     m.querySelector('#rg-fix-velden').addEventListener('input', syncPens);
     m.querySelector('#rg-fix-form').addEventListener('submit', submitFix);
     return m;
@@ -544,12 +601,80 @@
   }
   const num = (name, label, val) => `<label class="rg-num"><span>${label}</span><input type="number" name="${name}" min="0" max="99" step="1" inputmode="numeric" pattern="[0-9]*" value="${val == null ? '' : esc(val)}" /></label>`;
 
+  // De invoervelden van een wedstrijd (score of sets), gevuld met de stand uit `x`.
+  function fixVelden(c, x) {
+    const a = esc(x.a || 'Thuis'), b = esc(x.b || 'Uit');
+    if (c.result_model === 'sets') {
+      const sets = Array.isArray(x.sets) ? x.sets : [];
+      return `<div class="rg-sets" role="group" aria-label="Setstanden">
+          <div class="rg-sets-kop"><span></span><span>${a}</span><span>${b}</span></div>
+          ${Array.from({ length: c.best_of }, (_, i) => `<div class="rg-sets-rij"><span class="rg-sets-n">Set ${i + 1}</span>
+            <input type="number" name="s${i}a" min="0" max="99" inputmode="numeric" pattern="[0-9]*" aria-label="Set ${i + 1}: ${a}" value="${sets[i] ? esc(sets[i][0]) : ''}" />
+            <input type="number" name="s${i}b" min="0" max="99" inputmode="numeric" pattern="[0-9]*" aria-label="Set ${i + 1}: ${b}" value="${sets[i] ? esc(sets[i][1]) : ''}" /></div>`).join('')}
+        </div>`;
+    }
+    const tb = (c.vocab && c.vocab.tiebreak) || 'Beslissing';
+    return `<div class="rg-score">${num('score_a', a, x.score_a)}<span class="rg-vs" aria-hidden="true">–</span>${num('score_b', b, x.score_b)}</div>
+        <div class="rg-pens" id="rg-fix-pens" hidden>
+          <div class="rg-label">${esc(tb)} (gelijke stand in de knock-out)</div>
+          <div class="rg-score">${num('pens_a', a, x.pens_a)}<span class="rg-vs" aria-hidden="true">–</span>${num('pens_b', b, x.pens_b)}</div>
+        </div>`;
+  }
+  // Team komt niet opdagen: kies welk team er niet is; de reglementaire uitslag staat dan klaar
+  // (aanpasbaar) en Opslaan sluit de wedstrijd af zonder dat hij ooit "gestart" is.
+  const REGL = { basketbal: 20 };      // bij basketbal is 20-0 de gebruikelijke reglementaire uitslag; anders 3-0
+  function reglementair(c, wie) {
+    const win = wie === 'a' ? 1 : 0;   // index van de winnaar (het team dat er wél is)
+    if (c.result_model === 'sets') {
+      const nodig = Math.floor((c.best_of || 3) / 2) + 1, p = Number(c.set_points) || 25;
+      return { sets: Array.from({ length: nodig }, () => (win === 0 ? [p, 0] : [0, p])), tekst: `${nodig}-0 in sets (${p}-0)` };
+    }
+    const n = REGL[c.sport] || 3;
+    return { score_a: win === 0 ? n : 0, score_b: win === 0 ? 0 : n, tekst: `${n}-0` };
+  }
+  function openNietGekomen(matchId) {
+    const x = cards.get(matchId);
+    const c = x && compById(x.comp_id);
+    if (!x || !c || !x.a || !x.b) return;
+    const m = fixModal();
+    m.__match = x; m.__comp = c; m.__terug = document.activeElement; m.__terugId = matchId; m.__ng = true;
+    $('rg-fix-eyebrow').textContent = `Niet op komen dagen · ${c.name}`;
+    $('rg-fix-titel').textContent = `${x.a} – ${x.b}`;
+    $('rg-fix-meta').textContent = [x.where, placeOf(x), x.expected || x.time || ''].filter(Boolean).join(' · ');
+    $('rg-fix-fout').textContent = '';
+    $('rg-fix-velden').innerHTML = `<div class="rg-ng" role="group" aria-labelledby="rg-ng-vraag">
+        <p class="rg-label" id="rg-ng-vraag">Welk team is er niet?</p>
+        <div class="rg-ng-k"><button type="button" class="rg-knop rg-knop-rustig" data-rg="ng-kies" data-wie="a" aria-pressed="false">${esc(x.a)}</button>
+        <button type="button" class="rg-knop rg-knop-rustig" data-rg="ng-kies" data-wie="b" aria-pressed="false">${esc(x.b)}</button></div>
+      </div><div id="rg-ng-uitslag"></div>`;
+    $('rg-fix-uitleg').textContent = 'De wedstrijd wordt niet gestart: volgers krijgen geen aftrap-melding, alleen de uitslag.';
+    $('rg-fix-opslaan').disabled = true;
+    $('rg-fix-opslaan').textContent = 'Kies eerst een team';
+    m.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => m.querySelector('[data-rg="ng-kies"]')?.focus(), 60);
+  }
+  function kiesNietGekomen(wie) {
+    const m = $('rg-fix-modal'), x = m && m.__match, c = m && m.__comp;
+    if (!x || !c || !m.__ng) return;
+    const r = reglementair(c, wie);
+    m.querySelectorAll('[data-rg="ng-kies"]').forEach(k => k.setAttribute('aria-pressed', k.dataset.wie === wie ? 'true' : 'false'));
+    $('rg-ng-uitslag').innerHTML = `<p class="rg-label">Reglementaire uitslag: ${esc(r.tekst)} voor ${esc(wie === 'a' ? x.b : x.a)}. Pas hem aan als jullie reglement iets anders zegt.</p>`
+      + fixVelden(c, { ...x, score_a: r.score_a, score_b: r.score_b, sets: r.sets, pens_a: null, pens_b: null });
+    $('rg-fix-fout').textContent = '';
+    const knop = $('rg-fix-opslaan');
+    knop.disabled = false; knop.textContent = 'Sla de uitslag op';
+    syncPens();
+    knop.focus({ preventScroll: true });
+  }
+
   function openFix(matchId) {
     const x = cards.get(matchId);
     const c = x && compById(x.comp_id);
     if (!x || !c) return;
     const m = fixModal();
-    m.__match = x; m.__comp = c; m.__terug = document.activeElement; m.__terugId = matchId;
+    m.__match = x; m.__comp = c; m.__terug = document.activeElement; m.__terugId = matchId; m.__ng = false;
+    $('rg-fix-opslaan').disabled = false; $('rg-fix-opslaan').textContent = 'Opslaan';
     $('rg-fix-eyebrow').textContent = `Uitslag corrigeren · ${c.name}`;
     $('rg-fix-titel').textContent = `${x.a || '—'} – ${x.b || '—'}`;
     $('rg-fix-meta').textContent = [x.where, placeOf(x), `nu: ${scoreText(x)}`].filter(Boolean).join(' · ');
@@ -587,6 +712,7 @@
     const m = $('rg-fix-modal'), box = $('rg-fix-pens');
     if (!m || !box || !m.__match) return;
     const f = $('rg-fix-form');
+    if (!f.elements.score_a) return;
     const sa = f.elements.score_a.value, sb = f.elements.score_b.value;
     box.hidden = !(m.__match.phase !== 'group' && sa !== '' && sa === sb);
   }
@@ -595,6 +721,7 @@
     const m = $('rg-fix-modal'), x = m.__match, c = m.__comp, f = e.target, err = $('rg-fix-fout');
     if (!x || !c) return;
     err.textContent = '';
+    if (m.__ng && !f.elements.score_a && !f.elements.s0a) { err.textContent = 'Kies eerst welk team er niet is.'; return; }
     const body = { match_id: x.id };
     if (c.result_model === 'sets') {
       const sets = [];
@@ -617,8 +744,9 @@
     // De server legt uit waarom iets niet mag (bv. "de knock-out is al begonnen"):
     // die tekst letterlijk tonen, in het venster.
     if (!r.ok) { if (!r.net) err.textContent = r.j.error || `Opslaan lukte niet (${r.status}).`; return; }
+    const wasNg = !!m.__ng;
     m.__close();
-    A.showToast('Uitslag aangepast');
+    A.showToast(wasNg ? `Reglementaire uitslag opgeslagen: ${x.a} – ${x.b}` : 'Uitslag aangepast');
     if (paneel.__id === c.id) await loadDetail(c.id);
     await refresh();
     terugFocus(m);   // de lijst is opnieuw getekend: de oude knop bestaat niet meer
@@ -768,15 +896,16 @@
         <div class="card-eyebrow" id="rg-regie-oog">Admin Hub</div>
         <h3 class="rg-titel" id="rg-regie-titel">Wat moet je nu doen?</h3>
         <p class="rg-sub" id="rg-regie-sub"></p>
+        <button type="button" class="rg-knop rg-knop-rustig rg-kop-nieuw" id="rg-kop-nieuw" data-rg="nieuw" aria-controls="rg-nieuw" aria-expanded="false">${IC.plus}<span>Sport toevoegen</span></button>
       </div>
       <div id="rg-ev"></div>
-      <div class="rg-kaarten" id="rg-kaarten"></div>
       <div class="rg-nieuw" id="rg-nieuw" hidden>
         <h4 id="rg-nieuw-titel">Welke sport komt erbij?</h4>
         <p class="rg-sub">Een voorinstelling vult het formulier alvast in. Je kunt daarna alles nog aanpassen.</p>
         <div class="rg-presets" id="rg-presets" role="group" aria-labelledby="rg-nieuw-titel"></div>
       </div>
       <div class="rg-form-wrap" id="rg-form-wrap"></div>
+      <div class="rg-kaarten" id="rg-kaarten"></div>
       <p class="rg-hoofd-uit" id="rg-hoofd-uit" hidden></p>
       <div id="rg-af"></div>`;
   }
@@ -827,6 +956,7 @@
     setHtml(huEl, hu ? `Het hoofdtoernooi staat uit. <button type="button" class="rg-link" data-rg="bewerk" data-id="${esc(hu.id)}">Aanzetten</button>` : '');
 
     // Voorinstellingen
+    if ($('rg-kop-nieuw')) $('rg-kop-nieuw').setAttribute('aria-expanded', nieuwOpen ? 'true' : 'false');
     $('rg-nieuw').hidden = !nieuwOpen;
     if (nieuwOpen) {
       const ok = HUB() ? HUB().presets() : [];
@@ -918,6 +1048,7 @@
     }
     if (act === 'bewerk') {
       const h = HUB(); if (!h) return;
+      try { await h.load(); } catch { /* geen verbinding: dan met wat we hadden */ }
       const full = (h.getMeta().competitions || []).find(x => x.id === c.id) || c;
       nieuwOpen = false; paintRegie();
       const wrap = $('rg-form-wrap');
@@ -1012,10 +1143,12 @@
         </div>
         <div class="tc-stats" id="rg-p-stats"></div>
         <p class="rg-noot" id="rg-p-noot" hidden></p>
+        <div id="rg-p-los"></div>
         <div id="rg-p-acties"></div>
         <div class="rg-form-wrap" id="rg-p-form"></div>
         <div class="rg-kolommen rg-kolommen-2">
-          <section aria-labelledby="rg-p-h1"><h4 id="rg-p-h1">Eerstvolgende wedstrijden</h4><ul class="rg-lijst" id="rg-p-next"></ul></section>
+          <section aria-labelledby="rg-p-h1"><h4 id="rg-p-h1">Eerstvolgende wedstrijden</h4><ul class="rg-lijst" id="rg-p-next"></ul>
+            <details class="rg-alle rg-alle-schema" id="rg-p-schema" hidden><summary id="rg-p-schema-kop"></summary><ul class="rg-lijst" id="rg-p-schema-lijst"></ul></details></section>
           <section aria-labelledby="rg-p-h2"><h4 id="rg-p-h2">Stand</h4><div id="rg-p-stand"></div></section>
         </div>
         <details class="rg-alle" id="rg-p-alle" hidden><summary id="rg-p-alle-kop"></summary><ul class="rg-lijst" id="rg-p-uit"></ul></details>
@@ -1038,6 +1171,39 @@
     const nt = c.warning || (c.paused ? `Gepauzeerd${c.pause_message ? `: "${c.pause_message}"` : ''}. Niemand kan een wedstrijd starten.` : (c.delay_min >= 3 ? `Loopt ${c.delay_min} min uit.` : ''));
     noot.hidden = !nt; noot.textContent = nt;
 
+    // Goedgekeurd nadat het schema is gemaakt: zeg welk team het is en wat er nog kan.
+    const losN = m.total ? losVan(c) : 0;
+    let losH = '';
+    if (losN > 0) {
+      const lijst = Array.isArray(t.unscheduled_teams) ? t.unscheduled_teams : [];
+      const wie = lijst.length ? lijst.slice(0, 4).map(x => esc(x.name)).join(', ') + (losN > lijst.slice(0, 4).length ? ` en nog ${losN - Math.min(4, lijst.length)}` : '') : plural(losN, c.solo ? 'goedgekeurde deelnemer' : 'goedgekeurd team', c.solo ? 'goedgekeurde deelnemers' : 'goedgekeurde teams');
+      const gespeeld0 = m.done > 0 || m.live > 0;
+      losH = `<div class="rg-los" role="status"><p><b>${wie} ${losN === 1 ? 'staat' : 'staan'} niet in dit schema.</b> ${gespeeld0
+        ? `Er is al gespeeld: toevoegen kan niet meer zonder alle uitslagen te wissen. Zet ${losN === 1 ? (c.solo ? 'de deelnemer' : 'het team') : 'ze'} op de wachtlijst, of laat ${losN === 1 ? 'hem' : 'ze'} buiten het schema meedoen.`
+        : `Er is nog niet gespeeld: maak het schema opnieuw, dan ${losN === 1 ? 'doet het' : 'doen ze'} mee.`}</p>
+        <div class="rg-los-k">${gespeeld0 ? '' : `<button type="button" class="rg-knop" data-rg="genereer" data-id="${esc(c.id)}">Maak het schema opnieuw</button>`}
+        <button type="button" class="rg-knop rg-knop-rustig" data-rg="naar-team" data-id="${esc(c.id)}" data-naam="${losN === 1 && lijst.length ? esc(lijst[0].name) : ''}">Naar ${losN === 1 ? (c.solo ? 'de deelnemer' : 'het team') : 'de teams'}</button></div></div>`;
+    }
+    // Automatisch indelen (evenement-profiel › Aanmelden): zolang er niet gespeeld is, zeg of de
+    // indeling nog vanzelf verandert of vaststaat, met de knoppen om dat te wisselen.
+    //   draw_open   = wordt bij elke toelating/verwijdering opnieuw gemaakt
+    //   draw_locked = staat vast (handmatig schema gemaakt, of vastgezet)
+    const gespeeldNu = m.done > 0 || m.live > 0;
+    // getConfig() = het evenement uit /api/config: autoDraw is true, false of null (= volgt de aanmeldvorm).
+    const ev0 = (A.getConfig && A.getConfig()) || {};
+    const autoAan = ev0.autoDraw === true || (ev0.autoDraw == null && ev0.signupForm === 'city');
+    let drawH = '';
+    if (c.active && !gespeeldNu && c.draw_open) {
+      const om = c.auto_drawn_at ? tijdVan(c.auto_drawn_at) : '';
+      drawH = `<div class="rg-los rg-indeling" role="status"><p><b>Indeling: automatisch${om ? `, bijgewerkt om ${esc(om)}` : ''}.</b> Bij elke toelating of verwijdering wordt de indeling opnieuw gemaakt, tot de eerste wedstrijd start. Zet hem vast voordat je het schema ${EV() ? 'print of rondstuurt' : 'mailt of print'}.</p>
+        <div class="rg-los-k"><button type="button" class="rg-knop" data-rg="indeling" data-actie="lock" data-id="${esc(c.id)}">Indeling vastzetten</button>
+        <button type="button" class="rg-knop rg-knop-rustig" data-rg="indeling" data-actie="redraw" data-id="${esc(c.id)}"${t.approved < 2 ? ' disabled' : ''}>Nu opnieuw indelen</button></div></div>`;
+    } else if (c.active && !gespeeldNu && c.draw_locked && autoAan) {
+      drawH = `<div class="rg-los rg-indeling" role="status"><p><b>Indeling: staat vast.</b> Wie er nu nog bijkomt, staat buiten het schema tot je opnieuw indeelt.</p>
+        <div class="rg-los-k"><button type="button" class="rg-knop rg-knop-rustig" data-rg="indeling" data-actie="unlock" data-id="${esc(c.id)}">Weer automatisch</button></div></div>`;
+    }
+    setHtml($('rg-p-los'), losH + drawH);
+
     const meta = HUB() ? HUB().getMeta() : { formats: [] };
     const fmts = `<label class="rg-sr" for="rg-p-fmt">Opzet</label><select id="rg-p-fmt" class="rg-select"><option value="auto">Opzet: automatisch</option>${(meta.formats || []).map(f => `<option value="${esc(f.key)}">${esc(f.label)}</option>`).join('')}</select>`;
     const id = esc(c.id);
@@ -1053,7 +1219,7 @@
             <button type="button" class="rg-mini" data-rg="shift" data-d="-5" data-id="${id}" aria-label="Alles 5 minuten eerder">−5</button>
             <button type="button" class="rg-mini" data-rg="shift" data-d="5" data-id="${id}" aria-label="Alles 5 minuten later">+5</button>
             <button type="button" class="rg-mini" data-rg="shift-reset" data-id="${id}"${c.shift_min ? '' : ' disabled'}>Herstel</button>
-            <span class="rg-p-shift">${c.shift_min ? `Nu ${c.shift_min > 0 ? '+' : '−'}${Math.abs(c.shift_min)} min verschoven` : 'Tijden staan zoals gepland'}</span>`}
+            <span class="rg-p-shift">${c.shift_min ? `Tijden nu ${c.shift_min > 0 ? '+' : '−'}${Math.abs(c.shift_min)} min opgeschoven` : 'Tijden staan zoals gepland'}</span>`}
             <button type="button" class="rg-knop rg-knop-rustig" data-rg="bewerk" data-id="${id}">Bewerken</button>
           </div>
           <details class="rg-gevaar"><summary>Opnieuw genereren of resetten</summary>
@@ -1080,16 +1246,25 @@
       if (s1 && focusFmt) s1.focus({ preventScroll: true });
     }
 
+    paintSchema(c);
     setHtml($('rg-p-next'), (c.now || []).concat(c.next || []).slice(0, 5).map(x => `<li class="rg-item">
         <div class="rg-item-t"><b>${names(x)}</b><span>${metaLine(x, false)}</span></div>
         <span class="rg-item-s ${x.status === 'live' ? 'rg-live' : 'rg-tijd'}">${x.status === 'live' ? `live ${esc(scoreShort(x))}` : esc(x.expected || x.time || '')}</span></li>`).join('')
       || `<li class="rg-leeg-li">${m.total ? (c.finished ? 'Alles is gespeeld.' : 'Er staat niets klaar.') : 'Nog geen schema.'}</li>`);
     paintStand(c);
     paintUitslagen(c);
-    setHtml($('rg-p-links'), `<a class="tc-link primary" href="/wedstrijd" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
+    let capt = Math.max(0, (t.approved || 0) - (t.unscheduled || 0));
+    // Teams zonder e-mailadres (aangemeld met alleen een stad) kun je geen schema mailen: die
+    // tellen niet mee, en zijn het ze allemaal, dan is de knop weg.
+    const toegelaten = (A.getTeams ? A.getTeams() : []).filter(x => x.competition_id === c.id && x.status === 'approved');
+    if (toegelaten.length) capt = Math.min(capt, toegelaten.filter(x => !x.no_email).length);
+    else if (((A.getConfig && A.getConfig()) || {}).signupForm === 'city') capt = 0;
+    setHtml($('rg-p-links'), !m.total ? `<a class="tc-link" href="/sporten?sport=${id}" target="_blank" rel="noopener">Bord van ${esc(c.name)} ↗</a>`
+      : `<a class="tc-link primary" href="/wedstrijd" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
+      ${HN() && capt ? `<button type="button" class="tc-link" data-rg="mail-schema" data-id="${id}">Mail dit schema naar ${plural(capt, c.solo ? 'deelnemer' : 'captain', c.solo ? 'deelnemers' : 'captains')}</button>` : ''}
       <a class="tc-link" href="/sporten?sport=${id}" target="_blank" rel="noopener">Bord van ${esc(c.name)} ↗</a>
       <a class="tc-link" href="/print?competition=${id}" target="_blank" rel="noopener">Print-backup ↗</a>`);
-    const eerlijk = HN() ? 'Losse wedstrijden verzetten, wachttijden en de ronde-meldingen zijn er alleen voor het hoofdtoernooi.'
+    const eerlijk = EV() ? '' : HN() ? 'Losse wedstrijden verzetten, wachttijden en de ronde-meldingen zijn er alleen voor het hoofdtoernooi.'
       : `Losse wedstrijden verzetten, wachttijden en de ronde-meldingen zijn er alleen voor ${main ? main.name : 'het hoofdtoernooi'}. Kies die sport of "Alle sporten" om die blokken weer te zien.`;
     if ($('rg-p-eerlijk').textContent !== eerlijk) $('rg-p-eerlijk').textContent = eerlijk;
   }
@@ -1104,6 +1279,30 @@
         <thead><tr><th scope="col">#</th><th scope="col">${esc(c.solo ? 'Speler' : 'Team')}</th><th scope="col" title="Gespeeld">GS</th><th scope="col" title="Gewonnen">W</th><th scope="col" title="${sets ? 'Setsaldo' : 'Doelsaldo'}">+/−</th><th scope="col" title="Punten">Ptn</th></tr></thead>
         <tbody>${d.poules[p].standings.map(s => `<tr><td>${esc(s.pos)}</td><th scope="row">${esc(s.name)}</th><td>${esc(s.gp)}</td><td>${esc(s.w)}</td><td>${s.gd > 0 ? '+' : ''}${esc(s.gd)}</td><td><b>${esc(s.pts)}</b></td></tr>`).join('')}</tbody>
       </table>`).join('') || '<p class="rg-leeg-li">Nog geen stand.</p>');
+  }
+  // Het hele schema van de gekozen sport, op tijd (niet alleen de eerstvolgende paar).
+  function paintSchema(c) {
+    const box = $('rg-p-schema');
+    if (!box) return;
+    const d = detail[c.id];
+    const nm = (v) => (v && typeof v === 'object' ? (v.name || v.placeholder || null) : v);
+    const alle = [];
+    if (d && d.configured) {
+      for (const p of Object.keys(d.poules || {})) for (const x of (d.poules[p].matches || [])) alle.push({ x, fase: `Poule ${p}` });
+      for (const k of (d.knockout || [])) alle.push({ x: k, fase: k.where || k.label || 'Knock-out' });
+    }
+    box.hidden = alle.length <= 5;
+    if (box.hidden) return;
+    const hm = (s) => { const mm = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return mm ? Number(mm[1]) * 60 + Number(mm[2]) : 9999; };
+    alle.sort((p, q) => hm(p.x.expected || p.x.time) - hm(q.x.expected || q.x.time) || p.x.id - q.x.id);
+    const kop = `Het hele schema (${plural(alle.length, 'wedstrijd', 'wedstrijden')})`;
+    if ($('rg-p-schema-kop').textContent !== kop) $('rg-p-schema-kop').textContent = kop;
+    setHtml($('rg-p-schema-lijst'), alle.map(({ x, fase }) => {
+      const kaart = { ...x, a: nm(x.a), b: nm(x.b), model: c.result_model, place_noun: c.place_noun, place_label: c.place_label };
+      const rechts = x.status === 'done' ? esc(scoreShort(kaart)) : x.status === 'live' ? `live ${esc(scoreShort(kaart))}` : esc(x.expected || x.time || '');
+      return `<li class="rg-item${x.status === 'done' ? ' is-klaar' : ''}"><div class="rg-item-t"><b>${names(kaart)}</b><span>${[x.where || fase, placeOf(kaart)].filter(Boolean).map(esc).join(' · ')}</span></div>
+        <span class="rg-item-s ${x.status === 'live' ? 'rg-live' : x.status === 'done' ? '' : 'rg-tijd'}">${rechts}</span></li>`;
+    }).join(''));
   }
   // Alle uitslagen van de gekozen sport, elk met "Corrigeer" (niet alleen de laatste paar).
   function paintUitslagen(c) {
@@ -1127,7 +1326,7 @@
       const c = compById(id);
       if (c && paneel.__id === id) {
         for (const x of gespeeld(c)) cards.set(x.id, x);
-        paintStand(c); paintUitslagen(c);
+        paintStand(c); paintUitslagen(c); paintSchema(c);
       }
     } catch { /* stand blijft op de laatst bekende */ }
   }
@@ -1139,12 +1338,40 @@
     const c = compById(Number(b.dataset.id));
     if (!c) return;
     const act = b.dataset.rg;
+    if (act === 'mail-schema') return A.mailSchemas([c.id]);
+    if (act === 'naar-team') {
+      // Naar Mensen > Teams, met het team alvast opgezocht.
+      A.zoekTeam(b.dataset.naam || '');
+      if (HN()) NAV().ga('mensen', 'teams', { bron: b }); else go('teams');
+      return;
+    }
+    if (act === 'toon-schema') {
+      const d = $('rg-p-schema');
+      if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); d.querySelector('summary')?.focus({ preventScroll: true }); }
+      return;
+    }
     if (act === 'bewerk') {
       const h = HUB(); if (!h) return;
+      try { await h.load(); } catch { /* geen verbinding: dan met wat we hadden */ }
       const full = (h.getMeta().competitions || []).find(x => x.id === c.id) || c;
       const wrap = $('rg-p-form');
       wrap.innerHTML = `<h4 class="rg-form-titel">${esc(c.name)} bewerken</h4>` + h.formHtml(full) + '<p class="hub-msg" role="alert"></p>';
       return openFold(wrap);
+    }
+    if (act === 'indeling') {
+      const actie = b.dataset.actie;
+      if (!['lock', 'unlock', 'redraw'].includes(actie)) return;
+      b.disabled = true;
+      const r = await call('POST', `/api/admin/competitions/${c.id}/draw`, { action: actie });
+      b.disabled = false;
+      if (!r.ok) return fail(r, 'Dat lukte niet.');
+      A.showToast(actie === 'lock' ? `De indeling van ${c.name} staat vast`
+        : actie === 'unlock' ? `${c.name} wordt weer automatisch ingedeeld${r.j && r.j.redrawn ? ' (nu bijgewerkt)' : ''}`
+          : (r.j && r.j.redrawn ? `${c.name} is opnieuw ingedeeld` : `De indeling van ${c.name} was al bij`));
+      HUB()?.load();
+      await refresh();
+      if (A.refreshAll) A.refreshAll();   // de poule op de teamkaarten loopt mee
+      return loadDetail(c.id);
     }
     if (act === 'genereer') {
       const sel = b.closest('.rg-p-rij')?.querySelector('select');
@@ -1180,7 +1407,12 @@
     const main = mainComp();
     if (noot) {
       noot.hidden = false;
-      noot.textContent = `Met meerdere sporten: "Mail schema's" gaat naar de captains van alle actieve sporten met een schema, ieder met het schema van de eigen sport. "Mail programma & tijdschema" gaat alleen naar ${main ? main.name : 'het hoofdtoernooi'}. De andere mails gaan naar alle goedgekeurde teams, van elke sport. De downloads bevatten alle sporten.`;
+      noot.textContent = `Met meerdere sporten: bij "Mail schema's" kies je zelf welke sporten hun schema krijgen. "Mail programma & tijdschema" gaat alleen naar ${main ? main.name : 'het hoofdtoernooi'}. De andere mails gaan naar alle goedgekeurde teams, van elke sport. De downloads bevatten alle sporten.`;
+      // Proefmodus hoort boven de verstuurknoppen te staan, niet alleen op het startscherm.
+      let proef = $('rg-mail-proef');
+      if (R.mail_live === false) {
+        if (!proef) { proef = document.createElement('p'); proef.id = 'rg-mail-proef'; proef.className = 'adm-proef'; proef.innerHTML = '<b>Proefmodus</b> Er gaat geen enkele mail echt de deur uit. Je kunt alles veilig uitproberen.'; noot.insertAdjacentElement('beforebegin', proef); }
+      } else if (proef) proef.remove();
     }
     // Uitlegkaart op Teams: met meerdere sporten staat hij dicht (één keer; daarna
     // bepaal je het zelf), zodat de lijst bovenaan staat.

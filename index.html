@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp')">
+<html lang="nl" data-theme="sporthub" data-sport="voetbal" style="--sport-icoon:url('/sport/voetbal-klein.webp');--sport-icoon-groot:url('/sport/voetbal.webp')">
 <head>
   <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="/jvo-loader.js"></script>
-  <meta name="description" content="Aanmelden voor de JVO Sportdag op zondag 22 november 2026, Sportcampus Zuiderpark, Den Haag. Gratis. Meld je team aan voor het toernooi of kom kijken." />
-  <title>JVO Sportdag — Aanmelden</title>
-  <meta property="og:title" content="JVO Sportdag — Aanmelden" />
-  <meta property="og:description" content="Zondag 22 november 2026 · Sportcampus Zuiderpark, Den Haag · Gratis. Meld je team aan voor het toernooi of kom kijken." />
+  <meta name="description" content="Aanmelden voor het Benefiet Zaalvoetbal op zondag 22 november 2026, Sportcampus Zuiderpark. Gratis. Meld je team aan voor het toernooi of kom kijken." />
+  <title>Benefiet Zaalvoetbal — Aanmelden</title>
+  <meta property="og:title" content="Benefiet Zaalvoetbal — Aanmelden" />
+  <meta property="og:description" content="Zondag 22 november 2026 · Sportcampus Zuiderpark · Gratis. Meld je team aan voor het toernooi of kom kijken." />
   <meta property="og:image" content="https://sagek17.github.io/og/sporthub-liggend.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="JVO Sportdag, zondag 22 november 2026, Sportcampus Zuiderpark, Den Haag." />
+  <meta property="og:image:alt" content="Benefiet Zaalvoetbal, zondag 22 november 2026, Sportcampus Zuiderpark." />
   <meta property="og:url" content="https://sagek17.github.io/" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="nl_NL" />
   <link rel="canonical" href="https://sagek17.github.io/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="JVO Sportdag — Aanmelden" />
-  <meta name="twitter:description" content="Zondag 22 november 2026 · Sportcampus Zuiderpark, Den Haag · Sportdag · Gratis" />
+  <meta name="twitter:title" content="Benefiet Zaalvoetbal — Aanmelden" />
+  <meta name="twitter:description" content="Zondag 22 november 2026 · Sportcampus Zuiderpark · Zaalvoetbaltoernooi · Gratis" />
   <meta name="twitter:image" content="https://sagek17.github.io/og/sporthub-liggend.jpg" />
   <link rel="icon" type="image/png" href="/icons/favicon.png" />
   <link rel="apple-touch-icon" href="/icons/jvo-192.png" />
@@ -118,7 +118,10 @@
     html[data-theme="sporthub"] .sh-multi .sh-cta-rij { margin-top: 22px; }
     @media (min-width: 900px) {
       html[data-theme="sporthub"] .sh-sportring { width: min(100%, 470px); }
-      html[data-theme="sporthub"] .hero-intro.sh-multi { grid-template-areas: ". ring" "lead ring" "kies ring" "cta ring" ". ring"; grid-template-rows: 1fr auto auto auto 1fr; }
+      /* de rij "sub" is er voor de regel onder de kop (profiel › Voordeur); zonder die regel is hij 0 hoog */
+      html[data-theme="sporthub"] .hero-intro.sh-multi { grid-template-areas: ". ring" "sub ring" "lead ring" "kies ring" "cta ring" ". ring"; grid-template-rows: 1fr auto auto auto auto 1fr; }
+      html[data-theme="sporthub"] body.pg-aanmelden .hero-intro.sh-multi .sh-kop-sub { grid-area: sub; text-align: left; padding-left: 32px; margin: 0 0 6px; }
+      html[data-theme="sporthub"] body.pg-aanmelden .hero-intro.sh-multi .sh-kop-sub::before { display: block; }
       html[data-theme="sporthub"] .hero-intro.sh-multi .sh-sportring { grid-area: ring; align-self: center; }
       html[data-theme="sporthub"] .hero-intro.sh-multi .lead { grid-area: lead; text-align: left; margin-left: 0; }
       html[data-theme="sporthub"] .sh-kies { grid-area: kies; }
@@ -131,6 +134,87 @@
       html[data-theme="sporthub"] .sh-sr-draaier { animation: sh-sr-terug 60s linear infinite; }
       html[data-theme="sporthub"] .sh-sportring { animation: sh-sr-in .9s cubic-bezier(.16, 1, .3, 1) both; }
     }
+    /* De kop uit het evenement-profiel (Voordeur): elke regel een eigen blok dat niet afbreekt;
+       app.js verkleint de letter als een regel niet past. */
+    .sh-kop .sh-kop-regel { display: block; white-space: nowrap; }
+    .sh-kop .sh-kop-regel:empty { display: none; }
+    .sh-kop-sub { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ice-muted); margin: 14px 0 0; }
+    .st-lead-smal { display: none; }
+    /* ALLEEN STAD: categorie-knoppen, één veld, de bevestiging met poule en teamcode. */
+    .st-lok { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+    #stad-form[hidden], .st-al[hidden], .st-klaar[hidden], .st-cat[hidden], .st-vol[hidden], .st-poule[hidden], .st-wie[hidden] { display: none; }
+    .st-lbl { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ice-muted); }
+    .st-cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+    .st-cats.een { grid-template-columns: minmax(0, 1fr); }
+    .st-knop { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; min-height: 58px; padding: 9px 14px; text-align: left;
+      border-radius: 14px; border: 1.5px solid var(--line-strong); background: transparent; color: var(--ice); font: inherit; cursor: pointer; min-width: 0; }
+    .st-knop b { font-weight: 700; font-size: 17px; line-height: 1.15; overflow-wrap: anywhere; }
+    .st-knop span { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; color: var(--ice-muted); }
+    .st-knop[aria-checked="true"] { border-color: var(--ember); background: rgba(255, 107, 26, .14); box-shadow: 0 0 0 2px var(--ember); }
+    .st-knop:focus-visible { outline: 3px solid var(--ice); outline-offset: 3px; }
+    .st-cat.has-error .st-knop { border-color: var(--danger); }
+    .st-vol { font-size: 13.5px; line-height: 1.45; color: var(--ice-muted); margin: 10px 0 0; }
+    #stad-form .field { margin-bottom: 16px; }
+    #stad-form select { width: 100%; }
+    #stad-form #submit-btn { margin-top: 2px; }
+    .st-noot { font-size: 13px; line-height: 1.5; color: var(--ice-muted); margin: 12px 0 0; text-align: center; }
+    .st-noot a { color: inherit; text-underline-offset: 3px; }
+    .st-al p { font-size: 15px; line-height: 1.5; margin: 0 0 16px; }
+    .st-al .btn.ghost, .st-klaar .btn.ghost { margin-top: 10px; }
+    .st-klaar { padding: 6px 0 0; }
+    .st-klaar .checkmark { width: 56px; height: 56px; margin-bottom: 14px; }
+    .st-klaar .checkmark svg { width: 28px; height: 28px; }
+    .st-klaar .st-ic-wacht, .st-klaar.wacht .st-ic-ja { display: none; }
+    .st-klaar.wacht .st-ic-wacht { display: block; }
+    #stad-form #form-alert:empty { display: none; }
+    .st-klaar h2 { overflow-wrap: anywhere; }
+    .st-klaar-sub { font-size: 15px; line-height: 1.5; color: var(--ice-muted); margin: 8px 0 0; }
+    .st-klaar-sub:empty { display: none; }
+    .st-poule { margin-top: 16px; padding: 14px 16px; border-radius: 14px; background: rgba(255, 255, 255, .06); border: 1.5px solid var(--line-strong); text-align: left; }
+    .st-poule-k { display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ice-muted); }
+    .st-poule-naam { display: block; font-size: 26px; font-weight: 900; line-height: 1.15; margin-top: 2px; }
+    .st-poule-naam:empty, .st-mates:empty, .st-poule-noot:empty { display: none; }
+    .st-mates { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; }
+    .st-mates li { font-size: 13.5px; font-weight: 600; line-height: 1.2; padding: 6px 11px; border-radius: 999px; border: 1.5px solid var(--line-strong); overflow-wrap: anywhere; }
+    .st-mates li.ik { background: var(--ice); color: var(--midnight); border-color: var(--ice); }
+    .st-poule-noot { font-size: 13px; line-height: 1.5; color: var(--ice-muted); margin: 10px 0 0; }
+    .st-klaar .mijn-code { text-align: left; }
+    .st-klaar #stad-klaar-open { margin-top: 16px; }
+    /* Wie doet er al mee (in het toernooiblok) */
+    .st-wie { margin-top: 16px; display: grid; gap: 14px; }
+    .st-wie-k { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+    .st-wie-k i { font-style: normal; color: var(--ice-muted); white-space: nowrap; }
+    .st-wie ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; }
+    .st-wie li { font-size: 13px; line-height: 1.2; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line-strong); overflow-wrap: anywhere; }
+    .st-wie p { font-size: 13.5px; color: var(--ice-muted); margin: 8px 0 0; }
+    /* Stijl Sporthub: het formulier staat op een WIT kaartje. */
+    html[data-theme="sporthub"] .sh-kop-sub { color: #fff; font-family: var(--mono); font-size: 11px; position: relative; z-index: 2; padding-left: 32px; }
+    html[data-theme="sporthub"] .sh-kop-sub::before { content: ''; position: absolute; left: 0; top: .8em; width: 22px; height: 1.5px; margin-top: -1px; background: var(--sh-rood-l); }
+    /* bij de ring met alle sporten staat de kop ín de ring: de regel eronder staat dan gecentreerd onder de ring */
+    html[data-theme="sporthub"] .hero-intro.sh-multi .sh-kop-sub { text-align: center; padding-left: 0; margin: 2px 0 10px; }
+    html[data-theme="sporthub"] .hero-intro.sh-multi .sh-kop-sub::before { display: none; }
+    html[data-theme="sporthub"] .st-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; font-weight: 500; line-height: 1.5; color: var(--sh-navy); }
+    html[data-theme="sporthub"] .st-knop { background: #fff; color: var(--sh-navy); border-color: var(--sh-rand-wit); border-radius: 16px; transition: background .18s, color .18s, box-shadow .18s, transform .14s; }
+    html[data-theme="sporthub"] .st-knop b { font-family: var(--sh-rond); font-size: 15.5px; letter-spacing: -.01em; }
+    html[data-theme="sporthub"] .st-knop span { font-family: var(--mono); color: var(--sh-inkt-2); }
+    html[data-theme="sporthub"] .st-knop[aria-checked="true"] { background: var(--sh-navy); border-color: var(--sh-navy); color: #fff; box-shadow: 0 0 0 3px var(--sh-oranje); }
+    html[data-theme="sporthub"] .st-knop[aria-checked="true"] span { color: rgba(255, 255, 255, .86); }
+    html[data-theme="sporthub"] .st-knop:focus-visible { outline-color: var(--sh-navy); }
+    html[data-theme="sporthub"] .st-knop:active { transform: scale(.97); }
+    html[data-theme="sporthub"] .st-cat.has-error .st-knop { border-color: var(--sh-rood); border-width: 2px; }
+    html[data-theme="sporthub"] .st-cat.has-error .st-lbl { color: var(--sh-rood); font-weight: 700; }
+    html[data-theme="sporthub"] .st-vol, html[data-theme="sporthub"] .st-noot, html[data-theme="sporthub"] .st-klaar-sub, html[data-theme="sporthub"] .st-poule-noot { color: var(--sh-inkt-2); }
+    html[data-theme="sporthub"] #form-card .st-noot a { color: var(--sh-inkt-2); text-decoration-color: var(--sh-rood); }
+    html[data-theme="sporthub"] .st-al p { color: var(--sh-navy); }
+    html[data-theme="sporthub"] .st-poule { background: var(--sh-navy); border: 0; color: #fff; border-radius: 16px; }
+    html[data-theme="sporthub"] .st-poule-k { color: rgba(255, 255, 255, .84); font-family: var(--mono); }
+    html[data-theme="sporthub"] .st-poule-naam { font-family: var(--sh-rond); color: #fff; letter-spacing: -.01em; }
+    html[data-theme="sporthub"] .st-mates li { border-color: var(--sh-rand); color: #fff; }
+    html[data-theme="sporthub"] .st-mates li.ik { background: #fff; color: var(--sh-navy); border-color: #fff; }
+    html[data-theme="sporthub"] #form-card .st-poule .st-poule-noot { color: rgba(255, 255, 255, .86); }
+    html[data-theme="sporthub"] .st-wie-k { color: #fff; font-family: var(--mono); }
+    html[data-theme="sporthub"] .st-wie-k i, html[data-theme="sporthub"] .st-wie p { color: rgba(255, 255, 255, .84); }
+    html[data-theme="sporthub"] .st-wie li { border-color: var(--sh-rand); color: #fff; }
     /* Aanmelden gesloten (nog geen datum / geweest / handmatig dicht) */
     .reg-closed-msg { font-size: 17px; line-height: 1.5; font-weight: 500; color: var(--ice); margin: 0 0 12px; }
     .reg-closed-sub { font-size: 14px; line-height: 1.6; color: var(--ice-muted); margin: 0 0 10px; }
@@ -159,18 +243,18 @@
   {
   "@context": "https://schema.org",
   "@type": "SportsEvent",
-  "name": "JVO Sportdag — Sportdag",
-  "description": "Kies je sport, meld je team aan of doe solo mee. Komen kijken mag natuurlijk ook.",
-  "startDate": "2026-11-22T09:00:00+01:00",
-  "endDate": "2026-11-22T14:00:00+01:00",
+  "name": "Benefiet Zaalvoetbal — Zaalvoetbaltoernooi",
+  "description": "Dit is een proefversie met voorbeeldgegevens. Kies Dames of Jongens, vul je stad in en je zit meteen in een poule.",
+  "startDate": "2026-11-22T14:00:00+01:00",
+  "endDate": "2026-11-22T18:00:00+01:00",
   "eventStatus": "https://schema.org/EventScheduled",
   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
   "location": {
     "@type": "Place",
-    "name": "Sportcampus Zuiderpark, Den Haag",
+    "name": "Sportcampus Zuiderpark",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Mr. P. Droogleever Fortuynweg 22, 2533 SR Den Haag",
+      "streetAddress": "Den Haag",
       "addressCountry": "NL"
     }
   },
@@ -191,18 +275,18 @@
   </script>
   <link rel="stylesheet" href="/thema-sporthub.css" />
 </head>
-<body class="pg-aanmelden">
+<body class="pg-aanmelden pg-stad">
   <canvas class="fx-embers" data-fx-embers aria-hidden="true"></canvas>
   <div class="shell">
 
     <header class="topbar">
       <div class="brand-badge">
         <span class="badge-circle">JVO</span>
-        <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; <span data-ev="shortName">Sportdag</span></span>
-        <span class="brand-text-short"><b>JVO</b> · <span data-ev="shortName">Sportdag</span></span>
+        <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; <span data-ev="shortName">Zaalvoetbal</span></span>
+        <span class="brand-text-short"><b>JVO</b> · <span data-ev="shortName">Zaalvoetbal</span></span>
       </div>
       <nav>
-        <a class="sh-nav-live" href="/sporten">Live bord</a>
+        <a class="sh-nav-live" href="/toernooi">Live bord</a>
         <a href="/admin.html">Admin →</a>
       </nav>
     </header>
@@ -212,63 +296,60 @@
         <div class="eyebrow" id="meta-eyebrow">Zondag 22 november 2026 · 15-30 jaar · Gratis</div>
         
         <!-- Stijl "sporthub": de grote rode ring uit het JVO-logo met het sport-icoon ervoor (sier). -->
-        <div class="sh-ring" aria-hidden="true"><img class="sh-bal" src="/sport/beker.webp" alt="" width="512" height="512" decoding="async" fetchpriority="high" /></div>
-        
-        <h1 class="h-display">
-          <span class="gold-text">Klaar voor</span><br/>
-          <span class="ice-text">de start<span class="exclaim">.</span></span>
-        </h1>
-        
-        <p class="lead" data-ev="intro">Kies je sport, meld je team aan of doe solo mee. Komen kijken mag natuurlijk ook.</p>
+        <div class="sh-ring" aria-hidden="true"><img class="sh-bal" src="/sport/voetbal.webp" alt="" width="512" height="512" decoding="async" fetchpriority="high" /></div>
         
         
+        <!-- De kop uit het evenement-profiel (Voordeur): één tot drie regels, elk een eigen blok
+             (een lege regel neemt geen ruimte in). app.js zet de oranje punt achter de laatste
+             regel, tenzij die zelf al op een leesteken eindigt, en verkleint de letter als een
+             regel niet in de breedte past. -->
+        <h1 class="h-display sh-kop"><span class="sh-kop-regel gold-text" data-kop="heroLine1">Benefiet</span><span class="sh-kop-regel ice-text" data-kop="heroLine2">Zaalvoetbal</span><span class="sh-kop-regel ice-text" data-kop="heroLine3"></span></h1>
         
         
-        <p class="sh-cta-rij"><a class="sh-cta" href="#form-card">Meld je team aan <svg class="sh-pijl" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
         
-        <div class="sh-feiten">
-          <div><span>Teams</span><b data-ev="maxTeams">16</b></div>
-          <div><span>Spelers per team</span><b data-ev="playersRange">1–12</b></div>
-          <div><span>Start</span><b data-ev="startTime">09:00</b></div>
-        </div>
+        <p class="sh-kop-sub" data-ev="heroSub">Verschillende steden tegen elkaar</p>
+        
+        
+        <p class="lead" data-ev="intro">Dit is een proefversie met voorbeeldgegevens. Kies Dames of Jongens, vul je stad in en je zit meteen in een poule.</p>
+        
+        
+        
+        
         
       </div>
 
       <div class="hero-details">
+        
+        <!-- Alleen stad: op een telefoon staat het formulier meteen onder de kop, en de inleiding
+             hier eronder (dezelfde tekst als in de hero; het thema toont er steeds maar één). -->
+        <div class="st-lead-smal">
+          <p class="lead" data-ev="intro">Dit is een proefversie met voorbeeldgegevens. Kies Dames of Jongens, vul je stad in en je zit meteen in een poule.</p>
+          
+        </div>
+        
         <div class="tournament-hero">
           <div class="tournament-eyebrow">
             <span class="tournament-pulse"></span>
             Op het programma
           </div>
           <div class="tournament-headline">
-            <h2 data-ev="tournamentName">Sportdag</h2>
-          </div>
-          <div class="tournament-meta">
-            <div class="tournament-meta-item">
-              <div class="tournament-meta-label">Teams</div>
-              <div class="tournament-meta-value" id="meta-teams" data-ev="maxTeams">16</div>
-            </div>
-            <div class="tournament-meta-item">
-              <div class="tournament-meta-label">Spelers per team</div>
-              <div class="tournament-meta-value" id="meta-players" data-ev="playersRange">1–12</div>
-            </div>
-            
+            <h2 data-ev="tournamentName">Zaalvoetbaltoernooi</h2>
           </div>
           
-          <p class="tournament-cta" id="tournament-cta">
-            Meld je team aan via <b>"+ Team aanmelden"</b> in het formulier.
-          </p>
+          
+          <!-- Alleen stad: wie er al meedoet, per categorie (app.js vult dit uit /api/hub). -->
+          <div class="st-wie" id="stad-wie" hidden></div>
           
           
           
           <!-- Stijl "sporthub": voorproefje van het live bord als kaartje (tikbaar; de inhoud is sier). -->
-          <a class="sh-kaart sh-voorproef" href="/sporten" aria-label="Bekijk het live bord">
+          <a class="sh-kaart sh-voorproef" href="/toernooi" aria-label="Bekijk het live bord">
             <span class="sh-kaart-l" aria-hidden="true">
               <span class="sh-kaart-k"><em>Live</em> Zo volg je de stand</span>
               <span class="sh-kaart-tm"><span>Jouw team</span><b>0</b></span>
               <span class="sh-kaart-tm"><span>JVO</span><b>0</b></span>
             </span>
-            <span class="sh-kaart-r" aria-hidden="true"><span class="sh-badge"><img src="/sport/beker-klein.webp" alt="" width="160" height="160" loading="lazy" /></span><span>Live bord</span></span>
+            <span class="sh-kaart-r" aria-hidden="true"><span class="sh-badge"><img src="/sport/voetbal-klein.webp" alt="" width="160" height="160" loading="lazy" /></span><span>Live bord</span></span>
           </a>
           
         </div>
@@ -288,176 +369,93 @@
           
           <div class="cell">
             <div class="label">Inloop</div>
-            <div class="value"><span class="accent" id="meta-doors" data-ev="doorsTime">08:30</span></div>
+            <div class="value"><span class="accent" id="meta-doors" data-ev="doorsTime">13:30</span></div>
           </div>
           <div class="cell">
             <div class="label">Start</div>
-            <div class="value"><span class="accent" id="meta-start" data-ev="startTime">09:00</span></div>
+            <div class="value"><span class="accent" id="meta-start" data-ev="startTime">14:00</span></div>
           </div>
           <div class="cell">
             <div class="label">Eind</div>
-            <div class="value"><span class="accent">± <span id="meta-end" data-ev="endTime">14:00</span></span></div>
+            <div class="value"><span class="accent">± <span id="meta-end" data-ev="endTime">18:00</span></span></div>
           </div>
           
           <div class="cell">
             <div class="label">Locatie</div>
-            <div class="value" id="meta-loc">Sportcampus Zuiderpark, Den Haag</div>
+            <div class="value" id="meta-loc">Sportcampus Zuiderpark</div>
           </div>
         </div>
         
-        <div class="meta-address mono small" id="meta-address">Mr. P. Droogleever Fortuynweg 22, 2533 SR Den Haag</div>
+        <div class="meta-address mono small" id="meta-address">Den Haag</div>
         
       </div>
 
       <div class="hero-action">
         <div class="card" id="form-card">
           
-          <!-- Stijl "sporthub": de aanmeldkaart is een kaartje; dit is het strookje erboven.
-               Alle gegevens staan elders ook op de pagina, dus aria-hidden. -->
-          <div class="sh-strook" aria-hidden="true">
-            <div class="sh-strook-l">
-              <div class="sh-strook-k" data-ev="tournamentName">Sportdag</div>
-              <div class="sh-strook-naam" data-ev="name">JVO Sportdag</div>
-              <div class="sh-strook-g">
-                <div><span>Datum</span><b>Zondag 22 november 2026</b></div>
-                <div><span>Start</span><b>09:00</b></div>
-              </div>
-            </div>
-            <div class="sh-strook-r"><span class="sh-badge"><img src="/sport/beker-klein.webp" alt="" width="160" height="160" /></span><span class="sh-strook-t" data-ev="priceText">Gratis</span></div>
-          </div>
           
           
-          <!-- Aanmelden open → het formulier. Binnen dit blok bewust géén andere ev-if's
-               (de vuller verwerkt geen geneste voorwaarden) — alleen ingevulde waarden. -->
+          
+          <!-- Aanmelden open → het formulier. Twee vormen (evenement-profiel › Aanmelden):
+               "uitgebreid" (signupFull: naam, e-mail, team, toestemmingen) of "alleen stad"
+               (signupCity). Binnen elke vorm verder alleen ingevulde waarden. -->
           <div id="reg-open">
-          <div class="card-eyebrow">Aanmelden</div>
-          <h2>Doe mee.</h2>
-
-          <details class="help">
-            <summary>Hoe werkt dit?</summary>
-            <div class="help-body">
-              <p>Meld je hier aan voor <span data-ev="withArticle">de JVO Sportdag</span> (<span data-ev="dateLower">zondag 22 november 2026</span><span class="help-price" data-ev="priceText">Gratis</span>). Je kunt komen als <strong>bezoeker</strong>, of meteen een <strong>team</strong> opgeven voor het <span data-ev="tournamentLabel">toernooi</span>.</p>
-              <ul>
-                <li>Vul je naam en e-mail in. Wil je met een team meedoen? Kies <strong>“+ Team aanmelden”</strong> en vul de teamnaam en het aantal spelers (<span data-ev="playersRange">1–12</span>) in.</li>
-                <li>Je krijgt <strong>direct een bevestigingsmail</strong>.</li>
-                <li>Onderaan staan drie vinkjes: het <strong>leeftijdsvinkje</strong> en het vinkje voor een <strong>herinnering</strong> vóór deze dag zijn <strong>verplicht</strong>. Alleen <strong>nieuws over volgende edities</strong> is optioneel.</li>
-                <li>Teams worden door de organisatie beoordeeld. Goedgekeurde teams krijgen een <strong>QR-code per mail</strong> voor de check-in op locatie.</li>
-              </ul>
-              <p class="off"><svg class="off-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> <b>Geen internet?</b> Versturen lukt alleen met verbinding. Mislukt het? Dan zie je een melding — probeer het zo even opnieuw.</p>
-            </div>
-          </details>
-
-          <div class="path-toggle" role="tablist" aria-label="Aanmeldtype">
-            <button id="tab-visitor" type="button" class="active" data-path="visitor"
-                    role="tab" aria-selected="true">
-              Als bezoeker
-            </button>
-            <button id="tab-team" type="button" data-path="team"
-                    role="tab" aria-selected="false" aria-controls="panel-team">
-              + Team aanmelden
-            </button>
+          
+          
+          <!-- ALLEEN STAD: categorie (alleen bij meer dan één competitie; app.js vult de knoppen
+               uit /api/competitions) + één veld. Geen naam, geen e-mail, geen vinkjes: er worden
+               geen persoonsgegevens gevraagd. Het veld is een keuzelijst als de organisatie een
+               lijst heeft ingevuld (app.js zet de opties erin en wisselt zo nodig het veldtype). -->
+          <div class="st-al" id="stad-al" hidden>
+            <div class="card-eyebrow">Op dit toestel</div>
+            <h2 id="stad-al-kop">Je bent al aangemeld.</h2>
+            <p id="stad-al-tekst"></p>
+            <a class="btn full" href="/mijn" id="stad-al-open">Open Mijn team →</a>
+            <button type="button" class="btn ghost full" id="stad-al-nog">Nog een aanmelding</button>
           </div>
-
-          <form id="reg-form" novalidate data-event="de JVO Sportdag">
-            <div class="field">
-              <label for="full_name">Volledige naam</label>
-              <input type="text" id="full_name" name="full_name" required autocomplete="name" placeholder="Bijv. Jordan de Vries" />
+          <form id="stad-form" novalidate data-event="het Benefiet Zaalvoetbal" data-label="Stad" data-label-klein="stad" data-kies="Kies je categorie">
+            <div class="field st-cat" id="stad-cat" tabindex="-1" hidden>
+              <div class="st-lbl" id="stad-cat-lbl" data-ev="chooseGroup">Kies je categorie</div>
+              <div class="st-cats" id="stad-cats" role="radiogroup" aria-labelledby="stad-cat-lbl"></div>
+              <p class="st-vol" id="stad-vol" role="status" aria-live="polite" hidden></p>
             </div>
-
-            <div class="field">
-              <label for="email">E-mail</label>
-              <div class="input-with-icon">
-                <input type="email" id="email" name="email" required autocomplete="email" placeholder="je@voorbeeld.nl" />
-                <span class="input-validation" id="email-validation" aria-hidden="true"></span>
-              </div>
+            <div class="field" id="stad-veld">
+              <label for="stad" id="stad-lbl" data-ev="cityLabel">Stad</label>
+              
+              <select id="stad" name="city" required autocomplete="off"><option value="">Kies je stad…</option></select>
+              
+              
             </div>
-
-            <div id="panel-team" role="tabpanel" aria-labelledby="tab-team" style="display:none;">
-              <div style="border-top: 1px dashed var(--line-strong); margin: 24px 0 18px; padding-top: 18px;">
-                <div class="card-eyebrow" id="team-eyebrow" style="margin-bottom:6px;">Jouw team</div>
-              </div>
-              <!-- Sport-hub: sportkeuze — alleen zichtbaar bij meer dan één sport (app.js vult hem
-                   uit /api/competitions). De gekozen tegel komt op het kaartje eronder. -->
-              <div class="field sport-kiezer" id="sport-kiezer" tabindex="-1" hidden>
-                <div class="sport-kiezer-lbl" id="sport-kiezer-lbl">Kies je sport</div>
-                <div class="sport-tegels" id="sport-tegels" role="radiogroup" aria-labelledby="sport-kiezer-lbl"></div>
-                <div class="sport-kaartje" id="sport-kaartje" aria-live="polite" hidden></div>
-              </div>
-              <div class="field">
-                <label for="team_name">Teamnaam</label>
-                <input type="text" id="team_name" name="team_name" maxlength="60" placeholder="Bijv. FC Vrienden" />
-              </div>
-              <div class="field">
-                <label for="expected_players">Verwacht aantal spelers (<span id="player-range" data-ev="playersRange">1–12</span>)</label>
-                <input type="number" id="expected_players" name="expected_players" min="1" max="12" value="1" aria-describedby="team-help" />
-              </div>
-              <p id="team-help" class="small" style="color: var(--ice-muted); margin: -4px 0 16px;">
-                JVO beoordeelt elk team. Bij goedkeuring krijg je per e-mail een unieke team-QR voor de check-in op locatie.
-              </p>
+            <!-- Lokveld tegen robots: voor mensen onzichtbaar en niet te bereiken met Tab. -->
+            <div class="st-lok" aria-hidden="true">
+              <label for="website">Laat dit veld leeg</label>
+              <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
             </div>
-
-            <div style="margin: 22px 0 8px;">
-              <label class="checkbox">
-                <input type="checkbox" id="consent_age" required />
-                <span>Ik ben 16 jaar of ouder, óf ik heb toestemming van mijn ouder/voogd om mij aan te melden. <em>(Verplicht — AVG.)</em></span>
-              </label>
-              <label class="checkbox">
-                <input type="checkbox" id="consent_reminders" required />
-                <span>Ik geef toestemming om herinneringen voor <span data-ev="withArticle">de JVO Sportdag</span> per e-mail te ontvangen. <em>(Verplicht — anders kunnen we je niet bereiken.)</em></span>
-              </label>
-              <label class="checkbox">
-                <input type="checkbox" id="consent_future_marketing" />
-                <span>Ik wil ook in de toekomst (bijv. de volgende editie) per e-mail benaderd worden. <em>(Optioneel — los uitschrijfbaar.)</em></span>
-              </label>
-            </div>
-
             <div id="form-alert" role="alert" aria-live="assertive"></div>
-
-            <button type="submit" class="btn full" id="submit-btn" style="margin-top: 18px;">
-              Aanmelding versturen →
-            </button>
-
-            <p class="small mono form-price" data-ev="priceText">Gratis</p>
+            <button type="submit" class="btn full" id="submit-btn">Meld je aan →</button>
+            <p class="st-noot">We vragen alleen je <span data-ev="cityLabelLower">stad</span>. Geen naam, geen e-mail. <a href="/privacy">Privacy</a></p>
           </form>
 
-          <div id="success" style="display:none;" class="success-screen">
-            <div class="checkmark">
-              <svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg>
+          <div class="success-screen st-klaar" id="stad-klaar" tabindex="-1" hidden>
+            <div class="checkmark" aria-hidden="true"><svg class="st-ic-ja" viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg><svg class="st-ic-wacht" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><polyline points="12,7 12,12 15.5,14"/></svg></div>
+            <div class="card-eyebrow" id="stad-klaar-cat"></div>
+            <h2 id="stad-klaar-kop"></h2>
+            <p class="st-klaar-sub" id="stad-klaar-sub"></p>
+            <div class="st-poule" id="stad-klaar-poule" hidden>
+              <span class="st-poule-k" id="stad-klaar-poule-k">Je poule</span>
+              <b class="st-poule-naam" id="stad-klaar-poule-naam"></b>
+              <ul class="st-mates" id="stad-klaar-mates" aria-label="Ook in deze poule"></ul>
+              <p class="st-poule-noot" id="stad-klaar-poule-noot"></p>
             </div>
-            <div class="success-confetti">
-              <span class="conf c1"></span>
-              <span class="conf c2"></span>
-              <span class="conf c3"></span>
-              <span class="conf c4"></span>
-              <span class="conf c5"></span>
-              <span class="conf c6"></span>
-              <span class="conf c7"></span>
-              <span class="conf c8"></span>
+            <div class="mijn-code" id="stad-klaar-codebox">
+              <span class="mijn-code-lbl">Teamcode</span>
+              <b id="stad-klaar-code"></b>
+              <p>Maak een schermafbeelding: dit is je enige sleutel. Er komt geen mail.</p>
             </div>
-            <h2 id="success-heading">Tot dan!</h2>
-            <p style="margin-top:10px; color: var(--ice-muted);" id="success-msg">
-              Je krijgt een bevestiging in je inbox.
-            </p>
-            <!-- Team of speler: je zit er direct in. app.js vult dit blok uit het aanmeld-antwoord
-                 (sleutel bewaren op dit toestel, code in beeld); bij een bezoeker blijft het verborgen. -->
-            <div class="mijn-na" id="success-mijn" hidden>
-              <a class="btn full" id="success-mijn-open" href="/mijn">Open Mijn team →</a>
-              <div class="mijn-code">
-                <span class="mijn-code-lbl" id="success-mijn-lbl">Jullie teamcode</span>
-                <b id="success-mijn-code"></b>
-                <p id="success-mijn-tip">Maak een schermafbeelding van deze code. Daarmee open je Mijn team op elk toestel.</p>
-              </div>
-              <button type="button" class="btn ghost full" id="success-mijn-kopieer">Kopieer mijn link</button>
-              <p class="mijn-na-mail" id="success-mijn-mail" role="status" aria-live="polite"></p>
-              <p class="mijn-na-mail" id="success-mijn-app"></p>
-            </div>
-            <p class="success-extra" id="success-extra">
-              Check ook even je <b>spam-folder</b> als de mail niet binnen 5 minuten in je inbox zit.
-            </p>
-            <button type="button" class="btn ghost" id="reset-form-btn" style="margin-top:24px;">
-              Nog iemand aanmelden
-            </button>
+            <a class="btn full" id="stad-klaar-open" href="/mijn">Open Mijn team →</a>
+            <button type="button" class="btn ghost full" id="stad-klaar-nog">Nog een aanmelding</button>
           </div>
+          
           </div>
           <div id="reg-closed" hidden>
           
@@ -473,7 +471,7 @@
               <a class="js-contact-mail" href="mailto:contact@example.org">contact@example.org</a> als je iets wil weten.
             </p>
             <div class="reg-closed-actions">
-              <a class="btn full" href="/sporten">Bekijk het live-bord →</a>
+              <a class="btn full" href="/toernooi">Bekijk het live-bord →</a>
               <a class="btn ghost full" href="/spelregels">Spelregels</a>
             </div>
           </div>

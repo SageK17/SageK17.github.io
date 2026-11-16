@@ -1,8 +1,8 @@
 {
   "id": "/mijn",
-  "name": "JVO · Sportdag",
-  "short_name": "Sportdag",
-  "description": "Mijn team en het live-bord van de JVO Sportdag",
+  "name": "JVO · Zaalvoetbal",
+  "short_name": "Zaalvoetbal",
+  "description": "Mijn team en het live-bord van het Benefiet Zaalvoetbal",
   "start_url": "/mijn",
   "scope": "/",
   "display": "standalone",

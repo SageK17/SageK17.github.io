@@ -1,17 +1,21 @@
 <!DOCTYPE html>
-<html lang="nl" data-theme="sporthub" data-sport="beker" style="--sport-icoon:url('/sport/beker-klein.webp');--sport-icoon-groot:url('/sport/beker.webp');--werk-icoon:url('/sport/werk/klembord-klein.webp');--werk-icoon-groot:url('/sport/werk/klembord.webp')">
+<html lang="nl" data-theme="sporthub" data-sport="voetbal" style="--sport-icoon:url('/sport/voetbal-klein.webp');--sport-icoon-groot:url('/sport/voetbal.webp');--werk-icoon:url('/sport/werk/klembord-klein.webp');--werk-icoon-groot:url('/sport/werk/klembord.webp')">
 <head>
   <meta name="robots" content="noindex, nofollow">
   <script src="/voorbeeld.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>JVO Admin — Sportdag</title>
+  <title>JVO Admin — Zaalvoetbal</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/jvo-smart.css" />
   <link rel="stylesheet" href="/admin-regie.css" />
   <link rel="stylesheet" href="/admin-hub.css" />
   <link rel="stylesheet" href="/admin-profielen.css" />
+  <link rel="stylesheet" href="/admin-eenvoudig.css" />
+  <!-- De eenvoudige stand van de admin (admin-eenvoudig.js): de server zet deze regel er
+       alleen in als die stand geldt. Het inlogscherm vraagt dan alleen de admincode. -->
+  <meta name="jvo-admin-stand" content="eenvoudig" />
   <link rel="manifest" href="/admin.webmanifest" />
   <meta name="theme-color" content="#FF6B1A" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -218,6 +222,9 @@
     .tm-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
     .tm-tag { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ice-muted); background: rgba(232,244,255,.05); border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; }
     .tm-tag.ci { color: var(--success); background: rgba(108,227,160,.1); border-color: rgba(108,227,160,.3); }
+    /* team zonder e-mailadres (aangemeld met alleen een stad): de teamcode leesbaar, verborgen rijen echt weg */
+    .tm-tag.tm-code { text-transform: none; letter-spacing: .06em; color: var(--ice); }
+    .person-details > [hidden], #team-modal-mailto[hidden], #team-modal-geenmail[hidden] { display: none !important; }
     .tm-card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
     /* ===================================================================
@@ -384,6 +391,22 @@
     .evc-f select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8bdd4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 15px; padding-right: 34px; cursor: pointer; }
     .evc-hint { font-size: 12.5px; color: var(--ice-muted); line-height: 1.45; }
     .evc-hint b { color: var(--ice); font-weight: 600; }
+    /* Voordeur + aanmeldvorm: de voorbeelden (kop, en het formulier "alleen stad") */
+    .evc-vb-lbl { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--ice-muted); }
+    html[data-theme="sporthub"] body.adm .evc-vb-lbl { font-family: var(--adm-label); font-size: 10.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; line-height: 1.5; color: var(--adm-tekst); }
+    .evc-kop-vb { background: #06193A; border: 1px solid var(--line-strong); border-radius: 10px; padding: 16px 16px 15px; min-height: 104px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+    .evc-kop-vb b { display: block; font-family: 'Unbounded', var(--display), system-ui, sans-serif; font-weight: 900; font-size: 21px; line-height: 1.08; letter-spacing: -.02em; color: #fff; white-space: nowrap; }
+    .evc-kop-vb b i { font-style: normal; color: #FF6B1A; }
+    .evc-kop-vb span { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.86); margin-top: 9px; overflow-wrap: anywhere; }
+    .evc-kop-vb em { font-style: normal; font-size: 13px; color: rgba(255,255,255,.8); }
+    .evc-stad { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+    .evc-stad[hidden], #evc-autoDraw-rij[hidden], #evc-stad-noot[hidden] { display: none; }
+    .evc-stad-vb { background: #fff; color: #06193A; border-radius: 12px; padding: 14px; display: grid; gap: 7px; }
+    .evc-stad-vb .vb-l { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+    .evc-stad-vb .vb-veld { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; border: 1.5px solid rgba(6,25,58,.5); border-radius: 10px; padding: 0 12px; font-size: 14px; color: rgba(6,25,58,.72); background: #F6F7FB; }
+    .evc-stad-vb .vb-knop { display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 999px; background: #FF6B1A; color: #06193A; font-weight: 700; font-size: 14px; }
+    .evc-stad-vb .vb-noot { font-size: 12px; line-height: 1.4; color: #4A4F72; text-align: center; }
+    .evc-f label span#evc-cityList-n { color: var(--ice); }
     .evc-acts { margin-bottom: 4px; }
     .evc-act { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 10px; align-items: end; margin-bottom: 10px; }
     .evc-act .btn-sm { margin: 0; }
@@ -426,10 +449,10 @@
 <!-- LOGIN -->
 <div id="login" class="login-wrap">
   <div class="login-card card">
-    <div class="card-eyebrow">Admin · <span data-ev="name">JVO Sportdag</span></div>
+    <div class="card-eyebrow">Admin · <span data-ev="name">Benefiet Zaalvoetbal</span></div>
     <h2>Inloggen</h2>
     <form id="login-form">
-      <div class="field">
+      <div class="field ae-login-naam">
         <label for="admin-name">Jouw naam</label>
         <input type="text" id="admin-name" required autocomplete="off" placeholder="Bijv. Sanne" />
       </div>
@@ -440,7 +463,7 @@
       <p class="pf-login-uitleg" id="pf-login-uitleg" hidden>Na de code kies je je eigen profiel en toets je je pas van 4 cijfers in.</p>
       <div id="login-alert"></div>
       <button type="submit" class="btn full" style="margin-top:14px;">Inloggen →</button>
-      <p class="small mono" style="text-align:center; margin-top:14px; color: var(--ice-faint); letter-spacing:.18em;">
+      <p class="small mono ae-login-naam" style="text-align:center; margin-top:14px; color: var(--ice-faint); letter-spacing:.18em;">
         Elke actie wordt gelogd onder jouw naam.
       </p>
     </form>
@@ -453,9 +476,9 @@
   <header class="topbar">
     <div class="brand-badge">
       <span class="badge-circle">JVO</span>
-      <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; <span data-ev="shortName">Sportdag</span> · Admin</span>
+      <span class="brand-text-long"><b>Jeugdgroep van Oranje</b> &nbsp;//&nbsp; <span data-ev="shortName">Zaalvoetbal</span> · Admin</span>
       <span class="brand-text-short"><b>JVO</b> · Admin</span>
-      <span class="brand-text-hub"><b data-ev="shortName">Sportdag</b></span>
+      <span class="brand-text-hub"><b data-ev="shortName">Zaalvoetbal</b></span>
     </div>
     <nav>
       <a href="/" target="_blank">Aanmeldformulier ↗</a>
@@ -486,6 +509,12 @@
        verborgen, en verandert er niets. -->
   <div class="ah" id="ah" hidden></div>
 
+  <!-- EENVOUDIGE STAND (admin-eenvoudig.js): vier onderdelen in plaats van de hub of de tabs,
+       voor een evenement waar je je met alleen een stad aanmeldt. Dezelfde blokken van
+       hieronder verhuizen erheen (zelfde knopen, zelfde ids). In de volledige stand blijft
+       dit leeg en verborgen. -->
+  <div class="ae" id="ae" hidden></div>
+
   <!-- TAB NAV -->
   <div class="tabs" role="tablist">
     <button class="tab-btn active" data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview" id="tabbtn-overview">Overzicht</button>
@@ -508,7 +537,7 @@
       <summary>Hoe werkt dit?</summary>
       <!-- Uitleg voor de Admin Hub (alleen zichtbaar in hub-modus; zie admin-hub.css) -->
       <div class="help-body ah-uitleg">
-        <p>Dit is de Admin Hub van <span data-ev="withArticle">de JVO Sportdag</span>. Het gebouw is je organisatie: in het midden het evenement, daaromheen vijf afdelingen. Tik op een bouwdeel of op een tegel.</p>
+        <p>Dit is de Admin Hub van <span data-ev="withArticle">het Benefiet Zaalvoetbal</span>. Het gebouw is je organisatie: in het midden het evenement, daaromheen vijf afdelingen. Tik op een bouwdeel of op een tegel.</p>
         <ul>
           <li><strong>Evenement</strong>: naam, datum, plaats en stijl, het programma, de spelregels en de controle “Klaar voor de start?”.</li>
           <li><strong>Sport</strong>: sporten toevoegen en bewerken, velden en plekken, teamlogo’s.</li>
@@ -520,7 +549,7 @@
         <p class="off"><b>Geen internet?</b> Je ziet de laatst geladen gegevens. Wijzigingen (goedkeuren, mailen) hebben verbinding nodig.</p>
       </div>
       <div class="help-body ah-uitleg-oud">
-        <p>Dit is het organisatie-paneel. Vanuit de tabs hierboven beheer je alles rond <span data-ev="withArticle">de JVO Sportdag</span>:</p>
+        <p>Dit is het organisatie-paneel. Vanuit de tabs hierboven beheer je alles rond <span data-ev="withArticle">het Benefiet Zaalvoetbal</span>:</p>
         <ul>
           <li><strong>Evenement</strong> en <strong>Spelregels</strong> (hieronder op Overzicht) — naam, datum, locatie, tijden, teksten en sponsor. Alles wat je daar invult staat meteen op de site en in de mails.</li>
           <li><strong>Teams</strong> — goedkeuren, afwijzen of op de wachtlijst zetten. Goedkeuren stuurt automatisch de check-in-QR naar de captain.</li>
@@ -581,8 +610,8 @@
       <div class="tc-stats" id="ov-live-stats"></div>
       <div class="tc-progress" id="ov-live-progress"></div>
       <div class="tc-links" style="border-top:none; padding-top:2px; margin-top:2px;">
-        <a class="tc-link primary" href="/sporten" target="_blank" rel="noopener">Live-pagina ↗</a>
-        <a class="tc-link" href="/sporten" target="_blank" rel="noopener">TV / scherm ↗</a>
+        <a class="tc-link primary" href="/toernooi.html" target="_blank" rel="noopener">Live-pagina ↗</a>
+        <a class="tc-link" href="/toernooi.html?screen=1" target="_blank" rel="noopener">TV / scherm ↗</a>
         <a class="tc-link" href="/wedstrijd.html" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
       </div>
     </div>
@@ -670,7 +699,7 @@
 
           <fieldset class="evc-group">
             <legend class="tcz-sub-label">Tijden</legend>
-            <p class="evc-quiet">De tijden op de site en in de mails. Wanneer de eerste wedstrijd begint stel je apart in<span class="ah-niet-hub"> bij <b>Toernooi → Tijdschema</b></span><span class="ah-alleen-hub">: per sport, bij <b>Sport</b> onder <b>Opzet, velden en plekken</b></span>.</p>
+            <p class="evc-quiet">De tijden op de site en in de mails. Wanneer de eerste wedstrijd begint stel je apart in<span class="ae-alleen"> bij <b>Poules en schema</b></span><span class="ah-niet-hub"> bij <b>Toernooi → Tijdschema</b></span><span class="ah-alleen-hub">: per sport, bij <b>Sport</b> onder <b>Opzet, velden en plekken</b></span>.</p>
             <div class="evc-grid c4">
               <div class="evc-f">
                 <label for="evc-teamArrivalTime">Teams aanwezig</label>
@@ -723,7 +752,7 @@
                 <input type="number" id="evc-maxPlayers" inputmode="numeric" step="1" />
               </div>
             </div>
-            <p class="evc-quiet" style="margin:10px 0 0;">Het toernooischema werkt met 10 tot 24 teams (opzet 16, 18 of 20). Wedstrijdduur en aantal velden stel je in<span class="ah-niet-hub"> bij <b>Toernooi → Tijdschema</b></span><span class="ah-alleen-hub"> per sport, bij <b>Sport</b> onder <b>Opzet, velden en plekken</b></span>.</p>
+            <p class="evc-quiet" style="margin:10px 0 0;">Het toernooischema werkt met 10 tot 24 teams (opzet 16, 18 of 20). Wedstrijdduur en aantal velden stel je in<span class="ae-alleen"> bij <b>Poules en schema</b></span><span class="ah-niet-hub"> bij <b>Toernooi → Tijdschema</b></span><span class="ah-alleen-hub"> per sport, bij <b>Sport</b> onder <b>Opzet, velden en plekken</b></span>.</p>
           </fieldset>
 
           <fieldset class="evc-group">
@@ -739,7 +768,64 @@
                 <span class="evc-hint" id="evc-registration-hint">Automatisch = open zodra er een datum is, tot en met de dag zelf.</span>
                 <span class="evc-hint" id="evc-reg-status" aria-live="polite"></span>
               </div>
+              <div class="evc-f">
+                <label for="evc-signupForm">Wat vraag je bij het aanmelden</label>
+                <select id="evc-signupForm" aria-describedby="evc-signupForm-hint">
+                  <option value="full">Uitgebreid: naam, e-mail, team en aantal spelers</option>
+                  <option value="city">Alleen stad: één veld, zonder e-mail</option>
+                </select>
+                <span class="evc-hint" id="evc-signupForm-hint" aria-live="polite"></span>
+              </div>
             </div>
+
+            <!-- Alleen zichtbaar bij "Alleen stad". Het ene veld heet standaard "Stad", maar mag
+                 ook iets anders zijn (het label is vrij); de lijst maakt er een keuzelijst van. -->
+            <div class="evc-stad" id="evc-stad" hidden>
+              <div class="evc-grid">
+                <div class="evc-f">
+                  <label for="evc-cityLabel">Zo heet het veld</label>
+                  <input type="text" id="evc-cityLabel" autocomplete="off" aria-describedby="evc-cityLabel-hint" />
+                  <span class="evc-hint" id="evc-cityLabel-hint">Het ene ding dat je vraagt, in het enkelvoud. Leeg = “Stad”.</span>
+                </div>
+                <div class="evc-f">
+                  <label for="evc-cityLabelPlural">Meervoud</label>
+                  <input type="text" id="evc-cityLabelPlural" autocomplete="off" aria-describedby="evc-cityLabelPlural-hint" />
+                  <span class="evc-hint" id="evc-cityLabelPlural-hint">Voor zinnen als “12 steden doen mee”. Leeg = “Steden”.</span>
+                </div>
+                <div class="evc-f">
+                  <label for="evc-cityList">Lijst om uit te kiezen <span id="evc-cityList-n"></span></label>
+                  <textarea id="evc-cityList" rows="7" spellcheck="false" autocomplete="off" aria-describedby="evc-cityList-hint"></textarea>
+                  <span class="evc-hint" id="evc-cityList-hint"><b>Eén per regel.</b> Met een lijst kiest de deelnemer uit een keuzelijst en kan er niets anders ingevuld worden: de beste rem op onzin. Leeg = vrij typen.</span>
+                </div>
+                <div class="evc-f">
+                  <span class="evc-vb-lbl">Zo ziet de deelnemer het</span>
+                  <div class="evc-stad-vb" id="evc-stad-vb" aria-hidden="true"></div>
+                  <span class="evc-hint">Meer dan één categorie (bijvoorbeeld twee groepen in dezelfde sport)? <span class="ae-niet">Maak ze als aparte sporten met hetzelfde icoon<span class="ah-alleen-hub">, bij <b>Sport</b></span>. Opent na het opslaan de eenvoudige weergave, dan sta je meteen bij <b>Categorieën</b> en maak je ze daar.</span><span class="ae-alleen">Die maak je hierboven, bij <b>Categorieën</b>.</span> De deelnemer kiest dan eerst zijn categorie.</span>
+                </div>
+              </div>
+              <label class="toggle-row" for="evc-cityMulti" style="margin-top:12px;">
+                <input type="checkbox" id="evc-cityMulti" />
+                <span>
+                  <b>Meerdere teams per <span data-evc-woord>stad</span></b>
+                  <small>Aan: een tweede aanmelding met dezelfde naam in dezelfde categorie krijgt een volgnummer (“… 2”), en dat staat duidelijk op het scherm. Uit: de deelnemer leest dat die naam al is aangemeld.</small>
+                </span>
+              </label>
+              <label class="toggle-row" for="evc-autoApprove">
+                <input type="checkbox" id="evc-autoApprove" />
+                <span>
+                  <b>Direct toelaten</b>
+                  <small>Aan: een aanmelding doet meteen mee zolang er plek is (het maximum per sport); daarna komt hij op de wachtlijst en schuift vanzelf door. Uit: jij keurt elke aanmelding zelf goed.</small>
+                </span>
+              </label>
+            </div>
+            <label class="toggle-row" for="evc-autoDraw" id="evc-autoDraw-rij" style="margin-top:12px;">
+              <input type="checkbox" id="evc-autoDraw" />
+              <span>
+                <b>Automatisch indelen</b>
+                <small>Aan: na elke toelating (en na verwijderen) wordt het schema van die sport opnieuw gemaakt, zodat iedereen meteen zijn poule ziet. Dat stopt zodra de eerste wedstrijd start of zodra je de indeling vastzet<span class="ae-alleen"> (bij Poules en schema)</span><span class="ah-alleen-hub"> (bij Toernooien)</span>; daarna verandert er nooit meer iets vanzelf.</small>
+              </span>
+            </label>
+            <p class="evc-quiet" id="evc-stad-noot" hidden style="margin:10px 0 0;">Bij “Alleen stad” slaan we geen naam of e-mailadres op. Mailen naar deze teams kan dus niet: ze houden hun plek via <b style="color:var(--ice);">Mijn team</b> en hun teamcode, die ze meteen na het aanmelden in beeld krijgen. Een code kwijt? Die vind je terug bij het team<span class="ae-alleen"> (Aanmeldingen)</span><span class="ah-alleen-hub"> (Mensen › Teams)</span>.</p>
           </fieldset>
 
           <fieldset class="evc-group">
@@ -767,6 +853,32 @@
                   <option value="hardlopen">Hardlopen</option>
                 </select>
                 <span class="evc-hint" id="evc-sportIcon-hint">Het beeld bij je toernooi in de stijl Sporthub: groot op de aanmeldpagina, klein op het live-bord.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="evc-group" id="evc-voordeur">
+            <legend class="tcz-sub-label">Voordeur</legend>
+            <p class="evc-quiet">De grote kop bovenaan de aanmeldpagina. Elke regel die je typt wordt een eigen regel in de kop.</p>
+            <div class="evc-grid">
+              <div class="evc-f">
+                <label for="evc-heroTitle">Kop van de voordeur</label>
+                <textarea id="evc-heroTitle" rows="3" autocomplete="off" aria-describedby="evc-heroTitle-hint"></textarea>
+                <span class="evc-hint" id="evc-heroTitle-hint">Eén tot drie korte regels, bijvoorbeeld je sport op regel 1 en “toernooi” op regel 2. Leeg = de standaardkop.</span>
+              </div>
+              <div class="evc-f">
+                <span class="evc-vb-lbl">Voorbeeld</span>
+                <div class="evc-kop-vb" id="evc-kop-vb" aria-live="polite"></div>
+              </div>
+              <div class="evc-f wide">
+                <label for="evc-heroSub">Regel onder de kop</label>
+                <input type="text" id="evc-heroSub" autocomplete="off" aria-describedby="evc-heroSub-hint" />
+                <span class="evc-hint" id="evc-heroSub-hint">Eén korte regel, bijvoorbeeld voor wie het is. Leeg = niet tonen.</span>
+              </div>
+              <div class="evc-f wide">
+                <label for="evc-heroTitleMulti">Kop bij verschillende sporten</label>
+                <textarea id="evc-heroTitleMulti" rows="3" autocomplete="off" aria-describedby="evc-heroTitleMulti-hint"></textarea>
+                <span class="evc-hint" id="evc-heroTitleMulti-hint">Staat in de ring met alle sporten zodra er meer dan één sport is en je hierboven geen eigen kop hebt. Leeg = de standaard.</span>
               </div>
             </div>
           </fieldset>
@@ -928,7 +1040,7 @@
       <summary><h3>Herinneringsmails</h3><svg class="fold-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
       <div class="fold-body">
       <div class="section-sub">
-        <span id="rem-intro-auto">Gaan automatisch uit</span> <b>1 week</b> en <b>24 uur</b> voor <span data-ev="withArticle">de JVO Sportdag</span>, naar iedereen die toestemming gaf voor herinneringen.
+        <span id="rem-intro-auto">Gaan automatisch uit</span> <b>1 week</b> en <b>24 uur</b> voor <span data-ev="withArticle">het Benefiet Zaalvoetbal</span>, naar iedereen die toestemming gaf voor herinneringen.
         Goedgekeurde captains krijgen de captain-mail (met spelregels + QR-uitleg), wachtlijst-teams de wachtlijst-mail, de rest de bezoekers-mail.
         Je kunt elke golf ook nu sturen of eerst een test naar jezelf doen.
       </div>
@@ -983,7 +1095,7 @@
           </div>
           <div class="field" style="margin-bottom: 12px;">
             <label for="profile-email">E-mailadres</label>
-            <input type="email" id="profile-email" placeholder="jij@voorbeeld.nl" autocomplete="email" />
+            <input type="email" id="profile-email" placeholder="jij@example.org" autocomplete="email" />
           </div>
           <div class="profile-toggles">
             <label class="toggle-row">
@@ -1207,7 +1319,7 @@
       <!-- de twee dag-kritieke schermen altijd binnen handbereik; de rest zit
            in de fold "Schermen & pagina's" hieronder -->
       <div class="tc-links">
-        <a class="tc-link primary" id="tourn-live" href="/sporten" target="_blank" rel="noopener">Live-pagina ↗</a>
+        <a class="tc-link primary" id="tourn-live" href="/toernooi.html" target="_blank" rel="noopener">Live-pagina ↗</a>
         <a class="tc-link" id="tourn-crew" href="/wedstrijd.html" target="_blank" rel="noopener">Wedstrijdbediening ↗</a>
       </div>
     </div>
@@ -1395,7 +1507,7 @@
       <div class="fold-body">
       <div class="section-sub">Open het juiste scherm op het juiste apparaat: de TV, de omroeper, de print-backup en de kleedkamer-borden.</div>
       <div class="tc-links">
-        <a class="tc-link" href="/sporten" target="_blank" rel="noopener">TV / scherm ↗</a>
+        <a class="tc-link" href="/toernooi.html?screen=1" target="_blank" rel="noopener">TV / scherm ↗</a>
         <a class="tc-link" id="tc-omroep-link" href="/omroep.html" target="_blank" rel="noopener">Omroep-scherm ↗</a>
         <a class="tc-link" id="tourn-print" href="/print.html" target="_blank" rel="noopener">Print-backup ↗</a>
         <a class="tc-link" id="tourn-doors" href="/kleedkamer.html" target="_blank" rel="noopener">Kleedkamer-borden ↗</a>
@@ -1534,8 +1646,8 @@
           </div>
         </div>
         <div class="program-bar-actions">
-          <a class="btn-sm primary" href="/sporten" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">Open live-pagina ↗</a>
-          <a class="btn-sm" href="/sporten" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">TV / scherm ↗</a>
+          <a class="btn-sm primary" href="/toernooi.html" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">Open live-pagina ↗</a>
+          <a class="btn-sm" href="/toernooi.html?screen=1" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">TV / scherm ↗</a>
           <a class="btn-sm" href="/wedstrijd.html" target="_blank" rel="noopener" style="padding:10px 16px; text-decoration:none;">Wedstrijdbediening ↗</a>
         </div>
       </div>
@@ -1555,7 +1667,7 @@
         <div class="info-card-body">
           <h4>Aanmeldlijst</h4>
           <div class="info-card-num"><span id="info-signups-count">—</span></div>
-          <p>Iedereen die zich heeft aangemeld voor <span data-ev="withArticle">de JVO Sportdag</span>. Bevestigingsmail al verstuurd. Alleen voor planning + ter bevestiging dat ze komen.</p>
+          <p>Iedereen die zich heeft aangemeld voor <span data-ev="withArticle">het Benefiet Zaalvoetbal</span>. Bevestigingsmail al verstuurd. Alleen voor planning + ter bevestiging dat ze komen.</p>
         </div>
       </div>
       <div class="info-card highlight">
@@ -1650,6 +1762,7 @@
     <div class="qr-display">
       <canvas id="qr-canvas" width="240" height="240"></canvas>
     </div>
+    <div class="modal-code" id="modal-code" hidden></div>
     <div class="card-eyebrow" style="font-size:10px; margin-bottom:6px;">Check-in URL</div>
     <div class="url-box" id="modal-url"></div>
     <div class="modal-status-info pending" id="modal-status-info">
@@ -1657,6 +1770,7 @@
       <span id="modal-status-detail">Het team kan inchecken op de dag zelf met deze QR.</span>
     </div>
     <div class="modal-actions">
+      <button class="btn-sm" id="btn-modal-checkin" hidden>Check nu in</button>
       <button class="btn-sm primary" id="btn-download-qr">PNG downloaden</button>
       <button class="btn-sm" id="btn-resend-qr">Mail opnieuw</button>
       <button class="btn-sm" id="btn-modal-close-2">Sluiten</button>
@@ -1713,6 +1827,8 @@
       <dt>Captain</dt><dd id="team-modal-captain">—</dd>
       <dt>E-mail</dt><dd id="team-modal-email">—</dd>
       <dt>Spelers</dt><dd id="team-modal-players">—</dd>
+      <dt hidden>Poule</dt><dd id="team-modal-poule" hidden></dd>
+      <dt hidden>Teamcode</dt><dd id="team-modal-code" class="mono" hidden></dd>
       <dt>Ingecheckt</dt><dd id="team-modal-checkin">—</dd>
     </dl>
     <!-- Alleen met meerdere sporten: team naar een andere sport verplaatsen -->
@@ -1734,6 +1850,7 @@
     </div>
 
     <div class="modal-actions" style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <span class="small muted" id="team-modal-geenmail" hidden>Mailen kan niet: de deelnemer ziet alles in Mijn team (met de teamcode hierboven).</span>
       <a class="btn-sm" id="team-modal-mailto" href="#" style="text-decoration:none;">Mail captain</a>
       <button class="btn-sm" id="team-modal-qr" style="display:none;">Check-in QR ↗</button>
       <button class="btn-sm" id="team-modal-close-2" style="margin-left:auto;">Sluiten</button>
@@ -1944,5 +2061,6 @@
 <script src="/admin-competities.js"></script>
 <script src="/admin-regie.js"></script>
 <script src="/admin-hub.js"></script>
+<script src="/admin-eenvoudig.js"></script>
 </body>
 </html>

@@ -20,6 +20,7 @@
   <meta name="theme-color" content="#06193A" /><script src="/sh-bal3d.js" defer></script>
   
   <link rel="stylesheet" href="/fonts.css" />
+  <link rel="stylesheet" href="/jvo-smart.css" />
   <!-- Mijn team: eigen, page-scoped opmaak (alles onder .mt-…). De basis hieronder is de
        neutrale terugval (stijl schemering); de stijl Sporthub zet alleen de --m-*-waarden om
        (blauw, wit, oranje, rode ring, ronde letter). Geen evenement-teksten in dit bestand:
@@ -70,6 +71,18 @@
     .mt-links, .mt-rechts, .mt-onderdelen { display: contents; }
     .mt-pas { order: 1; } .mt-nu { order: 2; } .mt-wed { order: 3; } .mt-stand-vak { order: 4; } .mt-acties { order: 5; }
     .mt-blok.qr-eerst .mt-nu, .mt-blok.nu-eerst .mt-nu { order: 0; }
+    /* "Wat nu?" van JVO Smart (vorm in jvo-smart.css): hier de kleuren en letters van deze pagina.
+       Op een telefoon staat de strook bovenaan het blok, op een breed scherm boven "wat nu telt". */
+    .mt .jvs { font-family: var(--m-body); }
+    .mt .jvs-wat {
+      --jg-vlak: var(--m-bg2); --jg-in: var(--m-bg); --jg-rand: var(--m-rand); --jg-tekst: #fff; --jg-tekst-2: rgba(255, 255, 255, .9);
+      --jg-actie: var(--m-accent); --jg-op-actie: var(--m-inkt); --jg-goed: #fff; --jg-let: var(--m-accent); --jg-rail: var(--m-accent); --jg-kop: var(--m-kop); --jg-r: 22px; --jg-knop-r: 999px;
+      order: -1;
+    }
+    .mt .jvs-wat .jvs-eyebrow { font-family: var(--m-mono); font-size: 10px; color: #fff; }
+    .mt .jvs-wat .jvs-mark { color: #fff; }
+    .mt .jvs-wat .jvs-wat-titel { font-size: calc(19px * var(--m-ks)); letter-spacing: var(--m-kls); text-transform: var(--m-ktt); line-height: 1.12; }
+    .mt .jvs-wat :is(.jvs-cta, .jvs-stil) { min-height: 48px; }
     .mt-tip { order: 1; font-size: 13.5px; line-height: 1.4; margin-top: -4px; }
     .mt-tip a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; text-underline-offset: 3px; }
     .mt-wie { font-size: 9.5px; color: rgba(255, 255, 255, .88); margin-bottom: 12px; }
@@ -441,6 +454,7 @@
 
   <script src="/register-sw.js"></script>
   <script src="/logo-render.js"></script>
+  <script src="/jvo-gids.js"></script>
   <script src="/mijn.js"></script>
 </body>
 </html>

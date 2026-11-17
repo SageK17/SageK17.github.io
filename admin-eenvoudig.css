@@ -372,3 +372,43 @@ html[data-theme="sporthub"] body.adm.ae-aan .ae :is(input[type="text"], input[ty
   .ae-nav-a, .ae-cat, .ae-tegel, .ae-plus::after { transition: none !important; }
   .ae-tegel:hover { transform: none; }
 }
+
+/* ── 11. JVO Smart als gids ─────────────────────────────────────────────── */
+/* De vormen zelf staan in jvo-smart.css (.jvs-gids, .jvs-hint); hier krijgen ze de kleuren
+   van deze schil, zodat ze onder elke stijl bij de kaarten en knoppen passen. */
+body.ae-aan :is(.jvs-gids, .jvs-hint) {
+  --jg-vlak: var(--ae-vlak); --jg-in: var(--ae-in); --jg-rand: var(--ae-rand); --jg-tekst: var(--ae-tekst); --jg-tekst-2: var(--ae-tekst-2);
+  --jg-actie: var(--ae-actie); --jg-op-actie: var(--ae-op-actie); --jg-kop: var(--ae-kop); --jg-r: var(--ae-r);
+}
+.ae .jvs-gids .ae-knop { white-space: normal; text-align: center; }
+/* Eerste keer laden: de inhoud wacht heel even op de gids, zodat er niets verspringt (zie zetAan). */
+.ae.ae-gids-wacht .ae-main { visibility: hidden; }
+/* Waar de gids je heen bracht: een ring in de kleur van deze schil (ook zichtbaar op een wit vlak). */
+body.ae-aan .jvs-target { animation: ae-land 2.4s ease-out; border-radius: 12px; outline: 3px solid transparent; outline-offset: 6px; box-shadow: none; }
+@keyframes ae-land {
+  0%, 60% { outline-color: var(--ae-actie); }
+  100% { outline-color: transparent; }
+}
+/* "Volgende stap" onderaan een onderdeel, als de gids je daarheen bracht en dat geregeld is. */
+.ae .jvs-volg { position: fixed; z-index: 60; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(720px, calc(100vw - 32px)); margin: 0; padding: 8px 6px 8px 16px; box-shadow: 0 14px 34px -10px rgba(0, 0, 0, .7); }
+.ae .jvs-volg .ae-knop { flex: none; min-height: 44px; }
+body.ae-aan :is(.ae-kaart, .ae-scherm, #ae-a-nieuw, #rg-sportpaneel .rg-indeling, #rg-dag section) { scroll-margin-block: 96px; }
+.ae-scherm.jvs-target { padding-inline: 10px; margin-inline: -10px; }
+/* De aanmeldlink delen. */
+.ae-deel-rij { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 18px; }
+.ae .ae-deel-url { display: block; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--ae-rand-2); background: var(--ae-in); color: var(--ae-tekst); font-family: var(--mono); font-size: 14.5px; line-height: 1.3; overflow-wrap: anywhere; user-select: all; }
+.ae-deel-rij .ae-scherm-qr { grid-column: 1 / -1; }
+/* De schakelaar van JVO Smart. */
+.ae .ae-smart-rij { margin: 0; align-items: flex-start; }
+.ae .ae-smart-rij b { font-size: 15px; }
+.ae .ae-smart-rij small { font-size: 13.5px; line-height: 1.45; }
+.ae #ae-smart-uit:empty { display: none; }
+@media (max-width: 899px) {
+  .ae-deel-rij { grid-template-columns: minmax(0, 1fr); }
+  .ae-deel-rij .ae-scherm-k { justify-content: flex-start; }
+  .ae .jvs-volg { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .ae .jvs-volg > .ae-knop { grid-column: 2; grid-row: 2; justify-self: start; margin: 0 0 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.ae-aan .jvs-target { animation: none; outline-color: var(--ae-actie); }
+}

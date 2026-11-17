@@ -10,6 +10,7 @@
 //   jvo_mijn_kaarten  { v:1, at, event, account, cards:[…] }   laatste goede antwoord (bron voor offline, mét QR)
 //   jvo_mijn_meld     [team_id]   teams waarvoor meldingen zijn klaargezet terwijl ze nog wachten
 //   jvo_mijn_tip_weg  '1' als de beginscherm-uitleg is weggetikt
+//   jvo_gids_zelf     { "<teamcode>:<stap>": 1|2 }   wat je in "Wat nu?" zelf afvinkte of oversloeg (jvo-gids.js)
 //   jvo_stad          [{ id, name, comp, cat, at }]   wat er op dit toestel met "alleen stad" is aangemeld
 //                     (geschreven door app.js; hier bijgehouden zodat de voordeur niets ouds toont)
 // Aangemeld met alleen een stad (card.signup === 'city', card.mail === false): er is geen
@@ -17,6 +18,11 @@
 // staat de poule met de andere namen erbij zolang de indeling nog kan veranderen.
 // Het bord houdt zijn eigen volglijst bij (jvo_hub_follow / jvo_follow); deze pagina zet
 // het eigen team daarin klaar, zodat "Bekijk het hele bord" het team gemarkeerd toont.
+//
+// "Wat nu?" van JVO Smart (jvo-gids.js): de server rekent per kaart uit welke stap nu telt
+// (card.gids); deze pagina toont die ene stap boven "wat nu telt", met wat klaar is klein
+// afgevinkt. Wat je zelf afvinkt (code bewaard, gedeeld) staat alleen op dit toestel
+// (jvo_gids_zelf). Stuurt de server geen gids mee (helper uit), dan is de pagina zoals altijd.
 //
 // Regels: elke waarde van de server gaat door esc() vóór innerHTML; geen evenement-teksten
 // in deze code (datum, locatie, sportnamen komen van de server); meldingen gaan alleen aan
@@ -27,6 +33,7 @@
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const app = $('mt-app');
   if (!app) return;
+  const G = window.JVO_GIDS || null;
   const CONTACT = app.dataset.contact || '';
   const LOCATIE = app.dataset.locatie || '';
   const BASIS_SUB = $('mt-sub').textContent;
@@ -445,16 +452,19 @@
 
   // Na het inchecken telt de volgende wedstrijd, niet meer de QR: dan staat "nu" boven het pasje.
   const nuEerst = (c) => /^(show_qr|checked_in|match|done)$/.test(c.now || '');
-  function nu(c, ev) {
+  // `dekt`: de strook "Wat nu?" van JVO Smart zegt op deze kaart al wat de kop van dit blok
+  // zegt (wachtlijst, QR laten zien, eindstand). Dan blijft de kop weg en staat de rest er nog.
+  function nu(c, ev, dekt) {
     const solo = !!c.solo;
     const now = c.now || c.status;
+    const kop = (html) => (dekt ? '' : `<div class="mt-nu-kop">${html}</div>`);
     let h = '';
     if (now === 'pending') {
-      h = `<div class="mt-lbl">Status</div><h3>Ontvangen<em>.</em></h3>
-        <p>We bekijken ${solo ? 'je aanmelding' : 'je team'}. Het besluit zie je hier${zonderMail(c) ? '' : ', en je krijgt het ook per mail'}.</p>`;
+      h = kop(`<div class="mt-lbl">Status</div><h3>Ontvangen<em>.</em></h3>
+        <p>We bekijken ${solo ? 'je aanmelding' : 'je team'}. Het besluit zie je hier${zonderMail(c) ? '' : ', en je krijgt het ook per mail'}.</p>`);
     } else if (now === 'waitlist') {
-      h = `<div class="mt-lbl">Status</div><h3>Wachtlijst<em>.</em></h3>
-        <p>Er is nu geen plek. ${zonderMail(c) ? 'Komt er een plek vrij, dan schuif je door en zie je het hier. Kijk af en toe even: er komt geen mail.' : 'Komt er een plek vrij, dan zie je het hier en krijg je een mail.'}</p>${reden(c)}`;
+      h = kop(`<div class="mt-lbl">Status</div><h3>Wachtlijst<em>.</em></h3>
+        <p>Er is nu geen plek. ${zonderMail(c) ? 'Komt er een plek vrij, dan schuif je door en zie je het hier. Kijk af en toe even: er komt geen mail.' : 'Komt er een plek vrij, dan zie je het hier en krijg je een mail.'}</p>`) + reden(c);
     } else if (now === 'rejected') {
       h = `<div class="mt-lbl">Status</div><h3>Afgewezen<em>.</em></h3>
         <p>${solo ? 'Je aanmelding' : 'De aanmelding van je team'} gaat helaas niet door.</p>${reden(c)}${welkom()}${vragen()}`;
@@ -471,9 +481,9 @@
            <p>Zodra de datum bekend is, staat hij hier${LOCATIE ? ` (${esc(LOCATIE)})` : ''}.</p>`;
       h += schemaStuk(c, gespeeld(c) ? 'Jouw volgende wedstrijd' : 'Jouw eerste wedstrijd');
     } else if (now === 'show_qr') {
-      h = `<div class="mt-lbl">Vandaag</div><h3>Laat dit zien bij de ingang<em>.</em></h3>
+      h = kop(`<div class="mt-lbl">Vandaag</div><h3>Laat dit zien bij de ingang<em>.</em></h3>
         <p>Zet je scherm op de felste stand. Lukt scannen niet? Noem de check-in-code.</p>
-        ${c.checkin && qrSrc(c.checkin.qr_svg) ? `<div class="mt-rij"><button type="button" class="mt-knop accent" data-qr="${esc(c.team_id)}">Toon de QR groot</button></div>` : ''}`;
+        ${c.checkin && qrSrc(c.checkin.qr_svg) ? `<div class="mt-rij"><button type="button" class="mt-knop accent" data-qr="${esc(c.team_id)}">Toon de QR groot</button></div>` : ''}`);
       h += schemaStuk(c, gespeeld(c) ? 'Jouw volgende wedstrijd' : 'Jouw eerste wedstrijd');
     } else if (now === 'checked_in') {
       h = `<div class="mt-lbl">Je bent binnen</div><h3>Ingecheckt${c.checkin && c.checkin.checked_in_time ? ` om ${esc(c.checkin.checked_in_time)}` : ''}<em>.</em></h3>`;
@@ -484,17 +494,48 @@
     } else {   // done
       const f = c.final;
       if (f && Number.isInteger(f.pos)) {
-        h = `<div class="mt-lbl">Eindstand</div><h3>${f.pos === 1 ? 'Kampioen' : `${esc(f.pos)}e plek`}<em>.</em></h3>
-          <p>${f.pos === 1 ? `${solo ? 'Je hebt' : 'Jullie hebben'} gewonnen. Gefeliciteerd!` : `${solo ? 'Je bent' : 'Jullie zijn'} ${esc(f.pos)}e geworden${Number.isInteger(f.of) ? ` van de ${esc(f.of)}` : ''}.`}</p>`;
+        h = kop(`<div class="mt-lbl">Eindstand</div><h3>${f.pos === 1 ? 'Kampioen' : `${esc(f.pos)}e plek`}<em>.</em></h3>
+          <p>${f.pos === 1 ? `${solo ? 'Je hebt' : 'Jullie hebben'} gewonnen. Gefeliciteerd!` : `${solo ? 'Je bent' : 'Jullie zijn'} ${esc(f.pos)}e geworden${Number.isInteger(f.of) ? ` van de ${esc(f.of)}` : ''}.`}</p>`);
       } else {
-        h = `<div class="mt-lbl">Geweest</div><h3>Het zit erop<em>.</em></h3><p>Bedankt voor het meedoen.</p>`;
+        h = kop(`<div class="mt-lbl">Geweest</div><h3>Het zit erop<em>.</em></h3><p>Bedankt voor het meedoen.</p>`);
       }
       const url = c.survey && typeof c.survey.url === 'string' && /^\/feedback(\?[A-Za-z0-9._~=&%-]*)?$/.test(c.survey.url) ? c.survey.url : '';
       if (url) h += `<div class="mt-lbl">Hoe was het?</div><p>Vertel het ons in twee minuten. Daar wordt de volgende keer beter van.</p>
         <div class="mt-rij"><a class="mt-knop accent" href="${esc(url)}">Vul de enquête in</a></div>`;
     }
+    if (!h.trim()) return '';   // de gids zei het al en er is verder niets te melden
     const wie = meerKaarten && nuEerst(c) ? `<div class="mt-wie mono">${[c.sport && c.sport.name, c.name].filter(Boolean).map(esc).join(' · ')}</div>` : '';
     return `<section class="mt-nu" aria-label="Wat nu telt">${wie}${h}</section>`;
+  }
+
+  // ── "Wat nu?" van JVO Smart ────────────────────────────────────────────────
+  // Met meer aanmeldingen staat de strook bij één kaart: wie nu of straks vandaag speelt gaat
+  // voor, dan een kaart waar je zelf nog iets moet doen (code bewaren), dan wie door is, dan de rest.
+  let gidsKaart = null;
+  // Onder deze sleutel onthoudt het toestel wat je afvinkte: de teamcode (nummers beginnen na een schone start opnieuw).
+  const wieVan = (c) => String(c.team_code || c.team_id);
+  function kiesGidsKaart(cards) {
+    if (!G) return null;
+    const ok = cards.map((c, i) => ({ c, i, s: c.gids ? G.stapVanNu(c.gids, wieVan(c)) : null })).filter(x => x.s);
+    const rang = (x) => { const r = x.c.gids.regel, n = r && Number.isInteger(r.rang) ? r.rang : 3; return n <= 1 ? n : (x.s.zelf && x.c._kind === 'own' ? 1.5 : n); };
+    const tijd = (x) => { const w = x.c.gids.regel && x.c.gids.regel.wanneer; return w && Number(w.exp_ms) > 0 ? Number(w.exp_ms) : Infinity; };
+    ok.sort((a, b) => rang(a) - rang(b) || tijd(a) - tijd(b) || a.i - b.i);
+    return ok.length ? ok[0].c.team_id : null;
+  }
+  // Meldingen aanbieden: alleen als de server zegt dat het kan, dit toestel het kan en ze nog
+  // uit staan. De tik brengt je naar het bestaande vak met de knop; aan gaat het nooit vanzelf.
+  function meldAanbod(c) {
+    if (!c.gids || !c.gids.aanbod || !c.gids.aanbod.meld || !pushKan()) return false;
+    const st = meldStaat();
+    return st.kaarten.some(k => k.team_id === c.team_id) && !kaartAan(c, st.perm);
+  }
+  function watNu(c) {
+    if (!G || gidsKaart !== c.team_id || !c.gids) return { html: '', dekt: false };
+    const stap = G.stapVanNu(c.gids, wieVan(c));
+    if (!stap) return { html: '', dekt: false };
+    const own = c._kind === 'own';
+    const html = G.strook(c.gids, { teamId: c.team_id, wie: wieVan(c), meld: meldAanbod(c), kan: { deel: own && !c.solo && !!c.team_code, qr: !!(c.checkin && qrSrc(c.checkin.qr_svg)) } });
+    return { html, dekt: !!html && !!stap.dekt && stap.dekt === (c.now || c.status) };
   }
 
   function acties(c) {
@@ -507,10 +548,10 @@
   }
 
   function blok(c, ev) {
-    const w = wedstrijden(c), s = stand(c);
+    const w = wedstrijden(c), s = stand(c), g = watNu(c);
     return `<section class="mt-blok${c.now === 'show_qr' ? ' qr-eerst' : ''}${nuEerst(c) ? ' nu-eerst' : ''}" id="mt-team-${esc(c.team_id)}" data-team="${esc(c.team_id)}" tabindex="-1">
       <div class="mt-links">${pas(c)}${eersteTip && eersteTip === c.team_id ? '<p class="mt-tip"><a href="#mt-install" data-naar="mt-install">Zet deze app op je beginscherm</a></p>' : ''}${acties(c)}</div>
-      <div class="mt-rechts">${nu(c, ev)}${w || s ? `<div class="mt-onderdelen">${w}${s}</div>` : ''}</div>
+      <div class="mt-rechts">${g.html}${nu(c, ev, g.dekt)}${w || s ? `<div class="mt-onderdelen">${w}${s}</div>` : ''}</div>
     </section>`;
   }
 
@@ -570,6 +611,9 @@
     const alleSolo = cards.length > 0 && cards.every(c => c.solo);
     meerKaarten = cards.length > 1;
     eersteTip = cards.length && installToon() ? cards[0].team_id : null;
+    gidsKaart = kiesGidsKaart(cards);
+    const gk = gidsKaart != null ? cards.find(c => c.team_id === gidsKaart) : null;
+    const gidsStaat = gk ? [gidsKaart, (G.stapVanNu(gk.gids, wieVan(gk)) || {}).id, meldAanbod(gk)] : 0;
     const kop = alleSolo ? 'Mijn aanmelding' : 'Mijn team';
     $('mt-install-uitleg').textContent = `Dan open je ${alleSolo ? 'je aanmelding' : 'Mijn team'} en het live-bord met één tik, ook zonder internet.`;
     $('mt-kop').firstChild.nodeValue = kop;
@@ -579,7 +623,7 @@
     net.hidden = !(state && state.stale);
     if (state && state.stale) net.textContent = state.druk ? 'Even druk' : (state.at ? `Offline · ${tijdVan(state.at)}` : 'Offline');
 
-    const nieuw = JSON.stringify([cards.map(kaal), state && state.event, [...bewaard], geenKaart, !!(state && state.stale), state && state.stale ? [state.at, !!state.druk] : 0, eersteTip, paginaKlaar]);
+    const nieuw = JSON.stringify([cards.map(kaal), state && state.event, [...bewaard], geenKaart, !!(state && state.stale), state && state.stale ? [state.at, !!state.druk] : 0, eersteTip, paginaKlaar, gidsStaat]);
     if (nieuw !== sig) {
       sig = nieuw;
       const fq = document.activeElement && document.activeElement.closest ? document.activeElement.closest('#mt-app [data-qr], #mt-app [data-deel]') : null;
@@ -594,7 +638,9 @@
         if (ph) ph.replaceWith(ringNode(c));
       }
       if (fsel) { const el = app.querySelector(fsel); if (el) el.focus({ preventScroll: true }); }
+      if (G) G.tikWanneer();
     }
+    if (deelZeg && deelZeg.tot > Date.now()) { const el = app.querySelector(`[data-jg-zeg="${deelZeg.id}"]`) || app.querySelector(`[data-deel-msg="${deelZeg.id}"]`); if (el && el.textContent !== deelZeg.tekst) el.textContent = deelZeg.tekst; }
     renderMeld();
     renderSleutel();
     renderInstall();
@@ -645,18 +691,22 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') sluitGroot(); });
 
   // ── Laat je team meekijken: de teamcode als link ───────────────────────────
+  let deelZeg = null;   // { id, tekst, tot }: de regel na het delen blijft staan als de pagina hertekent
   async function deel(id, knop) {
     const c = state && state.cards.find(x => x.team_id === id);
-    if (!c || !c.team_code) return;
-    const zeg = (t) => { const el = app.querySelector(`[data-deel-msg="${id}"]`); if (el) el.textContent = t; };
+    if (!c || !c.team_code) return false;
+    const vanGids = !!(knop && knop.closest && knop.closest('[data-jg-wat]'));
+    const zeg = (t) => { deelZeg = { id, tekst: t, tot: Date.now() + 12000 }; const el = (vanGids && app.querySelector(`[data-jg-zeg="${id}"]`)) || app.querySelector(`[data-deel-msg="${id}"]`); if (el) el.textContent = t; };
     const url = `${location.origin}/mijn#c=${encodeURIComponent(c.team_code)}`;
     const tekst = `Kijk mee met ${c.name}: status, QR voor de check-in en onze wedstrijden. Teamcode ${c.team_code}.`;
     try {
-      if (navigator.share) { await navigator.share({ title: c.name, text: tekst, url }); return; }
-    } catch (e) { if (e && e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(`${tekst} ${url}`); zeg('Link gekopieerd. Plak hem in je teamgroep.'); }
+      if (navigator.share) { await navigator.share({ title: c.name, text: tekst, url }); return true; }
+    } catch (e) { if (e && e.name === 'AbortError') return false; }
+    let ok = false;
+    try { await navigator.clipboard.writeText(`${tekst} ${url}`); zeg('Link gekopieerd. Plak hem in je teamgroep.'); ok = true; }
     catch { zeg(`Geef je teamgenoten de teamcode ${c.team_code}. Die typen ze op de pagina Mijn team.`); }
-    if (knop) knop.focus();
+    if (knop && knop.isConnected) knop.focus();
+    return ok;
   }
   function spring(id) {
     const doel = $(id);
@@ -667,6 +717,8 @@
   }
   app.addEventListener('toggle', (e) => { const d = e.target; if (d && d.dataset && d.dataset.vouw) vouw.set(d.dataset.vouw, d.open); }, true);
   app.addEventListener('click', (e) => {
+    // De knoppen van "Wat nu?": afvinken, delen, de QR groot, naar het vak met de meldingen.
+    if (G && G.klik(e, { opnieuw: (act) => { if (act !== 'deel') deelZeg = null; sig = ''; render(); }, deel: (id, knop) => deel(id, knop), qr: (id) => toonGroot(id), meld: () => spring('mt-meld') })) return;
     const n = e.target.closest('[data-naar]');
     if (n) { e.preventDefault(); spring(n.dataset.naar); return; }
     const q = e.target.closest('[data-qr]');

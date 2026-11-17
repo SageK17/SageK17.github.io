@@ -614,9 +614,28 @@
       if (begonnen) { submitBtn.disabled = true; submitBtn.dataset.begonnen = '1'; }
       else if (submitBtn.dataset.begonnen) { submitBtn.disabled = false; delete submitBtn.dataset.begonnen; }
     }
+    // JVO Smart: hooguit één regel van de server die bij deze keuze helpt. Al begonnen of vol gaat
+    // voor (dat bepaalt of en hoe je meedoet), dan de gekozen naam ("je wordt … 2"), dan de rest.
+    // Stuurt de server niets mee (helper uit), dan staan hieronder de eigen teksten van deze pagina.
+    const G = window.JVO_GIDS, smartEl = $('stad-smart');
+    let regel = null;
+    if (G && smartEl && stadComp) {
+      const s = stadComp.smart && hasText(stadComp.smart.tekst) ? stadComp.smart : null;
+      const perNaam = stadComp.smart_stad && typeof stadComp.smart_stad === 'object' && naam && Object.prototype.hasOwnProperty.call(stadComp.smart_stad, naam) ? stadComp.smart_stad[naam] : null;
+      regel = s && (s.id === 'begonnen' || s.id === 'vol') ? s : (hasText(perNaam) ? { tekst: String(perNaam), ernst: 'info' } : s);
+    }
+    if (smartEl) {
+      smartEl.hidden = !regel;
+      const sleutel = regel ? regel.ernst + '|' + regel.tekst : '';
+      if (smartEl.dataset.sleutel !== sleutel) {
+        smartEl.dataset.sleutel = sleutel;
+        smartEl.className = 'jvs jvs-deur' + (regel ? ' ' + G.ernstKlas(regel.ernst) : '');
+        smartEl.innerHTML = regel ? G.mark(true) + '<span><span class="jvs-sr">JVO Smart: </span>' + G.esc(regel.tekst) + '</span>' : '';
+      }
+    }
     const noot = $('stad-vol');
     if (noot) {
-      noot.hidden = !(vol || begonnen);
+      noot.hidden = !!regel || !(vol || begonnen);
       if (begonnen) noot.textContent = `${stadComps.length > 1 ? `${stadComp.name} is al begonnen.` : 'Het toernooi is al begonnen.'} Aanmelden kan niet meer; vraag het de organisatie.`;
       else if (vol) noot.textContent = `${stadComps.length > 1 ? `${stadComp.name} zit vol.` : 'Alle plekken zijn vergeven.'} Je komt op de wachtlijst en schuift vanzelf door als er een plek vrijkomt.`;
     }
@@ -800,6 +819,10 @@
     const code = $('stad-klaar-code'), codeVak = $('stad-klaar-codebox');
     if (code) code.textContent = hasText(json.mijn.team_code) ? String(json.mijn.team_code) : '';
     if (codeVak) codeVak.hidden = !hasText(json.mijn.team_code);
+    // "Wat nu?" van JVO Smart: de stap van nu uit het antwoord van de server, met de twee
+    // volgende klein erbij. Geen gids in het antwoord (helper uit): het scherm is zoals het was.
+    klaarGids = json.gids && Number.isInteger(json.team_id) ? { gids: json.gids, id: json.team_id, naam, code: hasText(json.mijn.team_code) ? String(json.mijn.team_code) : '' } : null;
+    tekenKlaarGids();
     const open = $('stad-klaar-open');
     // De sleutel staat op dit toestel; alleen als bewaren niet lukte reist hij achter de # mee.
     if (open) open.href = '/mijn' + (Number.isInteger(json.team_id) ? '?team=' + json.team_id : '') + (kept ? '' : '#k=' + json.mijn.key);
@@ -817,6 +840,16 @@
     // De tellers op de knoppen en de lijst "wie doet er mee" lopen mee.
     haalStadComps().then((ok) => { if (ok) tekenStadCats(); });
     tekenWie();
+  }
+  let klaarGids = null;
+  function tekenKlaarGids() {
+    const G = window.JVO_GIDS, vak = $('stad-klaar-gids'), codeVak = $('stad-klaar-codebox');
+    if (!vak) return;
+    const html = G && klaarGids ? G.strook(klaarGids.gids, { teamId: klaarGids.id, wie: klaarGids.code || klaarGids.id, straks: 2, kan: { deel: !!klaarGids.code } }) : '';
+    if (vak.dataset.html !== html) { vak.dataset.html = html; vak.innerHTML = html; }
+    // De strook zegt bij de eerste stap al dat je de code moet bewaren: dan niet twee keer.
+    const stap = html ? G.stapVanNu(klaarGids.gids, String(klaarGids.code || klaarGids.id)) : null;
+    if (codeVak) codeVak.classList.toggle('met-gids', !!stap && stap.id === 'code');
   }
   function stadOpnieuw() {
     stadVraagGehad = true;
@@ -853,6 +886,12 @@
       const i = hier >= 0 ? hier : (stadComp ? stadComps.findIndex(c => c.id === stadComp.id) : 0);
       const stap = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1;
       kiesStadComp(stadComps[(i + stap + stadComps.length) % stadComps.length], true);
+    });
+    $('stad-klaar-gids')?.addEventListener('click', (e) => {
+      const G = window.JVO_GIDS;
+      if (!G || !klaarGids) return;
+      const zeg = (t) => { const el = document.querySelector('#stad-klaar-gids [data-jg-zeg]'); if (el) el.textContent = t; };
+      G.klik(e, { opnieuw: tekenKlaarGids, deel: () => G.deelCode(klaarGids.naam, klaarGids.code, zeg) });
     });
     $('stad-al-nog')?.addEventListener('click', stadOpnieuw);
     $('stad-klaar-nog')?.addEventListener('click', stadOpnieuw);

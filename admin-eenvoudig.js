@@ -21,6 +21,12 @@
 //   - Voor admin.js en admin-regie.js gedraagt deze schil zich als de hub: het object
 //     window.JVO_ADMIN_HUB antwoordt in deze stand met de plekken van hier (zie onderaan).
 //
+// JVO SMART ALS GIDS (jvo-gids.js + GET /api/admin/smart/gids): de server rekent uit wat de
+// volgende stap is, de voortgang en wat niet klopt; deze schil tekent dat op het startscherm
+// (#ae-gids), zet hooguit één hint bovenaan elk onderdeel (#ae-hint-…) en brengt je met de
+// knop naar de plek zelf (breng(): onderdeel open, veld in beeld, even oplichten, focus erop).
+// Staat de gids uit, dan is alles zoals het was: het startscherm toont weer "Nog te regelen".
+//
 // Adressen: #/ · #/aanmeldingen · #/schema · #/dag · #/instellingen. Geen eigen timer: dit
 // loopt mee met renderAll van admin.js en met elke verversing van de regie-gegevens.
 // Alles wat van gebruikers komt gaat door esc() voordat het in innerHTML belandt.
@@ -30,6 +36,7 @@
   if (!A || !RG || !root) return;
   const $ = (id) => document.getElementById(id);
   const esc = A.escape;
+  const G = window.JVO_GIDS || null;   // gedeelde bouwstenen van de gids; ontbreekt het bestand, dan is er geen gids
   const svg = (d, s = 22) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const IC = {
     start: svg('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
@@ -73,6 +80,14 @@
   let kopie = null;             // { id, tot } net gekopieerde link
   let qrOpen = null;            // welke link zijn QR toont
   let standBezig = false;
+  // De gids van JVO Smart: het laatste antwoord van de server (null = nog niet binnen).
+  let gids = null, gidsBezig = false, gidsNog = false, gidsAt = 0, gidsStand = '';
+  let gidsTerug = null;         // { stap, kort, tot } net afgevinkt: even "Toch niet" aanbieden
+  let routeOpen = false, letopOpen = false;
+  let gebracht = null;          // { stap, doel } de gids bracht je hierheen; is dat geregeld, dan wijst hij verder
+  let volg = null;              // { tekst, knop } de regel "volgende stap" onderaan een onderdeel
+  let naKlik1 = null, naKlik2 = null;
+  let vlaggen = null, vlagBezig = false;   // /api/smart/flags, voor de schakelaar bij Instellingen
   const thuis = new Map();      // verhuisd blok → { ph, open, vouw }
   const el = {};
 
@@ -157,6 +172,7 @@
     if (el.klaar) return;
     el.klaar = true;
     const navA = (id, naam, kort, icoon) => `<a class="ae-nav-a" href="#/${id}" data-deel="${id}"><span class="ae-nav-i">${icoon}</span><span class="ae-nav-t"><span class="ae-nav-lang">${naam}</span><span class="ae-nav-kort">${kort}</span></span><span class="ae-nav-n" data-n="${id}"></span></a>`;
+    const hintPlek = (id) => `<div class="jvs jvs-hint" id="ae-hint-${id}" role="note" hidden></div>`;
     const kop = (id, naam) => `<header class="ae-kop"><h2 class="ae-titel" id="ae-h-${id}" tabindex="-1">${naam}</h2><p class="ae-sub" id="ae-sub-${id}"></p></header>`;
     root.innerHTML = `
       <nav class="ae-nav" id="ae-nav" aria-label="Onderdelen">
@@ -170,6 +186,8 @@
             <h2 class="ae-titel ae-titel-home" id="ae-h-home" tabindex="-1">—</h2>
             <p class="ae-sub" id="ae-sub-home"></p>
           </header>
+          <section class="jvs jvs-gids" id="ae-gids" aria-label="JVO Smart: je volgende stap" hidden></section>
+          <p class="ae-sr" id="ae-gids-live" role="status" aria-live="polite"></p>
           <div class="ae-tegels" id="ae-tegels"></div>
           <div class="ae-open" id="ae-open" hidden></div>
           <footer class="ae-voet" id="ae-voet"></footer>
@@ -177,6 +195,7 @@
 
         <section class="ae-deel" id="ae-d-aanmeldingen" hidden aria-labelledby="ae-h-aanmeldingen">
           ${kop('aanmeldingen', 'Aanmeldingen')}
+          ${hintPlek('aanmeldingen')}
           <div class="ae-cats" id="ae-a-cats" role="group" aria-label="Kies wat je ziet"></div>
           <div id="ae-a-nieuw"></div>
           <div class="ae-slot ae-slot-teams" id="ae-a-slot"></div>
@@ -184,6 +203,7 @@
 
         <section class="ae-deel" id="ae-d-schema" hidden aria-labelledby="ae-h-schema">
           ${kop('schema', 'Poules en schema')}
+          ${hintPlek('schema')}
           <div class="ae-cats ae-cats-een" id="ae-s-cats" role="group" aria-label="Kies van wie je het schema ziet"></div>
           <div class="ae-acties" id="ae-s-acties"></div>
           <p class="ae-leeg" id="ae-s-leeg" hidden></p>
@@ -194,6 +214,7 @@
 
         <section class="ae-deel" id="ae-d-dag" hidden aria-labelledby="ae-h-dag">
           <h2 class="ae-sr" id="ae-h-dag" tabindex="-1">Wedstrijddag</h2>
+          ${hintPlek('dag')}
           <div class="ae-slot" id="ae-g-slot"></div>
           <div class="ae-slot" id="ae-g-hoofd" hidden></div>
           <section class="ae-kaart" id="ae-g-links" aria-labelledby="ae-g-links-h"></section>
@@ -201,18 +222,40 @@
 
         <section class="ae-deel" id="ae-d-instellingen" hidden aria-labelledby="ae-h-instellingen">
           ${kop('instellingen', 'Instellingen')}
+          ${hintPlek('instellingen')}
           <section class="ae-kaart" id="ae-i-open" aria-label="Aanmelden open of dicht"></section>
+          <section class="ae-kaart" id="ae-i-deel" aria-labelledby="ae-i-deel-h"></section>
           <section class="ae-kaart" id="ae-i-cats" aria-labelledby="ae-i-cats-h"></section>
           <div class="ae-slot ae-slot-evc" id="ae-i-slot"></div>
           <div class="ae-meer" id="ae-i-meer"></div>
+          <section class="ae-kaart" id="ae-i-smart" aria-label="JVO Smart"></section>
           <div class="ae-slot" id="ae-i-rest"></div>
           <div class="ae-voet" id="ae-i-voet"></div>
         </section>
-      </div>`;
+      </div>
+      <div class="jvs jvs-hint jvs-volg" id="ae-volg" role="status" hidden></div>`;
     Object.assign(el, { nav: $('ae-nav'), home: $('ae-home') });
     root.addEventListener('click', klik);
     root.addEventListener('submit', verstuur);
     root.addEventListener('input', (e) => { const f = e.target.closest('form[data-ae-form]'); if (f) f.dataset.vuil = '1'; });
+    // Ga je zelf verder met typen, dan is de regel "volgende stap" onderaan niet meer nodig (en staat hij de opslaan-balk niet in de weg).
+    root.addEventListener('input', (e) => { if (volg && !e.target.closest('#ae-volg')) { volg = null; tekenVolg(); } });
+    root.addEventListener('change', (e) => { if (e.target && e.target.id === 'ae-smart-aan') zetSmart(e.target); });
+    // Na een knop in een van de bestaande blokken (opslaan, vastzetten, pauzeren) kan de stand
+    // anders zijn: de gids kijkt dan kort daarna opnieuw, zonder op de volgende verversing te wachten.
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('button, input[type="checkbox"]');
+      if (!b || b.closest('[data-ae^="gids-"], .ae-nav, .ae-cats') || b.dataset.ae === 'qr' || b.dataset.ae === 'kopie' || b.dataset.ae === 'meer') return;
+      clearTimeout(naKlik1); clearTimeout(naKlik2);
+      naKlik1 = setTimeout(() => laadGids(true), 1300);
+      naKlik2 = setTimeout(() => laadGids(true), 4000);
+    });
+    // Wat je zelf open- of dichtklapt in de gids blijft zo bij de volgende verversing.
+    root.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if (d && d.classList && d.classList.contains('jvs-route')) routeOpen = d.open;
+      if (d && d.id === 'ae-letop-meer') letopOpen = d.open;
+    }, true);
   }
 
   // ── Verhuizen en terugzetten ─────────────────────────────────────────────
@@ -309,6 +352,11 @@
     window.addEventListener('hashchange', opHash);
     window.addEventListener('popstate', opHash);
     laadCfg(true);
+    if (!gids) gids = leesGids();
+    // Eerste keer in dit tabblad en nog geen gids binnen: het scherm komt in één keer in beeld,
+    // mét de gids, in plaats van eerst zonder en dan verspringend. Hooguit anderhalve seconde.
+    if (G && !gids && !gidsUitHint()) { root.classList.add('ae-gids-wacht'); setTimeout(() => root.classList.remove('ae-gids-wacht'), 1500); }
+    laadGids('zeker');
     // Overzicht en Toernooi blijven voor admin.js "open": zo verversen hun blokken door.
     A.switchTab('overview', { vanHub: true });
     leesHash(true);
@@ -317,6 +365,7 @@
   function zetUit() {
     if (!aan) return;
     aan = false;
+    root.classList.remove('ae-gids-wacht');
     window.removeEventListener('hashchange', opHash);
     window.removeEventListener('popstate', opHash);
     zetTerug();
@@ -410,7 +459,8 @@
     $('tab-tournament')?.classList.add('active');
     zetSport();
     teken();
-    if (route === 'instellingen' && A.laadEvenement && nieuw) { A.laadEvenement({ zacht: true }); RG.refresh(); laadCfg(true); }
+    if (route === 'instellingen' && A.laadEvenement && nieuw) { A.laadEvenement({ zacht: true }); RG.refresh(); laadCfg(true); laadVlaggen(); }
+    if (nieuw && !eerste) laadGids('zeker');
     if (nieuw) {
       window.scrollTo(0, 0);
       const h = $(`ae-h-${route || 'home'}`);
@@ -428,6 +478,8 @@
     else if (route === 'schema') tekenSchema(d);
     else if (route === 'dag') tekenDag(d);
     else if (route === 'instellingen') tekenInstellingen(d);
+    if (!route) { volg = null; gebracht = null; }
+    tekenVolg();
   }
   // Het hoofdtoernooi dat (bij aanmelden met alleen een stad) als categorie in gebruik is.
   // Dat kan zijn eigen schema pas maken bij veel aanmeldingen; een gewone categorie al bij twee.
@@ -501,7 +553,7 @@
     const subEl = $('ae-sub-home');
     const subT = RG.weg() ? 'Geen verbinding: dit is de laatst bekende stand.' : sub;
     if (subEl.textContent !== subT) subEl.textContent = subT;
-    if (!d) { setHtml($('ae-tegels'), '<p class="ae-leeg">Laden…</p>'); return; }
+    if (!d) { tekenGids(); setHtml($('ae-tegels'), '<p class="ae-leeg">Laden…</p>'); return; }
 
     const lijst = cats(), tot = d.totals || {};
     const tm = teams().filter(t => t.status === 'approved');
@@ -557,6 +609,8 @@
       eigen.push({ kort: botsTekst(c, met), competition_id: c.id });
     }
     const punten = eigen.concat((d.checks || []).filter(c => c && c.level !== 'ok' && !c.mail && !c.host && !(hf && /hoofdtoernooi/i.test(String(c.text || ''))))).slice(0, 5);
+    const metGids = tekenGids();
+    if (metGids) punten.length = 0;      // dezelfde punten staan dan bij "Let op" in de gids
     const openEl = $('ae-open');
     setHtml(openEl, punten.length ? `<h3 class="ae-tussenkop">Nog te regelen</h3><ul class="ae-punten">${punten.map(c => {
       const [afd, t] = String(c.ga || '').split('/');
@@ -602,6 +656,7 @@
     const subEl = $('ae-sub-aanmeldingen');
     if (subEl.textContent !== sub) subEl.textContent = sub;
     catKnoppen($('ae-a-cats'), true);
+    tekenHint('aanmeldingen');
 
     // Met de hand toevoegen (bestaande route; mag ook als aanmelden dicht is of de categorie vol).
     const doel = $('ae-a-nieuw');
@@ -652,6 +707,7 @@
     const sub = !d ? 'Laden…' : !lijst.length ? '' : lijst.length > 1 ? `Per ${w.cat}: wie in welke poule zit, het tijdschema en de tijden.` : 'Wie in welke poule zit, het tijdschema en de tijden.';
     if (subEl.textContent !== sub) subEl.textContent = sub;
     catKnoppen($('ae-s-cats'), false);
+    tekenHint('schema');
     const leeg = $('ae-s-leeg');
     const leegT = d && !lijst.length ? `Er is nog geen ${w.cat}. Maak er een bij Instellingen.` : '';
     if (leeg.textContent !== leegT) leeg.textContent = leegT;
@@ -715,7 +771,7 @@
     ];
     // De omroep kent alleen het hoofdtoernooi: zonder schema daar is dat scherm leeg.
     if (m && m.active && m.matches.total > 0) lijst.push({ id: 'omroep', pad: '/omroep', naam: 'Omroep', uitleg: 'Zinnen om voor te lezen, voor wie de microfoon heeft.' });
-    lijst.push({ id: 'bord', pad: d && d.hub_mode ? '/sporten' : '/toernooi', naam: 'Live-bord', uitleg: 'Wat iedereen ziet: standen en uitslagen. Ook voor een groot scherm.', open: true });
+    lijst.push({ id: 'bord', pad: d && d.hub_mode ? '/sporten' : '/toernooi', naam: 'Live-bord', uitleg: 'Wat iedereen ziet: standen, uitslagen en na afloop de eindstand. Ook voor een groot scherm.', publiek: true });
     return lijst;
   }
   function qrSvg(t) {
@@ -732,6 +788,7 @@
   function tekenDag(d) {
     const los = !RG.isOn();      // één toernooi: de wedstrijddag van de regie-laag bestaat dan niet
     $('ae-g-hoofd').hidden = !los;
+    tekenHint('dag');
     const doel = $('ae-g-links');
     if (!d) { setHtml(doel, ''); return; }
     const sy = d.system || {};
@@ -740,14 +797,14 @@
     const tm = teams().filter(t => t.status === 'approved'), binnen = tm.filter(t => t.checked_in_at).length;
     const rij = (x) => {
       const url = basis + x.pad, open = qrOpen === x.id;
-      return `<li class="ae-scherm${open ? ' is-qr' : ''}">
+      return `<li class="ae-scherm${open ? ' is-qr' : ''}" id="ae-scherm-${esc(x.id)}">
           <div class="ae-scherm-t"><b>${esc(x.naam)}</b><span>${esc(x.uitleg)}${x.id === 'checkin' && tm.length ? ` Nu ${binnen} van ${tm.length} binnen.` : ''}</span></div>
           <div class="ae-scherm-k">
             <a class="rg-knop${x.id === 'bediening' ? '' : ' rg-knop-rustig'} ae-knop" href="${esc(x.pad)}" target="_blank" rel="noopener" aria-label="${esc(x.naam)} openen in een nieuw tabblad">Open ↗</a>
-            ${x.open ? '' : `<button type="button" class="rg-knop rg-knop-rustig ae-knop${nuKopie === x.id ? ' is-klaar' : ''}" data-ae="kopie" data-id="${esc(x.id)}" aria-label="Kopieer de link van ${esc(x.naam)}">${nuKopie === x.id ? `${IC.check} Gekopieerd` : 'Kopieer link'}</button>
-            ${kanQr ? `<button type="button" class="rg-knop rg-knop-rustig ae-knop" data-ae="qr" data-id="${esc(x.id)}" aria-expanded="${open}" aria-label="QR-code van ${esc(x.naam)}">QR</button>` : ''}`}
+            <button type="button" class="rg-knop rg-knop-rustig ae-knop${nuKopie === x.id ? ' is-klaar' : ''}" data-ae="kopie" data-id="${esc(x.id)}" aria-label="Kopieer de link van ${esc(x.naam)}">${nuKopie === x.id ? `${IC.check} Gekopieerd` : 'Kopieer link'}</button>
+            ${kanQr ? `<button type="button" class="rg-knop rg-knop-rustig ae-knop" data-ae="qr" data-id="${esc(x.id)}" aria-expanded="${open}" aria-label="QR-code van ${esc(x.naam)}">QR</button>` : ''}
           </div>
-          ${open ? `<div class="ae-scherm-qr">${qrSvg(url)}<p><b>Scan met de camera van de telefoon van de crew.</b> Dan opent dit scherm daar meteen; daarna vraagt het de crew-code.</p></div>` : ''}
+          ${open ? `<div class="ae-scherm-qr">${qrSvg(url)}<p>${x.publiek ? '<b>Scan met de camera van een telefoon.</b> Dan opent het live-bord daar meteen. Inloggen hoeft niet: iedereen mag meekijken.' : '<b>Scan met de camera van de telefoon van de crew.</b> Dan opent dit scherm daar meteen; daarna vraagt het de crew-code.'}</p></div>` : ''}
         </li>`;
     };
     const prints = cats().filter(c => c.matches.total > 0);
@@ -759,8 +816,10 @@
       ${prints.length ? `<div class="ae-prints"><span>Op papier, voor als het internet wegvalt:</span>${prints.map(c => `<a class="ae-link" href="${c.is_default ? '/print' : `/print?competition=${esc(c.id)}`}" target="_blank" rel="noopener">Print ${esc(c.name)} ↗</a>`).join('')}</div>` : ''}
       <p class="ae-sr" aria-live="polite" id="ae-live"></p>`);
   }
+  const AANMELD = { id: 'aanmelden', pad: '/', naam: 'de aanmeldpagina' };
+  const linkVan = (id) => (id === AANMELD.id ? AANMELD : schermen().find(q => q.id === id));
   async function kopieer(id) {
-    const x = schermen().find(q => q.id === id);
+    const x = linkVan(id);
     if (!x) return;
     const url = basisAdres() + x.pad;
     let ok = false;
@@ -775,7 +834,8 @@
     if (!ok) { A.showToast(`Kopiëren lukte niet. De link is ${url}`, 'info'); return; }
     kopie = { id, tot: Date.now() + 2500 };
     teken();
-    const live = $('ae-live'); if (live) live.textContent = `Link van ${x.naam} gekopieerd.`;
+    const live = $(id === AANMELD.id ? 'ae-deel-live' : 'ae-live'); if (live) live.textContent = `Link van ${x.naam} gekopieerd.`;
+    gedeeld(id);
     setTimeout(() => { if (aan) teken(); }, 2600);
   }
 
@@ -785,6 +845,9 @@
     const subEl = $('ae-sub-instellingen');
     const sub = 'Wat je hier opslaat staat meteen op de site.';
     if (subEl.textContent !== sub) subEl.textContent = sub;
+    tekenHint('instellingen');
+    tekenDeel(d);
+    tekenSmart();
     // Aanmelden open of dicht: één tik.
     const reg = d && d.registration, ev = (A.evenement && A.evenement()) || null;
     const modus = ev && ev.event ? ev.event.registration : null;
@@ -834,6 +897,304 @@
       <button type="button" class="rg-knop rg-knop-rustig ae-knop" data-ae="alles">Alles tonen</button></div>`);
   }
 
+  // ── JVO Smart als gids ───────────────────────────────────────────────────
+  // De server rekent (GET /api/admin/smart/gids); hier wordt alleen getekend en gebracht.
+  const GIDS_BEWAAR = 'jvo_gids_laatst', GIDS_UIT = 'jvo_gids_uit';
+  const HELPERS = ['net-admin-04', 'net-admin-05', 'net-mijn-01', 'net-deur-01', 'net-bord-10'];
+  // Het laatste antwoord blijft in dit tabblad staan: bij verversen staat de gids er meteen
+  // (geen sprong in de pagina) en wordt hij daarna bijgewerkt.
+  function leesGids() {
+    try { const o = JSON.parse(sessionStorage.getItem(GIDS_BEWAAR) || 'null'); return o && o.v === 1 ? o : null; } catch { return null; }
+  }
+  function bewaarGids() {
+    try { sessionStorage.setItem(GIDS_BEWAAR, JSON.stringify(gids)); } catch { /* geen opslag */ }
+    try { if (gids && gids.aan === false) localStorage.setItem(GIDS_UIT, '1'); else localStorage.removeItem(GIDS_UIT); } catch { /* geen opslag */ }
+  }
+  const gidsUitHint = () => { try { return localStorage.getItem(GIDS_UIT) === '1'; } catch { return false; } };
+  // nu: true = meteen (niet op de acht seconden wachten); 'zeker' = ook als JVO Smart uit stond.
+  // Staat de gids (en elke hint) uit, dan vraagt deze pagina hem niet steeds opnieuw: alleen bij
+  // het openen, bij een ander onderdeel, na de schakelaar, of als de helpers weer aan blijken.
+  const gidsIsUit = () => !!(gids && gids.aan === false && gids.hints_aan === false);
+  async function laadGids(nu) {
+    if (!G || !aan) return;
+    if (gidsIsUit() && nu !== 'zeker') return;
+    if (gidsBezig) { if (nu) gidsNog = nu === 'zeker' ? 'zeker' : (gidsNog || true); return; }
+    if (!nu && Date.now() - gidsAt < 8000) return;
+    gidsBezig = true; gidsAt = Date.now();
+    try {
+      const r = await A.api('/api/admin/smart/gids', { stil: true });
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      if (j && j.v === 1) { gids = j; bewaarGids(); wijsVerder(); if (aan) teken(); }
+    } catch { /* geen verbinding of sessie verlopen: de gids van de vorige keer blijft staan */ }
+    gidsBezig = false;
+    root.classList.remove('ae-gids-wacht');
+    if (gidsNog) { const n = gidsNog; gidsNog = false; laadGids(n); }
+  }
+  // Loopt mee met elke verversing: is de stand veranderd (een aanmelding, een uitslag, een
+  // instelling), dan komt de gids meteen opnieuw; anders hooguit eens per acht seconden.
+  function volgGids() {
+    const d = R();
+    if (!d) return;
+    const tm = teams();
+    const stand = JSON.stringify([d.event, d.registration, d.totals, d.paused_all, d.signup_form,
+      zichtbaar().map(c => [c.id, c.name, c.active, c.max_teams, c.teams, c.matches, c.draw_open, c.draw_locked, c.start_time, c.places, c.place_label, c.delay_min]),
+      tm.length, tm.filter(t => t.checked_in_at).length, stedenlijst().length]);
+    const anders = stand !== gidsStand;
+    gidsStand = stand;
+    laadGids(anders && Date.now() - gidsAt > 1200);
+  }
+  // innerHTML vervangen zonder dat de focus of een opengeklapt blok verdwijnt.
+  function setHtmlMetFocus(el, html) {
+    if (!el || el.__ae === html) return false;
+    const f = el.contains(document.activeElement) ? document.activeElement.closest('[data-fk]') : null;
+    const fk = f ? f.dataset.fk : '';
+    setHtml(el, html);
+    if (fk) { const n = el.querySelector(`[data-fk="${fk}"]`); if (n) { try { n.focus({ preventScroll: true }); } catch { /* geen focus */ } } }
+    return true;
+  }
+  const gaKnop = (k, cls, fk) => (k && k.doel && k.label
+    ? `<button type="button" class="${cls}" data-ae="gids-ga" data-doel="${esc(k.doel)}"${Number.isInteger(k.cat) ? ` data-cat="${esc(k.cat)}"` : ''}${Number.isInteger(k.team) ? ` data-team="${esc(k.team)}"` : ''} data-fk="${esc(fk)}">${esc(k.label)}</button>` : '');
+  const FASE = { opzet: 'je volgende stap', dag: 'de dag zelf', na: 'na afloop' };
+  // Het startscherm. Geeft true terug als de gids in beeld staat (dan vervalt "Nog te regelen").
+  function tekenGids() {
+    const doel = $('ae-gids');
+    if (!doel) return false;
+    const weg = () => { if (!doel.hidden) doel.hidden = true; setHtml(doel, ''); return false; };
+    if (!G) return weg();
+    const s = gids && gids.aan ? gids.stap : null;
+    if (!s || !s.titel) return weg();
+    const v = gids.voortgang || {}, stappen = Array.isArray(gids.stappen) ? gids.stappen : [];
+    const opzet = gids.fase === 'opzet';
+    const streep = opzet && stappen.length ? `<span class="jvs-voortgang-s" aria-hidden="true">${stappen.map(x => `<i${x.klaar ? ' class="op"' : ''}></i>`).join('')}</span>` : '';
+    const t2 = s.tweede && s.tweede.label && s.tweede.stap
+      ? `<button type="button" class="rg-knop rg-knop-rustig ae-knop" data-ae="gids-stap" data-stap="${esc(s.tweede.stap)}" data-fk="tweede">${esc(s.tweede.label)}</button>` : '';
+    const terug = gidsTerug && gidsTerug.tot > Date.now()
+      ? `Afgevinkt: ${esc(gidsTerug.kort)}. <button type="button" class="jvs-tekstknop" data-ae="gids-stap" data-stap="${esc(gidsTerug.stap)}" data-zet="nee" data-fk="terug">Toch niet</button>` : '';
+    const klaarN = stappen.filter(x => x.klaar).length;
+    const route = opzet && stappen.length ? `<details class="jvs-route"${routeOpen ? ' open' : ''}><summary data-fk="route">${klaarN ? `Wat al klaar is (${klaarN} van ${stappen.length})` : `De hele route (${stappen.length} stappen)`}</summary>
+        <ol>${stappen.map(x => `<li class="${x.klaar ? 'is-klaar' : (x.id === s.id ? 'is-nu' : '')}"><span class="jvs-bol" aria-hidden="true">${x.klaar ? G.VINK : ''}</span><span>${esc(x.kort)}${x.klaar ? '<span class="ae-sr"> (klaar)</span>' : (x.id === s.id ? ' <em>nu</em>' : '')}</span></li>`).join('')}</ol></details>` : '';
+    // Let op: wat niet klopt. De eerste regel staat er, de rest achter "en nog …".
+    const punten = (Array.isArray(gids.let_op) ? gids.let_op : []).filter(x => x && x.tekst && !G.isWeg(`letop:${x.sleutel}`, x.sleutel));
+    const punt = (x, i) => `<li class="is-${esc(x.ernst || 'info')}"><i class="jvs-stip" aria-hidden="true"></i><span>${esc(x.tekst)}</span>${gaKnop(x.knop, 'jvs-tekstknop', `lo-${i}`)}${x.ernst === 'fout' ? '' : `<button type="button" class="jvs-x" data-ae="gids-weg" data-plek="letop:${esc(x.sleutel)}" data-sleutel="${esc(x.sleutel)}" data-fk="lx-${i}" aria-label="Verberg dit punt">${G.KRUIS}</button>`}</li>`;
+    const meer = Number(gids.let_op_meer) > 0 ? Number(gids.let_op_meer) : 0;
+    const rest = punten.slice(1);
+    const letop = punten.length ? `<div class="jvs-letop"><h4 class="jvs-letop-h">Let op</h4><ul>${punt(punten[0], 0)}</ul>
+        ${rest.length || meer ? `<details id="ae-letop-meer"${letopOpen ? ' open' : ''}><summary data-fk="lo-meer">en nog ${rest.length + meer}</summary><ul>${rest.map((x, i) => punt(x, i + 1)).join('')}${meer ? `<li><i class="jvs-stip" aria-hidden="true"></i><span>En nog ${meer} ${meer === 1 ? 'kleiner punt' : 'kleinere punten'}; die ${meer === 1 ? 'komt' : 'komen'} hier te staan zodra er ruimte is.</span></li>` : ''}</ul></details>` : ''}</div>` : '';
+    const cls = `jvs jvs-gids ${G.ernstKlas(s.ernst)}`;
+    if (doel.className !== cls) doel.className = cls;
+    doel.hidden = false;
+    setHtmlMetFocus(doel, `<div class="jvs-gids-kop">${G.mark(true)}<span class="jvs-eyebrow">JVO Smart · ${FASE[gids.fase] || FASE.opzet}</span>${v.tekst ? `<span class="jvs-voortgang"><span>${esc(v.tekst)}</span>${streep}</span>` : ''}</div>
+      <div class="jvs-gids-nu"><div><h3 class="jvs-gids-titel">${esc(s.titel)}</h3>${s.tekst ? `<p class="jvs-gids-tekst">${esc(s.tekst)}</p>` : ''}</div>
+        <div class="jvs-gids-k">${gaKnop(s.knop, 'rg-knop ae-knop', 'ga')}${t2}</div></div>
+      <p class="jvs-gids-zeg">${terug}</p>
+      ${route}${letop}
+      <p class="jvs-gids-voet">Liever zonder gids? <button type="button" class="jvs-tekstknop" data-ae="gids-ga" data-doel="instellingen/smart" data-fk="uit">Dat zet je uit bij Instellingen</button></p>`);
+    // Voor wie het scherm laat voorlezen: alleen een nieuwe stap wordt gemeld, niet elke verversing.
+    const live = $('ae-gids-live'), zeg = `JVO Smart: ${s.titel}`;
+    if (live && live.dataset.zei !== zeg) { live.dataset.zei = zeg; if (live.dataset.eerste) live.textContent = zeg; live.dataset.eerste = '1'; }
+    return true;
+  }
+  // Hooguit één regel bovenaan een onderdeel; weg te klikken, en terug zodra de stand wezenlijk verandert.
+  function tekenHint(deel) {
+    const doel = $(`ae-hint-${deel}`);
+    if (!doel) return;
+    const h = G && gids && gids.hints ? gids.hints[deel] : null;
+    const plek = `hint:${deel}`;
+    if (!h || !h.tekst || G.isWeg(plek, h.sleutel)) { if (!doel.hidden) doel.hidden = true; setHtml(doel, ''); return; }
+    // Is de hint de stap van nu, dan wijst "Laat zien" de plek op dit onderdeel aan.
+    let k = h.knop && h.knop.doel ? h.knop : null;
+    const sk = gids.aan && gids.stap ? gids.stap.knop : null;
+    if (!k && h.stap && sk && /\//.test(String(sk.doel)) && String(sk.doel).split('/')[0] === deel) k = { label: 'Laat zien', doel: sk.doel, cat: sk.cat, team: sk.team };
+    const cls = `jvs jvs-hint ${G.ernstKlas(h.ernst)}`;
+    if (doel.className !== cls) doel.className = cls;
+    doel.hidden = false;
+    setHtmlMetFocus(doel, `${G.mark(true)}<span class="jvs-hint-t"><span class="ae-sr">JVO Smart: </span>${esc(h.tekst)}</span>${gaKnop(k, 'jvs-tekstknop', 'ga')}
+      <button type="button" class="jvs-x" data-ae="gids-weg" data-plek="${esc(plek)}" data-sleutel="${esc(h.sleutel)}" data-fk="x" aria-label="Hint verbergen">${G.KRUIS}</button>`);
+  }
+  // Een stap die alleen jij kunt weten (link gedeeld, crew geregeld, zonder lijst): afvinken of terugzetten.
+  async function gidsStap(stap, gedaan, knop) {
+    if (!stap) return;
+    if (knop) knop.disabled = true;
+    const r = await call('POST', '/api/admin/smart/gids', { stap, gedaan: !!gedaan });
+    if (knop) knop.disabled = false;
+    if (!r.ok) return fout(r, 'Dat lukte niet.');
+    const was = gids && Array.isArray(gids.stappen) ? gids.stappen.find(x => x.id === stap) : null;
+    if (r.j && r.j.v === 1) { gids = r.j; gidsAt = Date.now(); bewaarGids(); wijsVerder(); }
+    gidsTerug = gedaan ? { stap, kort: (was && was.kort) || 'de stap', tot: Date.now() + 15000 } : null;
+    teken();
+    if (gedaan) setTimeout(() => { if (aan && gidsTerug && gidsTerug.tot <= Date.now()) { gidsTerug = null; teken(); } }, 15200);
+    const g = $('ae-gids'), f = g && !g.hidden ? (g.querySelector('[data-fk="ga"]') || g.querySelector('.jvs-gids-titel')) : null;
+    if (f && route == null) { if (!f.matches('button')) f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+  }
+  // Je kwam hier via de knop van de gids en die stap is nu geregeld (of er hoort een volgend veld
+  // bij): dan staat onderaan één regel met de volgende stap. Geen sprong vanzelf: jij tikt.
+  // Alleen bij het opzetten; op de dag wisselt de stap vanzelf en zou dit alleen maar storen.
+  function wijsVerder() {
+    if (!gebracht) return;
+    const st = gids && gids.aan && gids.fase === 'opzet' ? gids.stap : null;
+    if (!st || !route) { gebracht = null; return; }
+    const doel = st.knop ? st.knop.doel : '', cat = st.knop && Number.isInteger(st.knop.cat) ? st.knop.cat : null;
+    if (st.id === gebracht.stap && doel === gebracht.doel && cat === gebracht.cat) return;
+    const was = (Array.isArray(gids.stappen) ? gids.stappen : []).find(x => x.id === gebracht.stap);
+    volg = { tekst: st.id === gebracht.stap ? `Verder met: ${st.titel}.` : `${was && was.klaar ? 'Dat is geregeld. ' : ''}Volgende stap: ${st.titel}.`, knop: st.knop || null, ernst: st.ernst };
+    gebracht = null;
+  }
+  function tekenVolg() {
+    const doel = $('ae-volg');
+    if (!doel) return;
+    if (!G || !volg || !route || !gids || !gids.aan) { if (!doel.hidden) doel.hidden = true; setHtml(doel, ''); return; }
+    doel.hidden = false;
+    setHtmlMetFocus(doel, `${G.mark(true)}<span class="jvs-hint-t"><span class="ae-sr">JVO Smart: </span>${esc(volg.tekst)}</span>${gaKnop(volg.knop, 'rg-knop ae-knop', 'ga')}
+      <button type="button" class="jvs-x" data-ae="volg-weg" data-fk="x" aria-label="Verberg deze regel">${G.KRUIS}</button>`);
+  }
+  // De link van de aanmeldpagina gekopieerd of de QR getoond: dan is "Deel de link" gedaan (alleen
+  // als dat de stap van nu is).
+  // Zo ook de link van de bediening of de check-in bij "Regel de crew". Terugzetten kan op Start ("Toch niet").
+  function gedeeld(id) {
+    const st = gids && gids.aan ? gids.stap : null;
+    if (!st) return;
+    if (st.id === 'delen' && id === AANMELD.id) gidsStap('delen', true, null);
+    else if (st.id === 'crew' && (id === 'bediening' || id === 'checkin')) gidsStap('crew', true, null);
+  }
+
+  // "Breng me erheen": het onderdeel open, de plek in beeld, even oplichten, de focus erop.
+  // De server noemt een doel bij naam (instellingen/datum); deze kaart weet welke plek dat hier is.
+  const ANKERS = {
+    'instellingen/naam': { id: 'evc-name' }, 'instellingen/datum': { id: 'evc-date' }, 'instellingen/tijden': { id: 'evc-startTime' },
+    'instellingen/locatie': { id: 'evc-location' }, 'instellingen/lijst': { id: 'evc-cityList' }, 'instellingen/open': { id: 'ae-i-open', focus: '[data-ae="aanmelden"]' },
+    'instellingen/delen': { id: 'ae-i-deel', focus: '[data-ae="kopie"]' }, 'instellingen/cats': { id: 'ae-i-cats', focus: '#ae-i-hoofd button, .ae-catrij-nieuw input[name="name"]' },
+    'instellingen/spelregels': { id: 'rules-fold' }, 'instellingen/smart': { id: 'ae-i-smart', focus: '#ae-smart-aan' },
+    'aanmeldingen/wachten': { id: 'teams-cards', filter: 'pending' }, 'aanmeldingen/nieuw': { id: 'ae-a-nieuw', focus: '#ae-nieuw-stad' },
+    // Eén team ("X is er nog niet"): zijn rij in de lijst, de focus op "Check in".
+    'aanmeldingen/team': { team: true, anders: 'teams-cards', focus: '[data-act="checkin"]' },
+    'schema/indeling': { sel: '#rg-sportpaneel .rg-indeling, #rg-sportpaneel [data-rg="genereer"]', anders: 'rg-sportpaneel', focus: '[data-rg="indeling"], [data-rg="genereer"]' },
+    'schema/tijden': { id: 'ae-s-tijden', focus: 'input[name="start_time"]' },
+    'dag/nu': { id: 'rg-h-nu', blok: 'section' }, 'dag/straks': { id: 'rg-h-straks', blok: 'section' }, 'dag/bijsturen': { id: 'rg-rijen' },
+    'dag/pauze': { id: 'rg-pauze-alles' }, 'dag/crew': { id: 'ae-g-links' }, 'dag/checkin': { id: 'ae-scherm-checkin', focus: 'a, button' },
+    'dag/bord': { id: 'ae-scherm-bord', focus: '[data-ae="kopie"]' },
+  };
+  const rustig = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+  let brengTimer = null, lichtTimer = null;
+  function breng(doel, catId, teamId) {
+    const naam = String(doel || '');
+    const deel = naam.split('/')[0];
+    if (!deelVan(deel)) { ga(null); return; }
+    const a = ANKERS[naam] || null;
+    const cat = /^\d+$/.test(String(catId || '')) ? Number(catId) : null;
+    const team = a && a.team && /^\d+$/.test(String(teamId || '')) ? Number(teamId) : null;
+    const st = gids && gids.aan && gids.fase === 'opzet' ? gids.stap : null;
+    gebracht = st && st.knop && st.knop.doel === naam ? { stap: st.id, doel: naam, cat: Number.isInteger(st.knop.cat) ? st.knop.cat : null } : null;
+    volg = null;
+    if (cat != null && deel === 'schema') schemaCat = cat;
+    ga(deel);
+    if (cat != null && RG.isOn() && (deel === 'schema' || deel === 'aanmeldingen') && cats().some(c => c.id === cat) && A.selSport !== cat) A.selSport = cat;
+    if (a && a.filter && A.setFilter) A.setFilter(a.filter);
+    if (!a) return;
+    clearTimeout(brengTimer);
+    let poging = 0, ruim = false;
+    const rijVan = () => (team != null ? document.querySelector(`#teams-cards .tm-card[data-id="${team}"]`) : null);
+    const zoek = () => {
+      if (!aan || route !== deel) return;
+      // Het team staat niet in beeld (een ander filter, of een zoekterm): dan alles tonen, één keer.
+      if (team != null && !rijVan() && !ruim && A.zoekTeam) { ruim = true; A.zoekTeam(''); }
+      let el = team != null ? rijVan() : a.id ? $(a.id) : a.sel ? document.querySelector(a.sel) : null;
+      // Bij één team eerst even op zijn rij wachten (de lijst kan net opnieuw getekend worden).
+      if (!el && a.anders && (team == null || poging >= 5)) el = $(a.anders);
+      // Elke vouw erboven open, en "Meer instellingen" als de plek daarachter staat.
+      const klapOpen = (n) => { let d = n && n.closest('details'); while (d) { if (!d.open) d.open = true; d = d.parentElement && d.parentElement.closest('details'); } };
+      if (el) {
+        klapOpen(el);
+        if (el.closest('.ae-extra') && !document.body.classList.contains('ae-meer-open')) { document.body.classList.add('ae-meer-open'); teken(); }
+      }
+      // Het blok wordt soms net na de wissel getekend: kort opnieuw proberen.
+      if (!el || el.offsetParent === null) {
+        if (++poging < 8) brengTimer = setTimeout(zoek, 220);
+        return;
+      }
+      if (a.focus) klapOpen(el.querySelector(a.focus));
+      const blok = (a.blok && el.closest(a.blok)) || (el.matches('input, select, textarea') && el.closest('.evc-f, label')) || el;
+      try { blok.scrollIntoView({ behavior: rustig() ? 'auto' : 'smooth', block: 'center' }); } catch { blok.scrollIntoView(); }
+      document.querySelectorAll('.jvs-target').forEach(n => n.classList.remove('jvs-target'));
+      blok.classList.add('jvs-target');
+      clearTimeout(lichtTimer);
+      lichtTimer = setTimeout(() => blok.classList.remove('jvs-target'), 2400);
+      let f = el.matches('input, select, textarea, button, a[href]') ? el : null;
+      if (!f && a.focus) f = el.querySelector(a.focus);
+      if (!f) { f = blok; if (!f.hasAttribute('tabindex')) f.setAttribute('tabindex', '-1'); }
+      try { f.focus({ preventScroll: true }); } catch { /* geen focus */ }
+    };
+    brengTimer = setTimeout(zoek, 180);
+  }
+
+  // Instellingen: de link van de aanmeldpagina delen (kopiëren, QR, openen).
+  function tekenDeel(d) {
+    const doel = $('ae-i-deel');
+    if (!doel) return;
+    if (!d) { setHtml(doel, ''); return; }
+    const url = basisAdres() + '/';
+    const open = !!(d.registration && d.registration.open);
+    const kanQr = typeof qrcode === 'function', qr = qrOpen === AANMELD.id;
+    const nuKopie = kopie && kopie.tot > Date.now() && kopie.id === AANMELD.id;
+    setHtml(doel, `<h3 class="ae-kaart-h" id="ae-i-deel-h">Deel de aanmeldlink</h3>
+      <p class="ae-kaart-s">${open ? 'Stuur deze link rond, of laat de QR scannen vanaf een poster of een scherm.' : 'Aanmelden staat nu dicht: wie de link opent leest dat. Zet aanmelden eerst open en deel hem daarna.'}</p>
+      <div class="ae-deel-rij${qr ? ' is-qr' : ''}">
+        <span class="ae-deel-url" translate="no">${esc(url.replace(/^https?:\/\//, ''))}</span>
+        <div class="ae-scherm-k">
+          <button type="button" class="rg-knop ae-knop${nuKopie ? ' is-klaar' : ''}" data-ae="kopie" data-id="${AANMELD.id}">${nuKopie ? `${IC.check} Gekopieerd` : 'Kopieer link'}</button>
+          ${kanQr ? `<button type="button" class="rg-knop rg-knop-rustig ae-knop" data-ae="qr" data-id="${AANMELD.id}" aria-expanded="${qr}" aria-label="QR-code van de aanmeldpagina">QR</button>` : ''}
+          <a class="rg-knop rg-knop-rustig ae-knop" href="/" target="_blank" rel="noopener" aria-label="De aanmeldpagina openen in een nieuw tabblad">Open ↗</a>
+        </div>
+        ${qr ? `<div class="ae-scherm-qr">${qrSvg(url)}<p><b>Scan met de camera van een telefoon.</b> Dan opent de aanmeldpagina. Voor een poster: maak een schermafbeelding van deze QR.</p></div>` : ''}
+      </div>
+      <p class="ae-sr" aria-live="polite" id="ae-deel-live"></p>`);
+  }
+
+  // Instellingen: één schakelaar voor de hele gids (voor jou en voor de deelnemers). Per stuk
+  // aan of uit kan in de volledige Admin Hub ("JVO Smart leert"); dit zet ze alle vijf tegelijk.
+  async function laadVlaggen() {
+    if (vlagBezig) return;
+    vlagBezig = true;
+    try {
+      const r = await fetch('/api/smart/flags', { cache: 'no-store' }); const j = r.ok ? await r.json() : null;
+      if (j && j.flags) {
+        vlaggen = j.flags;
+        // Elders (de volledige Admin Hub) weer aangezet: dan de gids meteen ophalen.
+        if (gidsIsUit() && HELPERS.some(id => vlaggen[id] !== false)) laadGids('zeker');
+        if (aan) teken();
+      }
+    } catch { /* de stand van de vorige keer blijft staan */ }
+    vlagBezig = false;
+  }
+  function tekenSmart() {
+    const doel = $('ae-i-smart');
+    if (!doel) return;
+    if (!vlaggen) { setHtml(doel, ''); return; }
+    const op = HELPERS.filter(id => vlaggen[id] !== false).length;
+    if (bezigIn(doel) && doel.__ae) return;
+    setHtml(doel, `<label class="toggle-row ae-smart-rij" for="ae-smart-aan">
+        <input type="checkbox" id="ae-smart-aan"${op > 0 ? ' checked' : ''} />
+        <span><b>JVO Smart helpt mee</b>
+          <small>Aan: jij krijgt hier steeds de volgende stap en hooguit één hint per onderdeel, en deelnemers zien “Wat nu?” in Mijn team, op de aanmeldpagina en op het bord. Uit: alles werkt hetzelfde, zonder die hulp.${op > 0 && op < HELPERS.length ? ' Nu staat een deel uit; dat is per stuk ingesteld in de volledige Admin Hub.' : ''}</small></span>
+      </label>
+      <p class="ae-status" id="ae-smart-uit" role="status"></p>`);
+  }
+  async function zetSmart(vak) {
+    const zet = !!vak.checked;
+    vak.disabled = true;
+    let mis = 0;
+    for (const id of HELPERS) {
+      const r = await call('POST', `/api/admin/smart/learnings/${encodeURIComponent(id)}/${zet ? 'apply' : 'dismiss'}`);
+      if (!r.ok) { mis++; if (r.net) break; }
+    }
+    vak.disabled = false;
+    if (mis) A.showToast('Dat lukte niet helemaal. Probeer het opnieuw.', 'error');
+    else A.showToast(zet ? 'JVO Smart helpt weer mee' : 'JVO Smart staat uit');
+    await laadVlaggen();
+    await laadGids('zeker');
+    teken();
+    const n = $('ae-smart-aan'); if (n) n.focus({ preventScroll: true });
+  }
+
   // ── Klikken en opslaan ───────────────────────────────────────────────────
   function kiesCat(v, strook) {
     const id = v === '' || v == null ? null : Number(v);
@@ -862,7 +1223,19 @@
     const act = b.dataset.ae;
     if (act === 'alles') return zetStand('volledig', b);
     if (act === 'kopie') return kopieer(b.dataset.id);
-    if (act === 'qr') { qrOpen = qrOpen === b.dataset.id ? null : b.dataset.id; return teken(); }
+    if (act === 'qr') { qrOpen = qrOpen === b.dataset.id ? null : b.dataset.id; teken(); if (qrOpen) gedeeld(qrOpen); return; }
+    if (act === 'gids-ga') return breng(b.dataset.doel, b.dataset.cat, b.dataset.team);
+    if (act === 'volg-weg') { volg = null; return teken(); }
+    if (act === 'gids-weg') {
+      if (G) G.zetWeg(b.dataset.plek, b.dataset.sleutel);
+      teken();
+      // De knop is weg: de focus blijft in de buurt (het volgende punt, anders de knop van de gids of de kop).
+      const g = $('ae-gids');
+      const f = (!route && g && !g.hidden && (g.querySelector('.jvs-letop .jvs-x') || g.querySelector('[data-fk="ga"]'))) || $(`ae-h-${route || 'home'}`);
+      if (f) f.focus({ preventScroll: true });
+      return;
+    }
+    if (act === 'gids-stap') return gidsStap(b.dataset.stap, b.dataset.zet !== 'nee', b);
     if (act === 'meer') { document.body.classList.toggle('ae-meer-open'); return teken(); }
     if (act === 'aanmelden') {
       const zet = b.dataset.zet === 'open' ? 'open' : 'closed';
@@ -874,6 +1247,7 @@
       if (A.laadEvenement) A.laadEvenement({ zacht: true });
       laadCfg(true);
       await RG.refresh();
+      laadGids(true);
       return teken();
     }
     if (act === 'hoofd-om') return hoofdOm(b);
@@ -893,6 +1267,7 @@
     laadCfg(true);
     await RG.refresh();
     await A.refreshAll();
+    laadGids(true);
   }
   async function verstuur(e) {
     const f = e.target.closest('form[data-ae-form]');
@@ -981,6 +1356,7 @@
         ${rij(DELEN[2], 'wat er nu loopt, uitslagen corrigeren, alles pauzeren en de link voor de crew.')}
         ${rij(DELEN[3], `naam, datum, tijden, locatie, de ${esc(w.cats)}, de lijst om uit te kiezen, aanmelden open of dicht en een schone start.`)}
       </ul>
+      <p style="margin-top:8px;">JVO Smart wijst op het startscherm steeds de volgende stap aan en zet hooguit één regel bovenaan een onderdeel. Liever zonder? Dat zet je uit bij Instellingen.</p>
       <p style="margin-top:8px;">Mails, het logboek en back-ups staan in de volledige Admin Hub: onderaan het startscherm staat “Alles tonen”.</p>` };
   }
 
@@ -991,7 +1367,7 @@
     if (moet && !aan) { if (H0 && H0.actief() && H0.uit) H0.uit(); zetAan(); }
     else if (!moet && aan) zetUit();
     if (!moet) document.body.classList.remove('ae-wacht');
-    if (aan) { laadCfg(false); if (route === 'schema' || route === 'aanmeldingen') zetSport(); teken(); }
+    if (aan) { laadCfg(false); if (route === 'schema' || route === 'aanmeldingen') zetSport(); teken(); volgGids(); }
   }
   A.onRender(tik);
 

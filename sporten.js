@@ -527,8 +527,31 @@
     volgMsg('Meldingen staan uit. Je team blijft hier wel gemarkeerd.');
     renderVolg();
   }
+  // JVO Smart: één regel voor je eigen team, uit wat de server per team meestuurt (`regel`
+  // in /api/hub; dezelfde zin als in Mijn team). "Eigen" = wie je hier volgt, plus wat in Mijn
+  // team op dit toestel staat. Geen regel van de server (helper uit, of niets te zeggen): niets.
+  let smartSig = '';
+  function renderSmart() {
+    const el = $('sp-smart'), G = window.JVO_GIDS;
+    if (!el || !G || !data) return;
+    const ids = myIds();
+    try { const o = JSON.parse(ls.get('jvo_mijn') || 'null'); for (const k of (o && Array.isArray(o.keys) ? o.keys : [])) for (const id of (k && Array.isArray(k.teams) ? k.teams : [])) if (Number.isInteger(id)) ids.add(id); } catch {}
+    const eigen = [];
+    for (const c of data.competitions) for (const t of (Array.isArray(c.teams) ? c.teams : [])) if (t && ids.has(t.id)) eigen.push({ regel: t.regel || null, naam: t.name });
+    const r = G.kiesRegel(eigen);
+    if (!stale && data.server_now) G.skew = skew;
+    const sig = r ? JSON.stringify([r.regel, eigen.length]) : '';
+    if (sig !== smartSig) {
+      smartSig = sig;
+      el.className = 'jvs jvs-regel' + (r ? ' ' + G.ernstKlas(r.regel.ernst) : '');
+      el.innerHTML = r ? G.regelHtml(r, eigen.length) : '';
+      el.hidden = !r;
+    }
+    G.tikWanneer();
+  }
   let volgSig = '';
   function renderVolg() {
+    renderSmart();
     const box = $('volg');
     if (!box || !data) return;
     const teams = allTeams();
